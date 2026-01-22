@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    /* Cấu hình Module (Quan trọng) */
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    
+    /* Đường dẫn và thư mục */
+    "outDir": "./dist",
+    "rootDir": "./src",
+    
+    /* Kiểm tra lỗi */
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Tắt tính năng quá khắt khe gây lỗi cho bạn */
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}
