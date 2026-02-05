@@ -5,15 +5,25 @@ import {
   SettingOutlined,
   BookOutlined,
   DashboardOutlined,
+  PlusCircleOutlined,
+  UnorderedListOutlined,
+  TagsOutlined
 } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 
 const AdminSidebar = () => {
   const { pathname } = useLocation();
 
+  const getOpenKeys = () => {
+    const keys = [];
+    if (pathname.includes("/admin/tours")) keys.push("tour-management");
+    if (pathname.includes("/admin/categories")) keys.push("category-management");
+    if (pathname.includes("/admin/bookings")) keys.push("booking-management");
+    return keys;
+  };
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Logo */}
       <div style={{ padding: 24, display: "flex", gap: 12 }}>
         <Avatar size={40}>VIGO</Avatar>
         <div>
@@ -27,23 +37,72 @@ const AdminSidebar = () => {
       <Menu
         mode="inline"
         selectedKeys={[pathname]}
+        defaultOpenKeys={getOpenKeys()} 
         style={{ border: "none" }}
         items={[
+         
           {
-            key: "/admin",
+            key: "/admin/dashboard",
             icon: <DashboardOutlined />,
-            label: <Link to="/admin">Tổng quan</Link>,
+            label: <Link to="/admin/dashboard">Tổng quan</Link>,
           },
+
+          
           {
-            key: "/admin/tours",
+            key: "category-management",
+            icon: <TagsOutlined />,
+            label: "Quản lý Danh mục",
+            children: [
+              {
+                key: "/admin/categories",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/categories">Danh sách danh mục</Link>,
+              },
+              {
+                key: "/admin/categories/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/categories/create">Thêm danh mục</Link>,
+              },
+            ],
+          },
+
+          {
+            key: "tour-management",
             icon: <AppstoreOutlined />,
-            label: <Link to="/admin/tours">Quản lý Tour</Link>,
+            label: "Quản lý Tour",
+            children: [
+              {
+                key: "/admin/tours",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/tours">Danh sách Tour</Link>,
+              },
+              {
+                key: "/admin/tours/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/tours/create">Thêm Tour mới</Link>,
+              },
+            ],
           },
+
           {
-            key: "/admin/bookings",
+            key: "booking-management",
             icon: <BookOutlined />,
-            label: <Link to="/admin/bookings">Đơn đặt chỗ</Link>,
+            label: "Quản lý Đặt chỗ",
+            children: [
+              {
+                key: "/admin/bookings",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/bookings">Danh sách đơn</Link>,
+              },
+              {
+                key: "/admin/bookings/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/bookings/create">Tạo đơn mới</Link>,
+              },
+            ],
           },
+
+          
           {
             key: "/admin/users",
             icon: <UserOutlined />,
