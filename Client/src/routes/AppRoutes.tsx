@@ -3,6 +3,10 @@ import MainLayout from '../layouts/MainLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import HomePage from '../pages/HomePage';
 import Dashboard from '../features/admin/Dashboard'; 
+import Tourlist from '../pages/admin/tours/TourList';
+import TourCreate from '../pages/admin/tours/TourCreate';
+import TourEdit from '../pages/admin/tours/TourEdit';
+import TourDetail from '../pages/admin/tours/TourDetail';
 
 const AppRoutes = () => {
   return (
@@ -16,8 +20,10 @@ const AppRoutes = () => {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        
-        
+        <Route path='tours' element = {<Tourlist/>} />
+        <Route path="tours/create" element={<TourCreate />} />
+  <Route path="tours/edit/:id" element={<TourEdit />} />
+        <Route path="tours/:id" element={<TourDetail />} />
       </Route>
       
       <Route path="*" element={<div className="text-center mt-20 text-2xl">404 - Không tìm thấy trang</div>} />

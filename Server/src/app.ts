@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import connectDB from './config/database.js';
 import { AppError } from './utils/AppError.js';
 import tourRouter from './routes/tour.routes.js';
+import categoryRouter from './routes/category.routes.js';
 // Import Routes
 // import tourRouter from './routes/tour.routes';
 
@@ -17,6 +18,7 @@ app.use(cors()); // Cho phép Frontend gọi API
 app.use(express.json()); // Đọc JSON body
 app.use(morgan('dev')); // Log request
 app.use('/api/v1/tours', tourRouter);
+app.use('/api/v1/categories', categoryRouter);
 
 // 2. Connect DB
 connectDB();
