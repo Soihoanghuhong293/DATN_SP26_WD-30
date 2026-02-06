@@ -7,6 +7,9 @@ import Tourlist from '../pages/admin/tours/TourList';
 import TourCreate from '../pages/admin/tours/TourCreate';
 import TourEdit from '../pages/admin/tours/TourEdit';
 import TourDetail from '../pages/admin/tours/TourDetail';
+import GuideList from '../pages/admin/guides/GuideList';
+import GuideCreate from '../pages/admin/guides/GuideCreate';
+import GuideEdit from '../pages/admin/guides/GuideEdit';
 
 const AppRoutes = () => {
   return (
@@ -22,8 +25,12 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path='tours' element = {<Tourlist/>} />
         <Route path="tours/create" element={<TourCreate />} />
-  <Route path="tours/edit/:id" element={<TourEdit />} />
+        <Route path="tours/edit/:id" element={<TourEdit />} />
         <Route path="tours/:id" element={<TourDetail />} />
+        
+        <Route path='guides' element={<GuideList />} />
+        <Route path="guides/create" element={<GuideCreate />} />
+        <Route path="guides/edit/:id" element={<GuideEdit />} />
       </Route>
       
       <Route path="*" element={<div className="text-center mt-20 text-2xl">404 - Không tìm thấy trang</div>} />
