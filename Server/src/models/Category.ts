@@ -1,8 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type CategoryStatus = 'active' | 'inactive';
+
 export interface ICategory extends Document {
   id: string;
   name: string;
+  description?: string;
+  status: CategoryStatus;
   created_at: Date;
   update_at: Date;
 }
@@ -10,6 +14,8 @@ export interface ICategory extends Document {
 const CategorySchema: Schema = new Schema(
   {
     name: { type: String, required: true, trim: true, unique: true },
+    description: { type: String, default: '', trim: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'update_at' },

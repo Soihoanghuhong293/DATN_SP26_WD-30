@@ -7,6 +7,9 @@ import Tourlist from '../pages/admin/tours/TourList';
 import TourCreate from '../pages/admin/tours/TourCreate';
 import TourEdit from '../pages/admin/tours/TourEdit';
 import TourDetail from '../pages/admin/tours/TourDetail';
+import CategoryList from '../pages/admin/categories/CategoryList';
+import CategoryCreate from '../pages/admin/categories/CategoryCreate';
+import CategoryEdit from '../pages/admin/categories/CategoryEdit';
 
 const AppRoutes = () => {
   return (
@@ -20,7 +23,10 @@ const AppRoutes = () => {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path='tours' element = {<Tourlist/>} />
+        <Route path="categories" element={<CategoryList />} />
+        <Route path="categories/create" element={<CategoryCreate />} />
+        <Route path="categories/edit/:id" element={<CategoryEdit />} />
+        <Route path="tours" element={<Tourlist />} />
         <Route path="tours/create" element={<TourCreate />} />
   <Route path="tours/edit/:id" element={<TourEdit />} />
         <Route path="tours/:id" element={<TourDetail />} />

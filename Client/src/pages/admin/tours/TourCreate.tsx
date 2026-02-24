@@ -172,18 +172,21 @@ const TourCreate = () => {
                     <Form.Item
                       {...field}
                       name={[field.name, 'fileList']}
-                      rules={[{ required: true, message: 'Chọn file ảnh' }]}
+                      key={field.key}   
                       valuePropName="fileList"
+                      getValueFromEvent={(e) => e?.fileList}
+                      rules={[{ required: true, message: 'Chọn file ảnh' }]}
                     >
                       <Upload
-                        maxCount={1}
                         beforeUpload={() => false}
+                        listType="picture-card"
+                        maxCount={1}
                         accept="image/*"
-                        style={{ width: 520 }}
                       >
-                        <Button>Chọn ảnh</Button>
+                        <div>Chọn ảnh</div>
                       </Upload>
                     </Form.Item>
+
                     <Button danger onClick={() => remove(field.name)}>
                       Xoá
                     </Button>
@@ -221,7 +224,7 @@ const TourCreate = () => {
                         name={[field.name, 'activitiesText']}
                         style={{ width: 420 }}
                       >
-                        <Input.TextArea rows={2} placeholder={'Check-in\nĂn trưa\n...' } />
+                        <Input.TextArea rows={2} placeholder={'Check-in\nĂn trưa\n...'} />
                       </Form.Item>
                       <Button danger onClick={() => remove(field.name)}>
                         Xoá ngày
