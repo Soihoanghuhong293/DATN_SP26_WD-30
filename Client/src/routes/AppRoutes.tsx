@@ -6,6 +6,10 @@ import Dashboard from '../features/admin/Dashboard';
 import TourList from '../features/admin/tours/TourList';
 import TourDetail from '../features/admin/tours/TourDetail';
 
+import GuideList from '../pages/admin/guides/GuideList';
+import GuideCreate from '../pages/admin/guides/GuideCreate';
+import GuideEdit from '../pages/admin/guides/GuideEdit';
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -20,6 +24,11 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="tours" element={<TourList />} />
         <Route path="tours/:id" element={<TourDetail />} />
+   
+        
+        <Route path='guides' element={<GuideList />} />
+        <Route path="guides/create" element={<GuideCreate />} />
+        <Route path="guides/edit/:id" element={<GuideEdit />} />
       </Route>
       
       <Route path="*" element={<div className="text-center mt-20 text-2xl">404 - Không tìm thấy trang</div>} />
