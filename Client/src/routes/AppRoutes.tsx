@@ -16,33 +16,50 @@ import CategoryEdit from '../pages/admin/categories/CategoryEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 
+/* 👉 THÊM */
+import LoginPage from '../pages/LoginPage';
+import RegisterPage from '../pages/RegisterPage';
+
 const AppRoutes = () => {
   return (
     <Routes>
-     
+      {/* ===== CLIENT ===== */}
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="login" element={<div>Login Page</div>} />
+
+        {/* 👉 THÊM */}
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegisterPage />} />
       </Route>
 
+      {/* ===== ADMIN ===== */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+
         <Route path="tours" element={<TourList />} />
+        <Route path="tours/create" element={<TourCreate />} />
         <Route path="tours/:id" element={<TourDetail />} />
-        \<Route path="tours/create" element={<TourCreate />} />
-   <Route path="tours/:id/edit" element={<TourEdit />} />
-        
-        <Route path='guides' element={<GuideList />} />
+        <Route path="tours/:id/edit" element={<TourEdit />} />
+
+        <Route path="guides" element={<GuideList />} />
         <Route path="guides/create" element={<GuideCreate />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
+
         <Route path="categories" element={<CategoryList />} />
         <Route path="categories/create" element={<CategoryCreate />} />
         <Route path="categories/edit/:id" element={<CategoryEdit />} />
-        
       </Route>
-      
-      <Route path="*" element={<div className="text-center mt-20 text-2xl">404 - Không tìm thấy trang</div>} />
+
+      {/* ===== 404 ===== */}
+      <Route
+        path="*"
+        element={
+          <div className="text-center mt-20 text-2xl">
+            404 - Không tìm thấy trang
+          </div>
+        }
+      />
     </Routes>
   );
 };
