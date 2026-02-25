@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 
 import connectDB from './config/database.js';
 import { AppError } from './utils/AppError.js';
-import tourRoutes from './routes/tour.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 
 dotenv.config();
@@ -26,7 +25,6 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-app.use('/api/v1/tours', tourRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 
 // 4. Handle Undefined Routes
