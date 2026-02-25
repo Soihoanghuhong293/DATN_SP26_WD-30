@@ -14,6 +14,7 @@ import CategoryList from '../pages/admin/categories/CategoryList';
 import CategoryCreate from '../pages/admin/categories/CategoryCreate';
 import CategoryEdit from '../pages/admin/categories/CategoryEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
+import TourEdit from '../features/admin/tours/TourEdit';
 
 const AppRoutes = () => {
   return (
@@ -30,7 +31,7 @@ const AppRoutes = () => {
         <Route path="tours" element={<TourList />} />
         <Route path="tours/:id" element={<TourDetail />} />
         \<Route path="tours/create" element={<TourCreate />} />
-   
+   <Route path="tours/:id/edit" element={<TourEdit />} />
         
         <Route path='guides' element={<GuideList />} />
         <Route path="guides/create" element={<GuideCreate />} />
