@@ -116,6 +116,7 @@ const Footer = () => {
       </div>
 
       {/* --- STYLE NỘI BỘ (Hover effects) --- */}
+
       <style>{`
         .footer-link {
           color: #595959;

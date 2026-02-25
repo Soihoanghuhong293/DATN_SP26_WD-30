@@ -35,10 +35,14 @@ export interface ITour {
   slug?: string;
 }
 
+export type CategoryStatus = 'active' | 'inactive';
+
 export interface ICategory {
   id: string;
   _id?: string;
   name: string;
+  description?: string;
+  status?: CategoryStatus;
   created_at: string;
   update_at: string;
 }

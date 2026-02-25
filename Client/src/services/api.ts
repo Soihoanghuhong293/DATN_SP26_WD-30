@@ -53,15 +53,45 @@ export async function deleteTour(id: string) {
   return res.data;
 }
 
-export async function getCategories() {
+export type GetCategoriesParams = {
+  status?: string;
+  search?: string;
+};
+
+export async function getCategories(params: GetCategoriesParams = {}) {
   const res = await api.get<ApiResponse<{ categories: ICategory[] }> & { results?: number }>(
-    ENDPOINTS.categories
+    ENDPOINTS.categories,
+    { params }
   );
   return res.data;
 }
 
-export async function createCategory(name: string) {
-  const res = await api.post<ApiResponse<{ category: ICategory }>>(ENDPOINTS.categories, { name });
+export async function getCategory(id: string) {
+  const res = await api.get<ApiResponse<{ category: ICategory }>>(ENDPOINTS.categoryById(id));
+  return res.data;
+}
+
+export type CreateCategoryPayload = {
+  name: string;
+  description?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createCategory(payload: CreateCategoryPayload) {
+  const res = await api.post<ApiResponse<{ category: ICategory }>>(ENDPOINTS.categories, payload);
+  return res.data;
+}
+
+export async function updateCategory(id: string, payload: Partial<CreateCategoryPayload>) {
+  const res = await api.patch<ApiResponse<{ category: ICategory }>>(
+    ENDPOINTS.categoryById(id),
+    payload
+  );
+  return res.data;
+}
+
+export async function deleteCategory(id: string) {
+  const res = await api.delete(ENDPOINTS.categoryById(id));
   return res.data;
 }
 

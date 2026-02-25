@@ -8,7 +8,7 @@ export interface ITour extends Document {
   name: string;
   slug?: string;
   description: string;
-  category_id?: mongoose.Types.ObjectId; // Khớp với ERD: category_id
+  category_id: mongoose.Types.ObjectId; // Khớp với ERD: category_id
   
   // Các trường mảng/phức tạp
   schedule: {
@@ -49,7 +49,7 @@ const TourSchema: Schema = new Schema({
   category_id: { 
     type: Schema.Types.ObjectId, 
     ref: 'Category', // Liên kết với bảng Category (bạn cần có model Category trước)
-    required: false
+    required: true
   },
 
   schedule: [{

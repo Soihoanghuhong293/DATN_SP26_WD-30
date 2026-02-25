@@ -7,6 +7,7 @@ export const ENDPOINTS = {
   guideRating: (id: string) => `/guides/${id}/rating`,
   guideTourHistory: (id: string) => `/guides/${id}/history`,
   guideStatistics: '/guides/statistics',
+  categoryById: (id: string) => `/categories/${id}`,
 } as const;
 
 
