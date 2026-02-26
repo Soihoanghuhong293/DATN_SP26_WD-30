@@ -24,7 +24,7 @@ const LoginPage = () => {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
 
-      alert("Login success");
+      alert("Đăng nhập thành công");
 
       if (role === "admin") {
         navigate("/admin/dashboard");
