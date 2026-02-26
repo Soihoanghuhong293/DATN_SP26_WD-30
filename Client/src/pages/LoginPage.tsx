@@ -21,15 +21,13 @@ const LoginPage = () => {
 
       const { token, role } = res.data;
 
-      // lưu token + role
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
 
       alert("Login success");
 
-      // 🚀 CHUYỂN TRANG THEO ROLE
       if (role === "admin") {
-        navigate("/admin");
+        navigate("/admin/dashboard");
       } else {
         navigate("/");
       }
@@ -39,23 +37,53 @@ const LoginPage = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Login</h2>
+    <div
+      style={{
+        width: "350px",
+        margin: "100px auto",
+        border: "1px solid #ccc",
+        padding: "20px",
+        borderRadius: "6px",
+      }}
+    >
+      <form onSubmit={handleSubmit}>
+        <h2 style={{ textAlign: "center" }}>Login</h2>
 
-      <input
-        name="email"
-        placeholder="Email"
-        onChange={handleChange}
-      />
-      <input
-        name="password"
-        type="password"
-        placeholder="Password"
-        onChange={handleChange}
-      />
+        <div style={{ marginBottom: "12px" }}>
+          <input
+            name="email"
+            placeholder="Email"
+            onChange={handleChange}
+            style={{ width: "100%", padding: "8px" }}
+          />
+        </div>
 
-      <button type="submit">Login</button>
-    </form>
+        <div style={{ marginBottom: "16px" }}>
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            onChange={handleChange}
+            style={{ width: "100%", padding: "8px" }}
+          />
+        </div>
+
+        <button
+          type="submit"
+          style={{
+            width: "100%",
+            padding: "10px",
+            backgroundColor: "#28a745",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          Login
+        </button>
+      </form>
+    </div>
   );
 };
 

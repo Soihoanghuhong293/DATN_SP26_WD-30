@@ -9,7 +9,7 @@ const AdminLayout = () => {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
-  // ❌ chưa đăng nhập
+  // ❌ chưa login
   if (!token) {
     return <Navigate to="/login" replace />;
   }
@@ -21,30 +21,16 @@ const AdminLayout = () => {
 
   // ✅ admin hợp lệ
   return (
-    <Layout style={{ minHeight: "100vh", background: "#f5f7f8" }}>
-      <Sider
-        width={260}
-        theme="light"
-        style={{
-          borderRight: "1px solid #e5e7eb",
-          background: "#fff",
-        }}
-      >
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider width={260} theme="light">
         <AdminSidebar />
       </Sider>
 
       <Layout>
         <AdminHeader />
 
-        <Content
-          style={{
-            padding: "24px 32px",
-            background: "#f5f7f8",
-          }}
-        >
-          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-            <Outlet />
-          </div>
+        <Content style={{ padding: 24 }}>
+          <Outlet />
         </Content>
       </Layout>
     </Layout>
