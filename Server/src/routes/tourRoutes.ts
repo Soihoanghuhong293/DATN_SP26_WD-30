@@ -11,7 +11,7 @@ router
 router
   .route('/:id')
   .get(tourController.getTour)
-  .put(tourController.updateTour)   // Hoặc dùng .patch
+  .put(tourController.updateTour)   
   .delete(tourController.deleteTour);
 
 export default router;

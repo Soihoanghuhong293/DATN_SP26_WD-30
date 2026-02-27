@@ -1,16 +1,14 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import slugify from 'slugify'; // Nhớ chạy: npm install slugify
+import slugify from 'slugify'; 
 import type { CallbackWithoutResultAndOptionalError } from "mongoose";
 
 
-// 1. Định nghĩa Interface (Kiểu dữ liệu cho TypeScript)
 export interface ITour extends Document {
   name: string;
   slug?: string;
   description: string;
-  category_id: mongoose.Types.ObjectId; // Khớp với ERD: category_id
+  category_id: mongoose.Types.ObjectId; 
   
-  // Các trường mảng/phức tạp
   schedule: {
     day: number;
     title: string;
@@ -20,23 +18,41 @@ export interface ITour extends Document {
   images: string[];
   
   prices: {
-    name: string; // VD: Người lớn, Trẻ em
+    name: string;
     price: number;
   }[];
 
   pesolici: string[];
   suppliers: string[];
   
-  price: number; // Giá hiển thị cơ bản
+  price: number; 
   status: 'active' | 'draft' | 'hidden';
-  duration_days: number; // Khớp với ảnh: duration_days
+  duration_days: number; 
   
   created_at: Date;
   updated_at: Date;
+
+  seasonalPrices?: {
+    title: string;
+    startDate: Date;
+    endDate: Date;
+    prices: { name: string; price: number }[]; 
+  }[];
 }
 
-// 2. Định nghĩa Schema (Cấu trúc bảng MongoDB)
+
 const TourSchema: Schema = new Schema({
+  seasonalPrices: [{
+    title: { type: String, required: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    
+    // THÊM BẢNG GIÁ CHI TIẾT CHO MÙA NÀY
+    prices: [{
+      name: String,  // VD: Người lớn, Trẻ em
+      price: Number  // VD: 2500000, 1800000
+    }]
+  }],
   name: { 
     type: String, 
     required: [true, 'Tour phải có tên'], 
@@ -48,7 +64,7 @@ const TourSchema: Schema = new Schema({
   
   category_id: { 
     type: Schema.Types.ObjectId, 
-    ref: 'Category', // Liên kết với bảng Category (bạn cần có model Category trước)
+    ref: 'Category',
     required: true
   },
 
@@ -78,13 +94,11 @@ const TourSchema: Schema = new Schema({
   duration_days: { type: Number, required: true }
 
 }, {
-  // Config tự động tạo created_at và updated_at khớp với ảnh
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// 3. Middleware: Tự động tạo slug từ name trước khi lưu
 TourSchema.pre('save', function () {
    if (!this.isModified('name')) return;
 

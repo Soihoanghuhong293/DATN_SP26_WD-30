@@ -35,7 +35,11 @@ export const getTour = async (req: Request, res: Response) => {
 // 3. CREATE: Thêm Tour mới
 export const createTour = async (req: Request, res: Response) => {
   try {
+
+    console.log("BODY CREATE:", JSON.stringify(req.body, null, 2));
+
     const newTour = await Tour.create(req.body);
+
     res.status(201).json({
       status: 'success',
       data: newTour
@@ -47,25 +51,38 @@ export const createTour = async (req: Request, res: Response) => {
     });
   }
 };
-
 // 4. UPDATE: Sửa Tour
 export const updateTour = async (req: Request, res: Response) => {
   try {
-    // { new: true } để trả về data mới sau khi update
-    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
-    
-    if (!tour) return res.status(404).json({ message: 'Không tìm thấy tour' });
+    console.log("BODY UPDATE:", JSON.stringify(req.body, null, 2));
+    const tour = await Tour.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          ...req.body,
+          seasonalPrices: req.body.seasonalPrices
+        }
+      },
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!tour) {
+      return res.status(404).json({ message: 'Không tìm thấy tour' });
+      
+    }
 
     res.status(200).json({
       status: 'success',
       data: tour
     });
+
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
+  
 };
 
 // 5. DELETE: Xóa Tour

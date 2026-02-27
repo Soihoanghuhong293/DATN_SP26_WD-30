@@ -19,6 +19,8 @@ import TourEdit from '../features/admin/tours/TourEdit';
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
+import BookingCreate from '../features/bookings/BookingCreate';
+import BookingList from '../features/bookings/BookingList';
 
 const AppRoutes = () => {
   return (
@@ -49,9 +51,13 @@ const AppRoutes = () => {
         <Route path="categories" element={<CategoryList />} />
         <Route path="categories/create" element={<CategoryCreate />} />
         <Route path="categories/edit/:id" element={<CategoryEdit />} />
+
+               <Route path="bookings" element={<BookingList />} />
+
+        <Route path="bookings/create" element={<BookingCreate />} />
+
       </Route>
 
-      {/* ===== 404 ===== */}
       <Route
         path="*"
         element={
