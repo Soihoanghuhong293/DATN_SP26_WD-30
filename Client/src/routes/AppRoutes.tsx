@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import HomePage from '../pages/HomePage';
+import ToursPage from '../pages/ToursPage';
+import TourDetailPage from '../pages/TourDetailPage';
 import Dashboard from '../features/admin/Dashboard'; 
 import TourList from '../features/admin/tours/TourList';
 import TourDetail from '../features/admin/tours/TourDetail';
@@ -22,6 +24,8 @@ const AppRoutes = () => {
      
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="tours" element={<ToursPage />} />
+        <Route path="tours/:id" element={<TourDetailPage />} />
         <Route path="login" element={<div>Login Page</div>} />
       </Route>
 
