@@ -143,7 +143,7 @@ const ProviderEdit = () => {
             <Button type="primary" htmlType="submit" loading={isPending}>
               Lưu thay đổi
             </Button>
-            <Button onClick={() => navigate('/admin/providers')}>Huỷ</Button>
+            <Button onClick={() => navigate(`/admin/providers/${id}`)}>Huỷ</Button>
             <Button onClick={() => navigate(`/admin/providers/${id}`)}>Xem chi tiết</Button>
           </Space>
 
