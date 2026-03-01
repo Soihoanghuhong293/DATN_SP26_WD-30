@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { ApiResponse, ICategory, ITour, ToursListResponse } from '../types/tour.types';
 import type { IGuide, IGuideCreateRequest, IGuideUpdateRequest, IGuideRatingRequest, ITourHistoryRequest } from '../types/guide.types';
+import type { CreateProviderPayload, IProvider } from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
 
 const baseURL =
@@ -155,6 +156,44 @@ export async function addGuideTourHistory(id: string, payload: ITourHistoryReque
 
 export async function getGuideStatistics() {
   const res = await api.get<ApiResponse<{ groupStats: any[]; healthStats: any[] }>>(ENDPOINTS.guideStatistics);
+  return res.data;
+}
+
+// ===== PROVIDER API FUNCTIONS =====
+
+export type GetProvidersParams = {
+  status?: string;
+  search?: string;
+};
+
+export async function getProviders(params: GetProvidersParams = {}) {
+  const res = await api.get<ApiResponse<{ providers: IProvider[] }> & { results?: number }>(
+    ENDPOINTS.providers,
+    { params }
+  );
+  return res.data;
+}
+
+export async function getProvider(id: string) {
+  const res = await api.get<ApiResponse<{ provider: IProvider }>>(ENDPOINTS.providerById(id));
+  return res.data;
+}
+
+export async function createProvider(payload: CreateProviderPayload) {
+  const res = await api.post<ApiResponse<{ provider: IProvider }>>(ENDPOINTS.providers, payload);
+  return res.data;
+}
+
+export async function updateProvider(id: string, payload: Partial<CreateProviderPayload>) {
+  const res = await api.patch<ApiResponse<{ provider: IProvider }>>(
+    ENDPOINTS.providerById(id),
+    payload
+  );
+  return res.data;
+}
+
+export async function deleteProvider(id: string) {
+  const res = await api.delete(ENDPOINTS.providerById(id));
   return res.data;
 }
 

@@ -10,6 +10,7 @@ import { AppError } from './utils/AppError.js';
 import guideRouter from './routes/guide.routes.js';
 import tourRouter from './routes/tourRoutes.js';
 import categoryRoutes from './routes/category.routes.js';
+import providerRoutes from './routes/provider.routes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/v1/guides', guideRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/providers', providerRoutes);
 
 // 5. Handle Undefined Routes
 app.use((req: Request, res: Response, next: NextFunction) => {

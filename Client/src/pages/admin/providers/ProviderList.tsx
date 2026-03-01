@@ -1,0 +1,152 @@
+import { useMemo, useState } from 'react';
+import { Button, Input, Select, Space, Table, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getProviders } from '../../../services/api';
+import type { IProvider } from '../../../types/provider.types';
+
+const { Title, Text } = Typography;
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(d);
+};
+
+const statusColor = (status?: string) => {
+  if (status === 'active') return 'green';
+  return 'red';
+};
+
+const statusLabel = (status?: string) => {
+  if (status === 'active') return 'Hoạt động';
+  return 'Không hoạt động';
+};
+
+const ProviderList = () => {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<string | undefined>(undefined);
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['providers', { search, status }],
+    queryFn: () => getProviders({ search: search || undefined, status }),
+  });
+
+  const providers = data?.data?.providers ?? [];
+
+  const columns: ColumnsType<IProvider> = useMemo(
+    () => [
+      {
+        title: 'Tên nhà cung cấp',
+        dataIndex: 'name',
+        key: 'name',
+        render: (value: string, record) => (
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{value}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              ID: {record.id || record._id}
+            </Text>
+          </div>
+        ),
+      },
+      {
+        title: 'Liên hệ',
+        key: 'contact',
+        render: (_, record) => (
+          <div>
+            <div>{record.phone || '-'}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {record.email || '-'}
+            </Text>
+          </div>
+        ),
+      },
+      {
+        title: 'Liên hệ khẩn cấp',
+        dataIndex: 'emergency_contact',
+        key: 'emergency_contact',
+        ellipsis: true,
+        render: (value: string) => <Text type="secondary">{value?.trim() ? value : '-'}</Text>,
+      },
+      {
+        title: 'Trạng thái',
+        dataIndex: 'status',
+        key: 'status',
+        width: 140,
+        render: (value: string) => <Tag color={statusColor(value)}>{statusLabel(value)}</Tag>,
+      },
+      {
+        title: 'Cập nhật',
+        dataIndex: 'update_at',
+        key: 'update_at',
+        width: 180,
+        render: (value: string) => formatDateTime(value),
+      },
+    ],
+    []
+  );
+
+  return (
+    <div>
+      <Title level={3} style={{ margin: 0 }}>
+        Danh sách Nhà cung cấp
+      </Title>
+
+      <div style={{ marginTop: 16, marginBottom: 16 }}>
+        <Space wrap>
+          <Input.Search
+            allowClear
+            placeholder="Tìm theo tên, email, SĐT..."
+            style={{ width: 320 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onSearch={() => {}}
+          />
+          <Select
+            allowClear
+            placeholder="Trạng thái"
+            style={{ width: 180 }}
+            value={status}
+            onChange={(v) => setStatus(v)}
+            options={[
+              { value: 'active', label: 'Hoạt động' },
+              { value: 'inactive', label: 'Không hoạt động' },
+            ]}
+          />
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['providers'] })}>
+            Tải lại
+          </Button>
+        </Space>
+      </div>
+
+      {isError ? (
+        <div style={{ background: '#fff', padding: 16, border: '1px solid #eee' }}>
+          <Text type="danger">
+            Lỗi tải danh sách nhà cung cấp: {(error as any)?.message || 'Unknown error'}
+          </Text>
+          <div style={{ marginTop: 8 }}>
+            <Text type="secondary">
+              Gợi ý: hãy chắc chắn server chạy và `VITE_API_URL` trỏ tới `http://localhost:5000/api/v1`.
+            </Text>
+          </div>
+        </div>
+      ) : (
+        <Table<IProvider>
+          loading={isLoading}
+          rowKey={(r) => r.id || r._id || Math.random().toString(16)}
+          dataSource={providers}
+          columns={columns}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+          }}
+          style={{ background: '#fff', borderRadius: 8 }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ProviderList;
