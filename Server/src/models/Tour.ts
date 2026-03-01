@@ -1,45 +1,108 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import slugify from 'slugify'; 
+import type { CallbackWithoutResultAndOptionalError } from "mongoose";
+
 
 export interface ITour extends Document {
-  name: string; // Tương ứng description/name trong ERD
+  name: string;
+  slug?: string;
   description: string;
-  category: mongoose.Types.ObjectId;
-  basePrice: number;
-  duration: number; // Số ngày
-  images: string[];
+  category_id: mongoose.Types.ObjectId; 
+  
   schedule: {
     day: number;
     title: string;
     activities: string[];
   }[];
-  startDates: Date[]; // Lịch khởi hành
-  maxGroupSize: number;
-  slug: string;
+  
+  images: string[];
+  
+  prices: {
+    name: string;
+    price: number;
+  }[];
+
+  pesolici: string[];
+  suppliers: string[];
+  
+  price: number; 
+  status: 'active' | 'draft' | 'hidden';
+  duration_days: number; 
+  
+  created_at: Date;
+  updated_at: Date;
+
+  seasonalPrices?: {
+    title: string;
+    startDate: Date;
+    endDate: Date;
+    prices: { name: string; price: number }[]; 
+  }[];
 }
 
+
 const TourSchema: Schema = new Schema({
-  name: { type: String, required: true, trim: true },
+  seasonalPrices: [{
+    title: { type: String, required: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    
+    // THÊM BẢNG GIÁ CHI TIẾT CHO MÙA NÀY
+    prices: [{
+      name: String,  // VD: Người lớn, Trẻ em
+      price: Number  // VD: 2500000, 1800000
+    }]
+  }],
+  name: { 
+    type: String, 
+    required: [true, 'Tour phải có tên'], 
+    unique: true,
+    trim: true 
+  },
+  slug: String,
   description: { type: String, required: true },
-  category: { type: Schema.Types.ObjectId, ref: 'Category' },
-  basePrice: { type: Number, required: true },
-  duration: { type: Number, required: true },
-  images: [String],
+  
+  category_id: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'Category',
+    required: true
+  },
+
   schedule: [{
     day: Number,
     title: String,
     activities: [String]
   }],
-  startDates: [Date],
-  maxGroupSize: { type: Number, default: 20 },
-  slug: { type: String, unique: true }
+
+  images: [String],
+
+  prices: [{
+    name: String,
+    price: Number
+  }],
+
+  policies: [String],
+  suppliers: [String],
+
+  price: { type: Number, required: true },
+  status: {
+    type: String,
+    enum: ['active', 'draft', 'hidden'],
+    default: 'draft'
+  },
+  
+  duration_days: { type: Number, required: true }
+
 }, {
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, // Khớp với ERD
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// Index để tìm kiếm nhanh
-TourSchema.index({ basePrice: 1, duration: 1 });
-TourSchema.index({ slug: 1 });
+TourSchema.pre('save', function () {
+   if (!this.isModified('name')) return;
+
+  this.slug = slugify(this.name as string, { lower: true });
+});
 
 export default mongoose.model<ITour>('Tour', TourSchema);

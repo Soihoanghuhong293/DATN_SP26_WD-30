@@ -7,7 +7,9 @@ import {
   DashboardOutlined,
   PlusCircleOutlined,
   UnorderedListOutlined,
-  TagsOutlined
+  TagsOutlined,
+  TeamOutlined,
+  ShopOutlined
 } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 
@@ -19,6 +21,8 @@ const AdminSidebar = () => {
     if (pathname.includes("/admin/tours")) keys.push("tour-management");
     if (pathname.includes("/admin/categories")) keys.push("category-management");
     if (pathname.includes("/admin/bookings")) keys.push("booking-management");
+    if (pathname.includes("/admin/guides")) keys.push("guide-management");
+    if (pathname.includes("/admin/providers")) keys.push("provider-management");
     return keys;
   };
 
@@ -80,6 +84,42 @@ const AdminSidebar = () => {
                 key: "/admin/tours/create",
                 icon: <PlusCircleOutlined />,
                 label: <Link to="/admin/tours/create">Thêm Tour mới</Link>,
+              },
+            ],
+          },
+
+          {
+            key: "guide-management",
+            icon: <TeamOutlined />,
+            label: "Quản lý Hướng dẫn viên",
+            children: [
+              {
+                key: "/admin/guides",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/guides">Danh sách HDV</Link>,
+              },
+              {
+                key: "/admin/guides/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/guides/create">Thêm HDV mới</Link>,
+              },
+            ],
+          },
+
+          {
+            key: "provider-management",
+            icon: <ShopOutlined />,
+            label: "Nhà cung cấp",
+            children: [
+              {
+                key: "/admin/providers",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/providers">Danh sách nhà cung cấp</Link>,
+              },
+              {
+                key: "/admin/providers/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/providers/create">Thêm nhà cung cấp</Link>,
               },
             ],
           },
