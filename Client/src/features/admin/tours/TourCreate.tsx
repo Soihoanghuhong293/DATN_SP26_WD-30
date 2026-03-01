@@ -5,12 +5,14 @@ import axios from 'axios';
 import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
-  Space, Typography, message, Select, Divider, Spin 
+  Space, Typography, message, Select, Divider, Spin, 
+  DatePicker
 } from 'antd';
 import { 
   MinusCircleOutlined, PlusOutlined, 
   ArrowLeftOutlined, SaveOutlined 
 } from '@ant-design/icons';
+
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -53,13 +55,23 @@ const TourCreate = () => {
   });
 
   const onFinish = (values: any) => {
-    const payload = {
-      ...values,
-      suppliers: values.suppliers ? [values.suppliers] : [],
-    };
-    mutation.mutate(payload);
-  };
+  const finalValues = { ...values };
 
+  // Đảm bảo suppliers luôn là mảng
+  finalValues.suppliers = values.suppliers ? [values.suppliers] : [];
+
+  // Xử lý giá theo mùa
+  if (finalValues.seasonalPrices?.length > 0) {
+    finalValues.seasonalPrices = finalValues.seasonalPrices.map((season: any) => ({
+      title: season.title,
+      startDate: season.dateRange?.[0]?.format('YYYY-MM-DD'),
+      endDate: season.dateRange?.[1]?.format('YYYY-MM-DD'),
+      prices: season.prices || []
+    }));
+  }
+
+  mutation.mutate(finalValues);
+};
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <Space className="mb-6">
@@ -160,6 +172,70 @@ const TourCreate = () => {
           </Col>
 
           <Col xs={24} lg={8}>
+         <Divider>Giá theo mùa / Lễ tết</Divider>
+              <Form.List name="seasonalPrices">
+                {(seasonFields, { add: addSeason, remove: removeSeason }) => (
+                  <>
+                    {seasonFields.map(({ key: seasonKey, name: seasonName, ...seasonRestField }) => (
+                      <Card 
+                        size="small" 
+                        key={seasonKey} 
+                        className="mb-4 bg-blue-50 border-blue-200"
+                        title="Cấu hình Mùa / Lễ"
+                        extra={<MinusCircleOutlined onClick={() => removeSeason(seasonName)} className="text-red-500" />}
+                      >
+                        <Form.Item 
+                          {...seasonRestField} name={[seasonName, 'title']} 
+                          label="Tên dịp (VD: Lễ 30/4)" rules={[{ required: true }]}
+                        >
+                          <Input placeholder="Lễ Quốc Khánh 2/9" />
+                        </Form.Item>
+
+                        <Form.Item 
+                          {...seasonRestField} name={[seasonName, 'dateRange']} 
+                          label="Thời gian áp dụng" rules={[{ required: true }]}
+                        >
+                          <DatePicker.RangePicker format="DD/MM/YYYY" className="w-full" />
+                        </Form.Item>
+
+                        {/* --- FORM.LIST LỒNG NHAU: BẢNG GIÁ CỦA RIÊNG MÙA NÀY --- */}
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-sm font-bold text-gray-600 mb-2">Bảng giá áp dụng cho dịp này:</div>
+                          <Form.List name={[seasonName, 'prices']}>
+                            {(priceFields, { add: addPrice, remove: removePrice }) => (
+                              <>
+                                {priceFields.map(({ key: priceKey, name: priceName, ...priceRestField }) => (
+                                  <Space key={priceKey} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                                    <Form.Item {...priceRestField} name={[priceName, 'name']} rules={[{ required: true }]}>
+                                      <Input placeholder="Đối tượng (Người lớn, Trẻ em...)" />
+                                    </Form.Item>
+                                    <Form.Item {...priceRestField} name={[priceName, 'price']} rules={[{ required: true }]}>
+                                      <InputNumber 
+                                        placeholder="Giá tiền" 
+                                        formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
+                                      />
+                                    </Form.Item>
+                                    <MinusCircleOutlined onClick={() => removePrice(priceName)} className="text-red-500" />
+                                  </Space>
+                                ))}
+                                <Button type="dashed" size="small" onClick={() => addPrice()} block icon={<PlusOutlined />}>
+                                  Thêm giá (Người lớn/Trẻ em) cho dịp này
+                                </Button>
+                              </>
+                            )}
+                          </Form.List>
+                        </div>
+                        {/* ----------------------------------------------------- */}
+                        
+                      </Card>
+                    ))}
+                    <Button type="dashed" onClick={() => addSeason()} block icon={<PlusOutlined />} className="border-blue-500 text-blue-600">
+                      + Thêm cấu hình Lễ Tết / Mùa cao điểm
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+          
             <Card title="Giá & Cấu hình" className="mb-6 shadow-sm border-t-4 border-t-green-500">
               <Form.Item name="price" label="Giá cơ bản (VNĐ)" rules={[{ required: true, message: 'Vui lòng nhập giá!' }]}>
                 <InputNumber className="w-full" size="large" formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={(value) => value!.replace(/\$\s?|(,*)/g, '')} />
