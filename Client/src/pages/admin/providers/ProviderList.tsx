@@ -3,6 +3,7 @@ import { Button, Input, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProviders } from '../../../services/api';
+import { useNavigate } from 'react-router-dom';
 import type { IProvider } from '../../../types/provider.types';
 
 const { Title, Text } = Typography;
@@ -25,6 +26,7 @@ const statusLabel = (status?: string) => {
 };
 
 const ProviderList = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string | undefined>(undefined);
@@ -90,9 +92,14 @@ const ProviderList = () => {
 
   return (
     <div>
-      <Title level={3} style={{ margin: 0 }}>
-        Danh sách Nhà cung cấp
-      </Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Danh sách Nhà cung cấp
+        </Title>
+        <Button type="primary" onClick={() => navigate('/admin/providers/create')}>
+          Thêm nhà cung cấp mới
+        </Button>
+      </div>
 
       <div style={{ marginTop: 16, marginBottom: 16 }}>
         <Space wrap>

@@ -116,6 +116,11 @@ const AdminSidebar = () => {
                 icon: <UnorderedListOutlined />,
                 label: <Link to="/admin/providers">Danh sách nhà cung cấp</Link>,
               },
+              {
+                key: "/admin/providers/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/providers/create">Thêm nhà cung cấp</Link>,
+              },
             ],
           },
 
