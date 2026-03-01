@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
   Space, Typography, message, Select, Divider, Spin 
@@ -29,6 +30,12 @@ const TourCreate = () => {
     }
   });
 
+  const { data: providersData, isLoading: isProvidersLoading } = useQuery({
+    queryKey: ['providers'],
+    queryFn: () => getProviders({ status: 'active' }),
+  });
+  const providers = providersData?.data?.providers ?? [];
+
   // 2. GỌI API LƯU TOUR
   const mutation = useMutation({
     mutationFn: async (values: any) => {
@@ -46,7 +53,11 @@ const TourCreate = () => {
   });
 
   const onFinish = (values: any) => {
-    mutation.mutate(values);
+    const payload = {
+      ...values,
+      suppliers: values.suppliers ? [values.suppliers] : [],
+    };
+    mutation.mutate(payload);
   };
 
   return (
@@ -179,8 +190,15 @@ const TourCreate = () => {
               <Form.Item name="policies" label="Chính sách (Nhấn Enter để tách dòng)">
                  <Select mode="tags" placeholder="Vé máy bay khứ hồi..." open={false} />
               </Form.Item>
-              <Form.Item name="suppliers" label="Nhà cung cấp (Nhấn Enter)">
-                 <Select mode="tags" placeholder="VivuTour..." open={false} />
+              <Form.Item name="suppliers" label="Nhà cung cấp">
+                 <Select
+                   placeholder="Chọn nhà cung cấp"
+                   allowClear
+                   loading={isProvidersLoading}
+                   notFoundContent={isProvidersLoading ? <Spin size="small" /> : 'Chưa có nhà cung cấp nào'}
+                   optionFilterProp="label"
+                   options={providers.map((p: any) => ({ value: p.id || p._id, label: p.name }))}
+                 />
               </Form.Item>
             </Card>
 

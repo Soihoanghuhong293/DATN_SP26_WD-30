@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
   Space, Typography, message, Select, Divider, Spin 
@@ -30,6 +31,12 @@ const TourEdit = () => {
     }
   });
 
+  const { data: providersData, isLoading: isProvidersLoading } = useQuery({
+    queryKey: ['providers'],
+    queryFn: () => getProviders({ status: 'active' }),
+  });
+  const providers = providersData?.data?.providers ?? [];
+
   const { data: tour, isLoading: isTourLoading } = useQuery({
     queryKey: ['tour', id],
     queryFn: async () => {
@@ -41,12 +48,12 @@ const TourEdit = () => {
 
   useEffect(() => {
     if (tour) {
-     
+      const suppliers = Array.isArray(tour.suppliers) ? tour.suppliers.filter((s: string) => s && s.length > 0) : [];
       const formattedData = {
         ...tour,
-        category_id: tour.category_id?._id || tour.category_id
+        category_id: tour.category_id?._id || tour.category_id,
+        suppliers: suppliers.length > 0 ? suppliers[0] : undefined,
       };
-      
       form.setFieldsValue(formattedData);
     }
   }, [tour, form]);
@@ -68,7 +75,11 @@ const TourEdit = () => {
   });
 
   const onFinish = (values: any) => {
-    mutation.mutate(values);
+    const payload = {
+      ...values,
+      suppliers: values.suppliers ? [values.suppliers] : [],
+    };
+    mutation.mutate(payload);
   };
 
   if (isTourLoading) {
@@ -177,7 +188,14 @@ const TourEdit = () => {
                  <Select mode="tags" placeholder="Vé máy bay khứ hồi..." open={false} />
               </Form.Item>
               <Form.Item name="suppliers" label="Nhà cung cấp">
-                 <Select mode="tags" placeholder="VivuTour..." open={false} />
+                 <Select
+                   placeholder="Chọn nhà cung cấp"
+                   allowClear
+                   loading={isProvidersLoading}
+                   notFoundContent={isProvidersLoading ? <Spin size="small" /> : 'Chưa có nhà cung cấp nào'}
+                   optionFilterProp="label"
+                   options={providers.map((p: any) => ({ value: p.id || p._id, label: p.name }))}
+                 />
               </Form.Item>
             </Card>
 

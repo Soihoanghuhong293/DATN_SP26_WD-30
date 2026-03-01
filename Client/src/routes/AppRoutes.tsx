@@ -15,6 +15,10 @@ import GuideEdit from '../pages/admin/guides/GuideEdit';
 import CategoryList from '../pages/admin/categories/CategoryList';
 import CategoryCreate from '../pages/admin/categories/CategoryCreate';
 import CategoryEdit from '../pages/admin/categories/CategoryEdit';
+import ProviderList from '../pages/admin/providers/ProviderList';
+import ProviderCreate from '../pages/admin/providers/ProviderCreate';
+import ProviderDetail from '../pages/admin/providers/ProviderDetail';
+import ProviderEdit from '../pages/admin/providers/ProviderEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 
@@ -48,12 +52,20 @@ const AppRoutes = () => {
         <Route path="tours/:id/edit" element={<TourEdit />} />
 
         <Route path="guides" element={<GuideList />} />
+        <Route path="tours/create" element={<TourCreate />} />
+        <Route path="tours/:id/edit" element={<TourEdit />} />
+        
+        <Route path='guides' element={<GuideList />} />
         <Route path="guides/create" element={<GuideCreate />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
 
         <Route path="categories" element={<CategoryList />} />
         <Route path="categories/create" element={<CategoryCreate />} />
         <Route path="categories/edit/:id" element={<CategoryEdit />} />
+        <Route path="providers" element={<ProviderList />} />
+        <Route path="providers/create" element={<ProviderCreate />} />
+        <Route path="providers/edit/:id" element={<ProviderEdit />} />
+        <Route path="providers/:id" element={<ProviderDetail />} />
       </Route>
 
       {/* ===== 404 ===== */}

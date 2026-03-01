@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { getProvider, getProviders } from '../../../services/api';
 import { 
   Button, Card, Descriptions, Spin, Tabs, Tag, 
   Timeline, Image, Table, Typography, Space, Popconfirm, 
-  message, Breadcrumb, Row, Col, ConfigProvider, theme, Divider, Avatar 
+  message, Breadcrumb, Row, Col, ConfigProvider, Divider,
+  Modal, Select
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -18,7 +20,13 @@ import {
   UsergroupAddOutlined,
   HomeOutlined,
   CheckCircleOutlined,
-  StopOutlined
+  StopOutlined,
+  ShopOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  ContactsOutlined,
+  FileTextOutlined,
+  SwapOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -28,7 +36,8 @@ const TourDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { token } = theme.useToken();
+  const [changeProviderModalOpen, setChangeProviderModalOpen] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>();
 
   // 1. API GET DATA
   const { data: tour, isLoading } = useQuery({
@@ -39,6 +48,42 @@ const TourDetail = () => {
     },
     enabled: !!id,
   });
+
+  const supplierId = tour?.suppliers?.[0];
+  const { data: providerData, isError: isProviderError } = useQuery({
+    queryKey: ['provider', supplierId],
+    queryFn: () => getProvider(supplierId),
+    enabled: !!supplierId && !!tour,
+    retry: false,
+  });
+  const provider = providerData?.data?.provider;
+
+  const { data: providersData } = useQuery({
+    queryKey: ['providers'],
+    queryFn: () => getProviders({}),
+    enabled: changeProviderModalOpen,
+  });
+  const providers = providersData?.data?.providers ?? [];
+
+  const changeProviderMutation = useMutation({
+    mutationFn: async (providerId: string | null) => {
+      await axios.put(`http://localhost:5000/api/v1/tours/${id}`, {
+        suppliers: providerId ? [providerId] : [],
+      });
+    },
+    onSuccess: () => {
+      message.success('Đã cập nhật nhà cung cấp');
+      queryClient.invalidateQueries({ queryKey: ['tour', id] });
+      queryClient.invalidateQueries({ queryKey: ['provider', supplierId] });
+      setChangeProviderModalOpen(false);
+      setSelectedProviderId(undefined);
+    },
+    onError: () => message.error('Cập nhật nhà cung cấp thất bại'),
+  });
+
+  const handleChangeProvider = () => {
+    changeProviderMutation.mutate(selectedProviderId || null);
+  };
 
   // 2. API DELETE
   const deleteMutation = useMutation({
@@ -118,6 +163,93 @@ const TourDetail = () => {
                     <Text>{dayjs(tour.created_at).format('DD/MM/YYYY')}</Text>
                 </div>
             </Space>
+        </Card>
+
+        <Card 
+          title={
+            <Space>
+              <ShopOutlined />
+              <span>Nhà cung cấp</span>
+              <Button 
+                type="link" 
+                size="small" 
+                icon={<SwapOutlined />} 
+                onClick={() => {
+                  setSelectedProviderId(supplierId || undefined);
+                  setChangeProviderModalOpen(true);
+                }}
+              >
+                Thay đổi
+              </Button>
+            </Space>
+          }
+          size="small" 
+          bordered={true} 
+          className="saas-card mb-6"
+        >
+          {provider ? (
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <Link to={`/admin/providers/${provider.id || provider._id}`} style={{ fontWeight: 600, fontSize: 15 }}>
+                  {provider.name}
+                </Link>
+                {provider.status && (
+                  <Tag color={provider.status === 'active' ? 'green' : 'red'} style={{ marginLeft: 8 }}>
+                    {provider.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                  </Tag>
+                )}
+              </div>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {provider.phone && (
+                  <div><PhoneOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.phone}</Text></div>
+                )}
+                {provider.email && (
+                  <div><MailOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.email}</Text></div>
+                )}
+                {provider.address && (
+                  <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text type="secondary">{provider.address}</Text></div>
+                )}
+                {provider.emergency_contact && (
+                  <div><ContactsOutlined style={{ color: '#ef4444', marginRight: 8 }} /><Text type="danger">Khẩn cấp: {provider.emergency_contact}</Text></div>
+                )}
+                {provider.contract_info && (
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Hợp đồng: </Text>
+                    <div style={{ fontSize: 13, marginTop: 2 }}>{provider.contract_info}</div>
+                  </div>
+                )}
+                {provider.preferred_pricing && (
+                  <div style={{ marginTop: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Giá ưu đãi: </Text>
+                    <div style={{ fontSize: 13, marginTop: 2 }}>{provider.preferred_pricing}</div>
+                  </div>
+                )}
+              </Space>
+              <div style={{ marginTop: 12 }}>
+                <Link to={`/admin/providers/${provider.id || provider._id}`}>
+                  <Button type="link" size="small">Xem chi tiết nhà cung cấp →</Button>
+                </Link>
+              </div>
+            </div>
+          ) : supplierId && !isProviderError ? (
+            <Spin size="small" />
+          ) : supplierId && isProviderError ? (
+            <div>
+              <Text>Nhà cung cấp: {supplierId}</Text>
+              <div style={{ marginTop: 8 }}>
+                <Button type="link" size="small" onClick={() => setChangeProviderModalOpen(true)}>Thay đổi</Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <Text type="secondary">Chưa chọn nhà cung cấp</Text>
+              <div style={{ marginTop: 8 }}>
+                <Button type="primary" size="small" onClick={() => setChangeProviderModalOpen(true)}>
+                  Chọn nhà cung cấp
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card title="Trạng thái" size="small" bordered={true} className="saas-card">
@@ -290,6 +422,43 @@ const TourDetail = () => {
                 }
             ]} 
         />
+
+        {/* Modal Thay đổi nhà cung cấp */}
+        <Modal
+          title="Thay đổi nhà cung cấp"
+          open={changeProviderModalOpen}
+          onOk={handleChangeProvider}
+          onCancel={() => {
+            setChangeProviderModalOpen(false);
+            setSelectedProviderId(undefined);
+          }}
+          okText="Cập nhật"
+          cancelText="Huỷ"
+          confirmLoading={changeProviderMutation.isPending}
+          destroyOnClose
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Text type="secondary">Chọn nhà cung cấp cho tour này:</Text>
+          </div>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Chọn nhà cung cấp"
+            value={selectedProviderId}
+            onChange={setSelectedProviderId}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={providers.map((p: any) => ({
+              value: p.id || p._id,
+              label: `${p.name}${p.phone ? ' - ' + p.phone : ''}`,
+            }))}
+          />
+          <div style={{ marginTop: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Bỏ chọn để gỡ nhà cung cấp khỏi tour
+            </Text>
+          </div>
+        </Modal>
 
         {/* Style Global nhỏ để Card đẹp hơn */}
         <style>{`

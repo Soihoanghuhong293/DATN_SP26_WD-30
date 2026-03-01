@@ -11,6 +11,7 @@ import guideRouter from './routes/guide.routes.js';
 import tourRouter from './routes/tourRoutes.js';
 import categoryRoutes from './routes/category.routes.js';
 import authRoutes from './routes/auth.route';
+import providerRoutes from './routes/provider.routes.js';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api/v1/guides', guideRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/auth', authRoutes); // 👈 THÊM DÒNG NÀY
+app.use('/api/v1/providers', providerRoutes);
 
 // Handle 404
 app.use((req: Request, res: Response, next: NextFunction) => {
