@@ -15,6 +15,7 @@ import CategoryCreate from '../pages/admin/categories/CategoryCreate';
 import CategoryEdit from '../pages/admin/categories/CategoryEdit';
 import ProviderList from '../pages/admin/providers/ProviderList';
 import ProviderCreate from '../pages/admin/providers/ProviderCreate';
+import ProviderDetail from '../pages/admin/providers/ProviderDetail';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 
@@ -43,6 +44,7 @@ const AppRoutes = () => {
         <Route path="categories/edit/:id" element={<CategoryEdit />} />
         <Route path="providers" element={<ProviderList />} />
         <Route path="providers/create" element={<ProviderCreate />} />
+        <Route path="providers/:id" element={<ProviderDetail />} />
       </Route>
       
       <Route path="*" element={<div className="text-center mt-20 text-2xl">404 - Không tìm thấy trang</div>} />

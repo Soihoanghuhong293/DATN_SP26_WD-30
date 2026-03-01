@@ -45,12 +45,9 @@ const ProviderList = () => {
         dataIndex: 'name',
         key: 'name',
         render: (value: string, record) => (
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{value}</div>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              ID: {record.id || record._id}
-            </Text>
-          </div>
+          <a onClick={() => navigate(`/admin/providers/${record.id || record._id}`)} style={{ fontWeight: 600 }}>
+            {value}
+          </a>
         ),
       },
       {
@@ -86,8 +83,18 @@ const ProviderList = () => {
         width: 180,
         render: (value: string) => formatDateTime(value),
       },
+      {
+        title: 'Thao tác',
+        key: 'actions',
+        width: 120,
+        render: (_, record) => (
+          <Button type="link" onClick={() => navigate(`/admin/providers/${record.id || record._id}`)}>
+            Xem chi tiết
+          </Button>
+        ),
+      },
     ],
-    []
+    [navigate]
   );
 
   return (
