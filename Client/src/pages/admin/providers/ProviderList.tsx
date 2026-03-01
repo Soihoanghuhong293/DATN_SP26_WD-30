@@ -88,8 +88,8 @@ const ProviderList = () => {
         key: 'actions',
         width: 120,
         render: (_, record) => (
-          <Button type="link" onClick={() => navigate(`/admin/providers/${record.id || record._id}`)}>
-            Xem chi tiết
+          <Button type="link" size="small" onClick={() => navigate(`/admin/providers/${record.id || record._id}`)}>
+            Chi tiết
           </Button>
         ),
       },

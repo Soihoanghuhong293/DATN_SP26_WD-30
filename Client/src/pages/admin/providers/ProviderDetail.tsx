@@ -1,17 +1,21 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Card,
   Descriptions,
+  Popconfirm,
   Spin,
   Tag,
   Typography,
   Breadcrumb,
   Space,
+  message,
 } from 'antd';
 import {
   ArrowLeftOutlined,
+  DeleteOutlined,
+  EditOutlined,
   HomeOutlined,
   PhoneOutlined,
   MailOutlined,
@@ -21,7 +25,7 @@ import {
   DollarOutlined,
   CalendarOutlined,
 } from '@ant-design/icons';
-import { getProvider } from '../../../services/api';
+import { getProvider, deleteProvider } from '../../../services/api';
 import type { IProvider } from '../../../types/provider.types';
 
 const { Title, Text } = Typography;
@@ -39,6 +43,7 @@ const formatDateTime = (value?: string) => {
 const ProviderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['provider', id],
@@ -47,6 +52,16 @@ const ProviderDetail = () => {
   });
 
   const provider: IProvider | undefined = data?.data?.provider;
+
+  const { mutate: mutateDelete, isPending: isDeleting } = useMutation({
+    mutationFn: () => deleteProvider(id || ''),
+    onSuccess: () => {
+      message.success('Đã xoá nhà cung cấp');
+      queryClient.invalidateQueries({ queryKey: ['providers'] });
+      navigate('/admin/providers');
+    },
+    onError: () => message.error('Xoá nhà cung cấp thất bại'),
+  });
 
   if (isLoading) {
     return (
@@ -88,9 +103,26 @@ const ProviderDetail = () => {
             <Text type="secondary">ID: {provider.id || provider._id}</Text>
           </Space>
         </div>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/providers')}>
-          Quay lại
-        </Button>
+        <Space>
+          <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/admin/providers/edit/${id}`)}>
+            Sửa
+          </Button>
+          <Popconfirm
+            title="Xoá nhà cung cấp này?"
+            description="Thao tác này không thể hoàn tác."
+            okText="Xoá"
+            cancelText="Huỷ"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => mutateDelete()}
+          >
+            <Button icon={<DeleteOutlined />} danger loading={isDeleting}>
+              Xoá
+            </Button>
+          </Popconfirm>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/providers')}>
+            Quay lại
+          </Button>
+        </Space>
       </div>
 
       <Card title="Thông tin cơ bản" style={{ marginBottom: 16 }}>
