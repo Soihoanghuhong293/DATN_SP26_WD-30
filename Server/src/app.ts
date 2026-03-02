@@ -10,11 +10,11 @@ import { AppError } from './utils/AppError.js';
 import guideRouter from './routes/guide.routes.js';
 import tourRouter from './routes/tourRoutes.js';
 import categoryRoutes from './routes/category.routes.js';
-import authRoutes from './routes/auth.route';
+import authRoutes from './routes/auth.route.js'; 
+import userRoutes from './routes/user.route.js'; // Đã import
 import providerRoutes from './routes/provider.routes.js';
+import bookingRouter from './routes/bookingRoutes.js';
 
-
-import bookingRouter from './routes/bookingRoutes';
 dotenv.config();
 
 const app = express();
@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 connectDB();
 
-//mid
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
@@ -36,12 +36,12 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/v1/guides', guideRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/categories', categoryRoutes);
-app.use('/api/v1/auth', authRoutes); // 👈 THÊM DÒNG NÀY
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes); // 👈 THÊM DÒNG NÀY ĐỂ KÍCH HOẠT API USERS
 app.use('/api/v1/providers', providerRoutes);
-
 app.use('/api/v1/bookings', bookingRouter);
 
-// Handle 404
+// Handle 404https://gemini.google.com/gems/view
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
