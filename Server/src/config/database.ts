@@ -1,14 +1,23 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import mysql from "mysql2/promise";
 
-const connectDB = async () => {
+// ===== MongoDB =====
+export const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/tour-management';
+    const mongoURI =
+      process.env.MONGO_URI || "mongodb://localhost:27017/tour-management";
     await mongoose.connect(mongoURI);
-    console.log('✅ MongoDB Connected Successfully');
+    console.log("✅ MongoDB Connected Successfully");
   } catch (error) {
-    console.error('❌ MongoDB Connection Failed:', error);
-    process.exit(1); // Dừng app nếu không kết nối được DB
+    console.error("❌ MongoDB Connection Failed:", error);
+    process.exit(1);
   }
 };
 
-export default connectDB;
+// ===== MySQL =====
+export const pool = mysql.createPool({
+  host: "127.0.0.1",
+  user: "root",
+  password: "",
+  database: "tour_management",
+});
