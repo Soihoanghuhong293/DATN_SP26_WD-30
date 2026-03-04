@@ -27,6 +27,8 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import BookingCreate from '../features/bookings/BookingCreate';
 import BookingList from '../features/bookings/BookingList';
+import UserList from '../features/admin/users/UserList';
+import UserCreate from '../features/admin/users/UserCreate';
 
 const AppRoutes = () => {
   return (
@@ -72,6 +74,8 @@ const AppRoutes = () => {
                <Route path="bookings" element={<BookingList />} />
 
         <Route path="bookings/create" element={<BookingCreate />} />
+          <Route path="users" element={<UserList />} />
+          <Route path="users/create" element={<UserCreate />} />
 
       </Route>
 

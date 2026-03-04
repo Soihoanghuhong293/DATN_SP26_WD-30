@@ -1,10 +1,10 @@
 import { Router } from "express";
-import * as userController from "../controllers/user.controller";
+import * as userController from "../controllers/user.controller"; // Thêm .js nếu file app.ts của bạn dùng chuẩn import module
 import { protect, restrictToAdmin } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// Phải đăng nhập và là Admin mới gọi được các API dưới đây
+// BẮT BUỘC: Phải đăng nhập và là Admin mới được xài các API này
 router.use(protect);
 router.use(restrictToAdmin);
 

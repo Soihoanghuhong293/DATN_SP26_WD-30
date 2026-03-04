@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
 
-// Mở rộng Request để chứa thông tin user
 export interface AuthRequest extends Request {
   user?: any;
 }
@@ -14,17 +13,13 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       token = req.headers.authorization.split(" ")[1];
     }
 
-    if (!token) {
-      return res.status(401).json({ message: "Vui lòng đăng nhập" });
-    }
+    if (!token) return res.status(401).json({ message: "Vui lòng đăng nhập" });
 
-    // Giải mã token
-    const decoded: any = jwt.verify(token, "SECRET_KEY");
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET || "SECRET_KEY");
 
-    // Tìm user và đưa vào request
     const user = await User.findById(decoded.id).select("-password");
     if (!user || user.status === "inactive") {
-      return res.status(401).json({ message: "User không tồn tại hoặc đã bị khóa" });
+      return res.status(401).json({ message: "Tài khoản không tồn tại hoặc đã bị khóa" });
     }
 
     req.user = user;
@@ -34,10 +29,9 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
-// Middleware kiểm tra quyền
 export const restrictToAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Bạn không có quyền truy cập chức năng này" });
+    return res.status(403).json({ message: "Chỉ Quản trị viên mới có quyền thực hiện" });
   }
   next();
 };
