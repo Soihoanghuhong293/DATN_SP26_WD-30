@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Form, Input, DatePicker, InputNumber, Radio, Button, message } from 'antd';
 import { UserOutlined, PhoneOutlined, MailOutlined, CalendarOutlined, TeamOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -12,8 +12,10 @@ interface BookingFormProps {
 
 const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) => {
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (values: any) => {
+    setLoading(true);
     try {
       const payload = {
         tour_id: tourId,
@@ -26,12 +28,15 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
       };
 
       await axios.post('http://localhost:5000/api/v1/bookings', payload);
+      alert('Đặt tour thành công!');
       message.success('Đặt tour thành công!');
       form.resetFields();
       onClose();
     } catch (error: any) {
       console.error('Lỗi đặt tour:', error);
       message.error(error.response?.data?.message || 'Lỗi khi đặt tour!');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,12 +92,37 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         <Form.Item
           name="startDate"
           label="Ngày đi"
-          rules={[{ required: true, message: 'Vui lòng chọn ngày đi!' }]}
+          rules={[
+            { required: true, message: 'Vui lòng chọn ngày đi!' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                const paymentMethod = getFieldValue('paymentMethod');
+                if (paymentMethod === 'deposit') {
+                  if (!value) {
+                    return Promise.reject(new Error('Vui lòng chọn ngày đi!'));
+                  }
+                  const today = dayjs().startOf('day');
+                  const selectedDate = dayjs(value).startOf('day');
+                  if (selectedDate.isSame(today)) {
+                    return Promise.reject(new Error('Không thể đặt cọc cho tour khởi hành trong ngày.'));
+                  }
+                  if (selectedDate.isBefore(today.add(1, 'day'))) {
+                    return Promise.reject(new Error('Ngày đi phải sau ngày đặt khi chọn đặt cọc trước.'));
+                  }
+                }
+                return Promise.resolve();
+              },
+            }),
+          ]}
         >
           <DatePicker
             format="DD/MM/YYYY"
             placeholder="Chọn ngày đi"
-            disabledDate={(current) => current && current < dayjs().startOf('day')}
+            disabledDate={(current) => {
+              if (!current) return false;
+              const today = dayjs().startOf('day');
+              return current < today;
+            }}
           />
         </Form.Item>
 
@@ -101,7 +131,15 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
           label="Số lượng khách"
           rules={[
             { required: true, message: 'Vui lòng nhập số lượng khách!' },
-            { type: 'number', min: 1, message: 'Số lượng khách phải ít nhất 1!' }
+            { type: 'number', min: 1, message: 'Số lượng khách phải ít nhất 1!' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                if (value && value < 1) {
+                  return Promise.reject(new Error('Số lượng khách phải lớn hơn 0!'));
+                }
+                return Promise.resolve();
+              },
+            }),
           ]}
         >
           <InputNumber
@@ -124,7 +162,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         </Form.Item>
 
         <Form.Item>
-          <Button type="primary" htmlType="submit" block>
+          <Button type="primary" htmlType="submit" block loading={loading}>
             Xác nhận đặt tour
           </Button>
         </Form.Item>
