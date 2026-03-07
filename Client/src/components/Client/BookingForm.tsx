@@ -15,8 +15,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
 
   const handleSubmit = async (values: any) => {
     try {
-      // Giả lập gửi dữ liệu (chưa gửi API thật)
-      console.log('Dữ liệu đặt tour:', {
+      const payload = {
         tour_id: tourId,
         customerName: values.customerName,
         phone: values.phone,
@@ -24,15 +23,15 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         startDate: values.startDate.format('YYYY-MM-DD'),
         groupSize: values.groupSize,
         paymentMethod: values.paymentMethod,
-        status: 'pending',
-      });
+      };
 
+      await axios.post('http://localhost:5000/api/v1/bookings', payload);
       message.success('Đặt tour thành công!');
       form.resetFields();
       onClose();
     } catch (error: any) {
       console.error('Lỗi đặt tour:', error);
-      message.error('Lỗi khi đặt tour!');
+      message.error(error.response?.data?.message || 'Lỗi khi đặt tour!');
     }
   };
 
