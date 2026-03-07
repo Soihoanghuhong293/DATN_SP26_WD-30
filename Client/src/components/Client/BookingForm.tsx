@@ -15,7 +15,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
 
   const handleSubmit = async (values: any) => {
     try {
-      const payload = {
+      // Giả lập gửi dữ liệu (chưa gửi API thật)
+      console.log('Dữ liệu đặt tour:', {
         tour_id: tourId,
         customerName: values.customerName,
         phone: values.phone,
@@ -23,16 +24,15 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         startDate: values.startDate.format('YYYY-MM-DD'),
         groupSize: values.groupSize,
         paymentMethod: values.paymentMethod,
-        status: 'pending', // mặc định pending
-      };
+        status: 'pending',
+      });
 
-      await axios.post('http://localhost:5000/api/v1/bookings', payload);
       message.success('Đặt tour thành công!');
       form.resetFields();
       onClose();
     } catch (error: any) {
       console.error('Lỗi đặt tour:', error);
-      message.error(error.response?.data?.message || 'Lỗi khi đặt tour!');
+      message.error('Lỗi khi đặt tour!');
     }
   };
 
@@ -55,7 +55,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         <Form.Item
           name="customerName"
           label="Họ tên"
-          rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}
+          rules={[
+            { required: true, message: 'Vui lòng nhập họ tên!' },
+            { whitespace: true, message: 'Họ tên không được chỉ chứa khoảng trắng!' }
+          ]}
         >
           <Input prefix={<UserOutlined />} placeholder="Nhập họ tên" />
         </Form.Item>
@@ -63,7 +66,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         <Form.Item
           name="phone"
           label="Số điện thoại"
-          rules={[{ required: true, message: 'Vui lòng nhập số điện thoại!' }]}
+          rules={[
+            { required: true, message: 'Vui lòng nhập số điện thoại!' },
+            { pattern: /^(\+84|0)[3|5|7|8|9][0-9]{8}$/, message: 'Số điện thoại không hợp lệ!' }
+          ]}
         >
           <Input prefix={<PhoneOutlined />} placeholder="Nhập số điện thoại" />
         </Form.Item>
@@ -94,7 +100,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tourId }) =
         <Form.Item
           name="groupSize"
           label="Số lượng khách"
-          rules={[{ required: true, message: 'Vui lòng nhập số lượng khách!' }]}
+          rules={[
+            { required: true, message: 'Vui lòng nhập số lượng khách!' },
+            { type: 'number', min: 1, message: 'Số lượng khách phải ít nhất 1!' }
+          ]}
         >
           <InputNumber
             min={1}
