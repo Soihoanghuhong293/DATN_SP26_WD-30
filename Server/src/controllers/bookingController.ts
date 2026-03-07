@@ -28,9 +28,9 @@ export const getAllBookings = async (req: Request, res: Response) => {
 export const getBooking = async (req: Request, res: Response) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate({ path: 'tour_id', select: 'name images price duration_days' })
-      .populate({ path: 'user_id', select: 'name email phone' });
-
+  .populate('tour_id', 'name duration_days') 
+  .populate('guide_id', 'name phone email')  // lấy tên và sdt của hdv
+  .populate('user_id', 'name phone email');  
     if (!booking) {
       return res.status(404).json({
         status: 'fail',

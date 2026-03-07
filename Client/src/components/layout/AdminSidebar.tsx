@@ -98,11 +98,7 @@ const AdminSidebar = () => {
                 icon: <UnorderedListOutlined />,
                 label: <Link to="/admin/guides">Danh sách HDV</Link>,
               },
-              {
-                key: "/admin/guides/create",
-                icon: <PlusCircleOutlined />,
-                label: <Link to="/admin/guides/create">Thêm HDV mới</Link>,
-              },
+             
             ],
           },
 
