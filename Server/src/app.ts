@@ -15,6 +15,8 @@ import providerRoutes from './routes/provider.routes.js';
 
 
 import bookingRouter from './routes/bookingRoutes';
+import chatRouter from './routes/chat.routes.js';
+import contactMessageRouter from './routes/contactMessage.routes.js';
 dotenv.config();
 
 const app = express();
@@ -40,6 +42,8 @@ app.use('/api/v1/auth', authRoutes); // 👈 THÊM DÒNG NÀY
 app.use('/api/v1/providers', providerRoutes);
 
 app.use('/api/v1/bookings', bookingRouter);
+app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/contact-messages', contactMessageRouter);
 
 // Handle 404
 app.use((req: Request, res: Response, next: NextFunction) => {

@@ -112,6 +112,12 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
+.chat-status-offline,
+.chat-widget-online-dot.chat-status-offline {
+  background: #94a3b8 !important;
+  animation: none;
+}
+
 .chat-header-close {
   background: rgba(255, 255, 255, 0.2);
   border: none;
@@ -169,6 +175,12 @@
   justify-content: center;
 }
 
+.chat-quick-replies-inline {
+  justify-content: flex-start;
+  margin-top: 8px;
+  padding-top: 4px;
+}
+
 .chat-quick-reply {
   padding: 10px 18px;
   border-radius: 20px;
@@ -184,6 +196,66 @@
   background: #f3e8ff;
   border-color: #a78bfa;
   transform: translateY(-1px);
+}
+
+/* Form offline */
+.chat-offline-form {
+  text-align: left;
+}
+
+.chat-offline-form .chat-welcome-text {
+  margin-bottom: 16px;
+}
+
+.chat-offline-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-offline-fields input,
+.chat-offline-fields textarea {
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-offline-fields input:focus,
+.chat-offline-fields textarea:focus {
+  border-color: #a78bfa;
+}
+
+.chat-offline-fields textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.chat-offline-submit {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.chat-offline-submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.chat-offline-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.chat-offline-success {
+  text-align: center;
 }
 
 .chat-message {

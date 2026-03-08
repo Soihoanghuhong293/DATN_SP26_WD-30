@@ -8,7 +8,7 @@
   {
     "intentId": "tour-price",
     "keywords": ["giá tour", "bao nhiêu tiền", "chi phí", "phí tour", "giá cả", "cost", "bao nhiêu"],
-    "response": "Giá tour phụ thuộc vào từng chuyến đi và loại tour. Bạn vui lòng chọn tour cụ thể trên trang để xem giá chi tiết. Hoặc gọi hotline để được tư vấn báo giá nhanh nhất.",
+    "response": "Giá tour phụ thuộc vào từng chuyến đi và loại tour. Bạn vui lòng chọn tour cụ thể trên trang để xem giá chi tiết. Hoặc gọi hotline 0364902031 để được tư vấn báo giá nhanh nhất.",
     "category": "tour"
   },
   {
@@ -20,7 +20,7 @@
   {
     "intentId": "booking",
     "keywords": ["đặt tour", "đặt vé", "đặt chỗ", "đăng ký tour", "booking", "đặt"],
-    "response": "Để đặt tour, bạn chọn tour yêu thích và bấm nút Đặt tour. Bạn cần đăng nhập hoặc đăng ký tài khoản. Nếu cần hỗ trợ đặt tour, vui lòng liên hệ hotline.",
+    "response": "Để đặt tour, bạn chọn tour yêu thích và bấm nút Đặt tour. Bạn cần đăng nhập hoặc đăng ký tài khoản. Nếu cần hỗ trợ đặt tour, vui lòng liên hệ hotline 0364902031.",
     "category": "booking"
   },
   {
@@ -32,13 +32,13 @@
   {
     "intentId": "cancel-booking",
     "keywords": ["hủy tour", "hủy đặt", "hủy đặt chỗ", "đổi tour", "hoàn tiền"],
-    "response": "Chính sách hủy/đổi tour phụ thuộc thời điểm và loại tour. Bạn vui lòng xem chi tiết tại mục Chính sách trên trang, hoặc liên hệ hotline để được xử lý nhanh nhất.",
+    "response": "Chính sách hủy/đổi tour phụ thuộc thời điểm và loại tour. Bạn vui lòng xem chi tiết tại mục Chính sách trên trang, hoặc liên hệ hotline 0364902031 để được xử lý nhanh nhất.",
     "category": "booking"
   },
   {
     "intentId": "contact",
     "keywords": ["liên hệ", "hotline", "số điện thoại", "email", "địa chỉ", "gọi cho tôi"],
-    "response": "Bạn có thể liên hệ qua hotline hoặc email hỗ trợ. Thông tin liên hệ được hiển thị ở footer trang web. Nhân viên sẽ phản hồi trong thời gian sớm nhất.",
+    "response": "Bạn có thể liên hệ qua hotline 0364902031 hoặc email hỗ trợ. Thông tin liên hệ được hiển thị ở footer trang web. Nhân viên sẽ phản hồi trong thời gian sớm nhất.",
     "category": "contact"
   },
   {

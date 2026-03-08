@@ -97,3 +97,91 @@ export function matchKeyword(userMessage: string): KeywordMatchResult {
 
   return { source: 'keyword', matched: false };
 }
+
+// ========== PHẦN 4: AI FALLBACK ==========
+
+const SYSTEM_PROMPT = `Bạn là trợ lý chatbot của website đặt tour du lịch (tour, vé máy bay, khách sạn).
+
+PHẠM VI HỖ TRỢ: tour du lịch, vé máy bay, khách sạn, đặt tour, giá, thanh toán, chính sách, liên hệ.
+
+KHI CÂU HỎI NGOÀI PHẠM VI (thời tiết, chính trị, y tế, cá nhân, v.v.) - trả lời ĐÚNG định dạng sau:
+
+"Dạ, Em xin lỗi Quý khách, yêu cầu này không thuộc phạm vi dịch vụ (tour du lịch, vé máy bay, khách sạn).
+Nếu Quý khách cần hỗ trợ du lịch, vui lòng cho Em:
+- Điểm đến
+- Tháng khởi hành
+- Nơi xuất phát
+Hoặc Quý khách có thể liên hệ tổng đài 0364902031 để được tư vấn nhanh ạ."
+
+KHI CÂU HỎI THUỘC PHẠM VI: trả lời ngắn gọn, thân thiện, dưới 150 từ.`;
+
+const DEFAULT_FALLBACK = `Dạ, Em xin lỗi Quý khách, yêu cầu này không thuộc phạm vi dịch vụ (tour du lịch, vé máy bay, khách sạn).
+Nếu Quý khách cần hỗ trợ du lịch, vui lòng cho Em:
+- Điểm đến
+- Tháng khởi hành
+- Nơi xuất phát
+Hoặc Quý khách có thể liên hệ tổng đài 0364902031 để được tư vấn nhanh ạ.`;
+
+/**
+ * Gọi OpenAI API để trả lời khi không khớp keyword
+ * Cần cấu hình OPENAI_API_KEY trong .env
+ */
+export async function callAIFallback(userMessage: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return DEFAULT_FALLBACK;
+  }
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ],
+        max_tokens: 200,
+        temperature: 0.6,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('OpenAI API error:', err);
+      return DEFAULT_FALLBACK;
+    }
+
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    return content || DEFAULT_FALLBACK;
+  } catch (err) {
+    console.error('Chatbot AI error:', err);
+    return DEFAULT_FALLBACK;
+  }
+}
+
+/**
+ * Xử lý tin nhắn: ưu tiên keyword, fallback AI
+ */
+export async function processMessage(userMessage: string): Promise<{
+  response: string;
+  source: 'keyword' | 'ai';
+  intentId?: string;
+}> {
+  const keywordResult = matchKeyword(userMessage);
+  if (keywordResult.matched && keywordResult.response) {
+    return {
+      response: keywordResult.response,
+      source: 'keyword',
+      intentId: keywordResult.intentId,
+    };
+  }
+
+  const aiResponse = await callAIFallback(userMessage);
+  return { response: aiResponse, source: 'ai' };
+}
