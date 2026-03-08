@@ -1,0 +1,62 @@
+[
+  {
+    "intentId": "greeting",
+    "keywords": ["xin chào", "chào", "hello", "hi", "alo", "chào bạn"],
+    "response": "Xin chào! Chúng tôi rất vui được hỗ trợ bạn. Bạn muốn biết thêm thông tin về tour nào?",
+    "category": "general"
+  },
+  {
+    "intentId": "tour-price",
+    "keywords": ["giá tour", "bao nhiêu tiền", "chi phí", "phí tour", "giá cả", "cost", "bao nhiêu"],
+    "response": "Giá tour phụ thuộc vào từng chuyến đi và loại tour. Bạn vui lòng chọn tour cụ thể trên trang để xem giá chi tiết. Hoặc gọi hotline để được tư vấn báo giá nhanh nhất.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-list",
+    "keywords": ["tour có những gì", "danh sách tour", "các tour", "tour nào", "có tour gì"],
+    "response": "Bạn có thể xem danh sách tour tại mục Tour trên trang chủ. Chúng tôi có nhiều tour du lịch trong nước và nước ngoài. Hãy truy cập trang Tour để khám phá nhé!",
+    "category": "tour"
+  },
+  {
+    "intentId": "booking",
+    "keywords": ["đặt tour", "đặt vé", "đặt chỗ", "đăng ký tour", "booking", "đặt"],
+    "response": "Để đặt tour, bạn chọn tour yêu thích và bấm nút Đặt tour. Bạn cần đăng nhập hoặc đăng ký tài khoản. Nếu cần hỗ trợ đặt tour, vui lòng liên hệ hotline.",
+    "category": "booking"
+  },
+  {
+    "intentId": "payment",
+    "keywords": ["thanh toán", "trả tiền", "chuyển khoản", "ví điện tử", "tiền mặt", "payment"],
+    "response": "Chúng tôi hỗ trợ nhiều hình thức thanh toán: chuyển khoản ngân hàng, ví điện tử, tiền mặt tại văn phòng. Chi tiết sẽ được gửi sau khi bạn xác nhận đặt tour.",
+    "category": "payment"
+  },
+  {
+    "intentId": "cancel-booking",
+    "keywords": ["hủy tour", "hủy đặt", "hủy đặt chỗ", "đổi tour", "hoàn tiền"],
+    "response": "Chính sách hủy/đổi tour phụ thuộc thời điểm và loại tour. Bạn vui lòng xem chi tiết tại mục Chính sách trên trang, hoặc liên hệ hotline để được xử lý nhanh nhất.",
+    "category": "booking"
+  },
+  {
+    "intentId": "contact",
+    "keywords": ["liên hệ", "hotline", "số điện thoại", "email", "địa chỉ", "gọi cho tôi"],
+    "response": "Bạn có thể liên hệ qua hotline hoặc email hỗ trợ. Thông tin liên hệ được hiển thị ở footer trang web. Nhân viên sẽ phản hồi trong thời gian sớm nhất.",
+    "category": "contact"
+  },
+  {
+    "intentId": "thanks",
+    "keywords": ["cảm ơn", "cám ơn", "thank", "thanks"],
+    "response": "Không có gì! Chúc bạn có chuyến đi vui vẻ. Nếu cần thêm hỗ trợ, cứ nhắn tin nhé!",
+    "category": "general"
+  },
+  {
+    "intentId": "schedule",
+    "keywords": ["lịch trình", "lịch đi", "ngày đi", "thời gian", "schedule"],
+    "response": "Lịch trình chi tiết của từng tour được hiển thị trong trang chi tiết tour. Bạn chọn tour và xem mục Lịch trình để biết ngày đi và các hoạt động.",
+    "category": "tour"
+  },
+  {
+    "intentId": "duration",
+    "keywords": ["bao lâu", "mấy ngày", "thời gian tour", "duration"],
+    "response": "Mỗi tour có thời gian khác nhau, từ 1N2Đ đến nhiều ngày. Bạn xem thông tin \"Số ngày\" trong trang chi tiết tour nhé.",
+    "category": "tour"
+  }
+]
