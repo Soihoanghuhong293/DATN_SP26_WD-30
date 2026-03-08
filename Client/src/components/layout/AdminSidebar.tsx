@@ -9,7 +9,8 @@ import {
   UnorderedListOutlined,
   TagsOutlined,
   TeamOutlined,
-  ShopOutlined
+  ShopOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 
@@ -143,6 +144,11 @@ const AdminSidebar = () => {
           },
 
           
+          {
+            key: "/admin/contact-messages",
+            icon: <MessageOutlined />,
+            label: <Link to="/admin/contact-messages">Tin nhắn offline</Link>,
+          },
           {
             key: "/admin/users",
             icon: <UserOutlined />,
