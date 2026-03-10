@@ -21,6 +21,7 @@ import ProviderDetail from '../pages/admin/providers/ProviderDetail';
 import ProviderEdit from '../pages/admin/providers/ProviderEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
+import ContactMessageList from '../pages/admin/ContactMessageList';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -56,9 +57,6 @@ const AppRoutes = () => {
         <Route path="tours/:id/edit" element={<TourEdit />} />
 
         <Route path="guides" element={<GuideList />} />
-       
-        
-        <Route path='guides' element={<GuideList />} />
         <Route path="guides/create" element={<GuideCreate />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
 
@@ -71,12 +69,12 @@ const AppRoutes = () => {
         <Route path="providers/:id" element={<ProviderDetail />} />
 
 
-               <Route path="bookings" element={<BookingList />} />
-
+        <Route path="bookings" element={<BookingList />} />
         <Route path="bookings/create" element={<BookingCreate />} />
           <Route path="users" element={<UserList />} />
           <Route path="users/create" element={<UserCreate />} />
 
+        <Route path="contact-messages" element={<ContactMessageList />} />
       </Route>
 
       <Route
