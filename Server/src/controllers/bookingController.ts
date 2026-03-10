@@ -53,8 +53,10 @@ export const getBooking = async (req: Request, res: Response) => {
 // 3. ADMIN/USER: Tạo đơn đặt tour mới
 export const createBooking = async (req: Request, res: Response) => {
   try {
+    console.log('Received booking request:', req.body); // Debug log
+
     // 1️⃣ Lấy dữ liệu từ Frontend gửi lên
-    const { tour_id, startDate, customer_name, customer_phone, total_price } = req.body;
+    const { tour_id, startDate, customerName, phone, email, groupSize, paymentMethod } = req.body;
 
     // 2️⃣ Validate các trường bắt buộc
     if (!tour_id || !startDate) {
@@ -64,17 +66,10 @@ export const createBooking = async (req: Request, res: Response) => {
       });
     }
 
-    if (!customer_name || !customer_phone) {
+    if (!customerName || !phone || !email || !groupSize) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Thiếu thông tin khách hàng (tên hoặc số điện thoại)'
-      });
-    }
-
-    if (total_price === undefined || total_price === null) {
-      return res.status(400).json({
-        status: 'fail',
-        message: 'Thiếu tổng tiền của đơn hàng'
+        message: 'Thiếu thông tin khách hàng'
       });
     }
 
@@ -87,16 +82,31 @@ export const createBooking = async (req: Request, res: Response) => {
       });
     }
 
-    // 4️⃣ Chuẩn bị dữ liệu lưu vào Database
-    const bookingPayload = { ...req.body };
+    // 4️⃣ Tính tổng tiền (giả sử giá tour * số lượng khách)
+    const total_price = (tour.price || 0) * groupSize;
 
-    // Mongoose sẽ báo lỗi nếu truyền ID là chuỗi rỗng/undefined. 
-    // Nếu không có user_id hoặc guide_id, ta xóa khỏi payload trước khi lưu
-    if (!bookingPayload.user_id) delete bookingPayload.user_id;
-    if (!bookingPayload.guide_id) delete bookingPayload.guide_id;
+    // 5️⃣ Xác định trạng thái
+    const status = paymentMethod === 'full' ? 'paid' : 'pending';
 
-    // 5️⃣ Tạo booking
+    // 6️⃣ Chuẩn bị dữ liệu lưu vào Database
+    const bookingPayload = {
+      tour_id,
+      startDate,
+      customer_name: customerName,
+      customer_phone: phone,
+      customer_email: email,
+      groupSize,
+      paymentMethod,
+      total_price,
+      status,
+    };
+
+    console.log('Saving booking:', bookingPayload); // Debug log
+
+    // 7️⃣ Tạo booking
     const newBooking = await Booking.create(bookingPayload);
+
+    console.log('Booking created successfully:', newBooking); // Debug log
 
     res.status(201).json({
       status: 'success',
@@ -104,6 +114,7 @@ export const createBooking = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
+    console.error('Error creating booking:', error); // Debug log
     res.status(400).json({
       status: 'fail',
       message: error.message || 'Lỗi khi tạo đơn hàng'
