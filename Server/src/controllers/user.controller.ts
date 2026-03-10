@@ -16,7 +16,15 @@ export const createUser = async (req: Request, res: Response) => {
 // UPDATE USER
 export const updateUser = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const user = await User.findByIdAndUpdate(id, req.body, { new: true });
+
+  const user = await User.findByIdAndUpdate(
+    id,
+    {
+      ...req.body,
+    },
+    { new: true }
+  );
+
   res.json(user);
 };
 

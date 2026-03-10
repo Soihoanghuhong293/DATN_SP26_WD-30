@@ -11,21 +11,22 @@ interface User {
   name?: string;
   email: string;
   role: string;
-  status?: string;
+  type: "customer" | "guide" | "admin";
+  isActive: boolean;
   createdAt?: string;
 }
 
 const UsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
   const [mode, setMode] = useState<"add" | "edit" | "detail" | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
     role: "user",
+    type: "customer",
   });
 
   const fetchUsers = async () => {
@@ -43,20 +44,20 @@ const UsersPage = () => {
       email: "",
       password: "",
       role: "user",
+      type: "customer",
     });
     setMode("add");
   };
 
   const openEdit = (user: User) => {
     setSelectedUser(user);
-
     setForm({
       name: user.name || "",
       email: user.email,
       password: "",
       role: user.role,
+      type: user.type,
     });
-
     setMode("edit");
   };
 
@@ -87,9 +88,10 @@ const UsersPage = () => {
   };
 
   const toggleStatus = async (user: User) => {
-    const newStatus = user.status === "locked" ? "active" : "locked";
+    await updateUser(user._id, {
+      isActive: !user.isActive,
+    });
 
-    await updateUser(user._id, { status: newStatus });
     fetchUsers();
   };
 
@@ -98,88 +100,87 @@ const UsersPage = () => {
     return new Date(date).toLocaleDateString("vi-VN");
   };
 
+  const getRoleName = (type: string) => {
+    if (type === "admin") return "Quản trị viên";
+    if (type === "guide") return "Hướng dẫn viên";
+    return "Khách hàng";
+  };
+
   return (
-    <div style={{ padding: "30px", fontFamily: "Arial" }}>
+    <div style={styles.container}>
       <h2>Quản lý Tài Khoản</h2>
 
-      <button
-        onClick={openAdd}
-        style={{
-          background: "#3b82f6",
-          color: "#fff",
-          padding: "10px 16px",
-          borderRadius: "6px",
-          border: "none",
-          marginBottom: "20px",
-          cursor: "pointer",
-        }}
-      >
+      <button style={styles.btnAdd} onClick={openAdd}>
         + Thêm Tài Khoản
       </button>
 
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-        }}
-      >
+      <table style={styles.table}>
         <thead>
-          <tr style={{ background: "#f3f4f6" }}>
-            <th style={th}>Họ và Tên</th>
-            <th style={th}>Email</th>
-            <th style={th}>Ngày tham gia</th>
-            <th style={th}>Phân quyền</th>
-            <th style={th}>Trạng thái</th>
-            <th style={th}>Hành động</th>
+          <tr>
+            <th style={styles.th}>Họ và Tên</th>
+            <th style={styles.th}>Email</th>
+            <th style={styles.th}>Ngày tham gia</th>
+            <th style={styles.th}>Phân quyền</th>
+            <th style={styles.th}>Trạng thái</th>
+            <th style={styles.th}>Hành động</th>
           </tr>
         </thead>
 
         <tbody>
           {users.map((user) => (
             <tr key={user._id}>
-              <td style={td}>{user.name || "Chưa cập nhật"}</td>
+              <td style={styles.td}>{user.name || "Chưa cập nhật"}</td>
 
-              <td style={td}>{user.email}</td>
+              <td style={styles.td}>{user.email}</td>
 
-              <td style={td}>{formatDate(user.createdAt)}</td>
+              <td style={styles.td}>{formatDate(user.createdAt)}</td>
 
-              <td style={td}>
-                {user.role === "admin"
-                  ? "Quản trị viên"
-                  : user.role === "guide"
-                  ? "Hướng dẫn viên"
-                  : "Khách hàng"}
-              </td>
+              <td style={styles.td}>{getRoleName(user.type)}</td>
 
-              <td style={td}>
-                {user.status === "locked" ? (
-                  <span style={statusLock}>Đã khóa</span>
+              <td style={styles.td}>
+                {user.isActive ? (
+                  <span style={styles.statusActive}>Hoạt động</span>
                 ) : (
-                  <span style={statusActive}>Hoạt động</span>
+                  <span style={styles.statusLock}>Đã khóa</span>
                 )}
               </td>
 
-              <td style={td}>
-                <button style={btnDetail} onClick={() => openDetail(user)}>
+              <td style={styles.td}>
+                <button
+                  style={styles.btnDetail}
+                  onClick={() => openDetail(user)}
+                >
                   Chi tiết
                 </button>
 
-                <button style={btnEdit} onClick={() => openEdit(user)}>
+                <button
+                  style={styles.btnEdit}
+                  onClick={() => openEdit(user)}
+                >
                   Sửa
                 </button>
 
-                <button
-                  style={btnLock}
-                  onClick={() => toggleStatus(user)}
-                >
-                  {user.status === "locked" ? "Mở" : "Khóa"}
-                </button>
+                {user.isActive ? (
+                  <button
+                    style={styles.btnLock}
+                    onClick={() => toggleStatus(user)}
+                  >
+                    Khóa
+                  </button>
+                ) : (
+                  <button
+                    style={styles.btnOpen}
+                    onClick={() => toggleStatus(user)}
+                  >
+                    Mở
+                  </button>
+                )}
 
                 <button
-                  style={btnDelete}
+                  style={styles.btnDelete}
                   onClick={() => handleDelete(user._id)}
                 >
-                  Xóa
+                  🗑
                 </button>
               </td>
             </tr>
@@ -187,10 +188,69 @@ const UsersPage = () => {
         </tbody>
       </table>
 
-      {/* MODAL */}
       {mode && (
-        <div style={modal}>
-          <div style={modalBox}>
+        <div style={styles.modal}>
+          <div style={styles.modalBox}>
+            {(mode === "add" || mode === "edit") && (
+              <>
+                <h3>{mode === "add" ? "Thêm tài khoản" : "Sửa tài khoản"}</h3>
+
+                <input
+                  style={styles.input}
+                  placeholder="Họ và tên"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm({ ...form, name: e.target.value })
+                  }
+                />
+
+                <input
+                  style={styles.input}
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm({ ...form, email: e.target.value })
+                  }
+                />
+
+                <input
+                  type="password"
+                  style={styles.input}
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                />
+
+                <select
+                  style={styles.input}
+                  value={form.type}
+                  onChange={(e) =>
+                    setForm({ ...form, type: e.target.value })
+                  }
+                >
+                  <option value="admin">Quản trị viên</option>
+                  <option value="guide">Hướng dẫn viên</option>
+                  <option value="customer">Khách hàng</option>
+                </select>
+
+                <button
+                  style={styles.btnSave}
+                  onClick={mode === "add" ? handleAdd : handleUpdate}
+                >
+                  Lưu
+                </button>
+
+                <button
+                  style={styles.btnCancel}
+                  onClick={() => setMode(null)}
+                >
+                  Hủy
+                </button>
+              </>
+            )}
+
             {mode === "detail" && selectedUser && (
               <>
                 <h3>Chi tiết tài khoản</h3>
@@ -204,71 +264,19 @@ const UsersPage = () => {
                 </p>
 
                 <p>
-                  <b>Role:</b> {selectedUser.role}
+                  <b>Loại tài khoản:</b> {getRoleName(selectedUser.type)}
                 </p>
 
-                <button style={btnSave} onClick={() => setMode(null)}>
-                  Đóng
-                </button>
-              </>
-            )}
-
-            {(mode === "add" || mode === "edit") && (
-              <>
-                <h3>{mode === "add" ? "Thêm tài khoản" : "Sửa tài khoản"}</h3>
-
-                <input
-                  style={input}
-                  placeholder="Họ và tên"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm({ ...form, name: e.target.value })
-                  }
-                />
-
-                <input
-                  style={input}
-                  placeholder="Email"
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm({ ...form, email: e.target.value })
-                  }
-                />
-
-                <input
-                  style={input}
-                  placeholder="Password"
-                  type="password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                />
-
-                <select
-                  style={input}
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm({ ...form, role: e.target.value })
-                  }
-                >
-                  <option value="admin">Quản trị viên</option>
-                  <option value="guide">Hướng dẫn viên</option>
-                  <option value="user">Khách hàng</option>
-                </select>
+                <p>
+                  <b>Trạng thái:</b>{" "}
+                  {selectedUser.isActive ? "Hoạt động" : "Đã khóa"}
+                </p>
 
                 <button
-                  style={btnSave}
-                  onClick={mode === "add" ? handleAdd : handleUpdate}
-                >
-                  Lưu
-                </button>
-
-                <button
-                  style={{ ...btnDelete, marginLeft: "10px" }}
+                  style={styles.btnSave}
                   onClick={() => setMode(null)}
                 >
-                  Hủy
+                  Đóng
                 </button>
               </>
             )}
@@ -279,102 +287,142 @@ const UsersPage = () => {
   );
 };
 
-const th = {
-  padding: "12px",
-  borderBottom: "1px solid #ddd",
-};
+const styles: any = {
+  container: {
+    padding: "30px",
+    fontFamily: "Arial",
+  },
 
-const td = {
-  padding: "12px",
-  borderBottom: "1px solid #eee",
-};
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginTop: "20px",
+  },
 
-const btnDetail = {
-  background: "#10b981",
-  color: "#fff",
-  border: "none",
-  padding: "6px 10px",
-  marginRight: "6px",
-  borderRadius: "6px",
-  cursor: "pointer",
-};
+  th: {
+    padding: "12px",
+    borderBottom: "1px solid #ddd",
+    textAlign: "left",
+  },
 
-const btnEdit = {
-  background: "#3b82f6",
-  color: "#fff",
-  border: "none",
-  padding: "6px 10px",
-  marginRight: "6px",
-  borderRadius: "6px",
-  cursor: "pointer",
-};
+  td: {
+    padding: "12px",
+    borderBottom: "1px solid #eee",
+  },
 
-const btnLock = {
-  background: "#f59e0b",
-  color: "#fff",
-  border: "none",
-  padding: "6px 10px",
-  marginRight: "6px",
-  borderRadius: "6px",
-  cursor: "pointer",
-};
+  btnAdd: {
+    background: "#1d72e8",
+    color: "#fff",
+    border: "none",
+    padding: "10px 18px",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
 
-const btnDelete = {
-  background: "#ef4444",
-  color: "#fff",
-  border: "none",
-  padding: "6px 10px",
-  borderRadius: "6px",
-  cursor: "pointer",
-};
+  btnDetail: {
+    background: "#22c55e",
+    color: "#fff",
+    border: "none",
+    padding: "6px 10px",
+    marginRight: "5px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
 
-const btnSave = {
-  background: "#22c55e",
-  color: "#fff",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "6px",
-  cursor: "pointer",
-  marginTop: "10px",
-};
+  btnEdit: {
+    background: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    padding: "6px 10px",
+    marginRight: "5px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
 
-const modal = {
-  position: "fixed" as const,
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  background: "rgba(0,0,0,0.4)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-};
+  btnLock: {
+    border: "1px solid red",
+    background: "#fff",
+    color: "red",
+    padding: "6px 10px",
+    marginRight: "5px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
 
-const modalBox = {
-  background: "#fff",
-  padding: "20px",
-  borderRadius: "8px",
-  width: "350px",
-};
+  btnOpen: {
+    background: "#1d72e8",
+    color: "#fff",
+    border: "none",
+    padding: "6px 10px",
+    marginRight: "5px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
 
-const input = {
-  width: "100%",
-  padding: "8px",
-  marginBottom: "10px",
-};
+  btnDelete: {
+    background: "transparent",
+    border: "none",
+    color: "red",
+    fontSize: "18px",
+    cursor: "pointer",
+  },
 
-const statusActive = {
-  background: "#dcfce7",
-  color: "#16a34a",
-  padding: "4px 10px",
-  borderRadius: "6px",
-};
+  statusActive: {
+    background: "#e6f7ec",
+    color: "#16a34a",
+    padding: "4px 10px",
+    borderRadius: "5px",
+  },
 
-const statusLock = {
-  background: "#fee2e2",
-  color: "#dc2626",
-  padding: "4px 10px",
-  borderRadius: "6px",
+  statusLock: {
+    background: "#fdecec",
+    color: "#dc2626",
+    padding: "4px 10px",
+    borderRadius: "5px",
+  },
+
+  modal: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.4)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modalBox: {
+    background: "#fff",
+    padding: "20px",
+    borderRadius: "8px",
+    width: "350px",
+  },
+
+  input: {
+    width: "100%",
+    padding: "8px",
+    marginBottom: "10px",
+    border: "1px solid #ddd",
+    borderRadius: "5px",
+  },
+
+  btnSave: {
+    background: "#22c55e",
+    color: "#fff",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+
+  btnCancel: {
+    background: "#ef4444",
+    color: "#fff",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "5px",
+    marginLeft: "10px",
+    cursor: "pointer",
+  },
 };
 
 export default UsersPage;
