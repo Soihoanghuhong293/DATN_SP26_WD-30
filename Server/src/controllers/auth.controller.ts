@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import User from "../models/user.model"; // Nhớ thêm đuôi .js nếu project của bạn bắt buộc
+import User from "../models/user.model.js"; 
+import Guide from "../models/Guide.js"; // 👈 THÊM IMPORT NÀY
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password,name, role } = req.body;
+    const { email, password, name, role } = req.body;
 
     const existed = await User.findOne({ email });
     if (existed) {
@@ -14,16 +15,25 @@ export const register = async (req: Request, res: Response) => {
 
     const hash = await bcrypt.hash(password, 10);
 
-    //  Cho phép truyền guide hoặc admin mặc định là user
     const validRoles = ["user", "admin", "guide"];
     const assignedRole = validRoles.includes(role) ? role : "user";
 
+    // 1. TẠO TÀI KHOẢN ĐĂNG NHẬP
     const user = await User.create({
       name,
       email,
       password: hash,
       role: assignedRole,
     });
+
+    // 2. NẾU LÀ HDV -> TỰ ĐỘNG TẠO HỒ SƠ GUIDE (Auto-Sync)
+    if (assignedRole === "guide") {
+      await Guide.create({
+        user_id: user._id, // Khóa ngoại 1-1
+        name: user.name,   // Đẩy tên qua luôn
+        email: user.email, // Đẩy email qua
+      });
+    }
 
     res.json({
       message: "Đăng ký thành công",
@@ -36,6 +46,7 @@ export const register = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    console.error(error); // Nên log ra để dễ debug nếu có lỗi
     res.status(500).json({ message: "Lỗi khi đăng ký" });
   }
 };
@@ -49,7 +60,6 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Sai email" });
     }
 
-    // chặn đăng nhập nếu tài khoản đã bị xóa
     if (user.status === "inactive") {
       return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa bởi Admin" });
     }

@@ -157,11 +157,13 @@ const BookingList = () => {
           {/* Nút Xem chi tiết */}
           <Tooltip title="Xem chi tiết">
             <Button 
-              icon={<EyeOutlined />} 
-              type="text" 
-              className="text-blue-500"
-              onClick={() => message.info('Trang chi tiết booking đang phát triển!')} 
-            />
+            type="primary" 
+            ghost 
+            icon={<EyeOutlined />} 
+            onClick={() => navigate(`/admin/bookings/${record._id}`)} // Mấu chốt ở dòng này!
+          >
+            Chi tiết
+          </Button>
           </Tooltip>
 
           <Tooltip title="Xóa đơn">

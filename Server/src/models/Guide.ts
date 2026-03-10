@@ -5,11 +5,13 @@ export type HealthStatus = 'healthy' | 'sick' | 'on_leave' | 'retired';
 
 export interface IGuide extends Document {
   id: string;
-  user_id?: mongoose.Types.ObjectId;
+  user_id: mongoose.Types.ObjectId; // 👈 BẮT BUỘC CÓ ĐỂ NỐI VỚI USER
   name: string;
-  birtdate: Date;
+  birtdate?: Date; // 👈 Cho phép rỗng lúc mới tạo
   avatar?: string;
-  phone: string;
+  phone?: string; // 👈 Cho phép rỗng
+  email?: string;
+  // ... các trường khác giữ nguyên
   certificate: {
     name: string;
     issueDate: Date;
@@ -41,7 +43,6 @@ export interface IGuide extends Document {
   };
   group_type: GuideGroupType;
   health_status: HealthStatus;
-  email?: string;
   address?: string;
   identityCard?: string;
   created_at: Date;
@@ -50,19 +51,19 @@ export interface IGuide extends Document {
 
 const GuideSchema: Schema = new Schema(
   {
-    // FK to User (optional, for future user authentication integration)
-    user_id: { type: Schema.Types.ObjectId, ref: 'User' },
+    // FK to User: QUAN HỆ 1-1 CHẶT CHẼ
+    user_id: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
 
-    // Personal Information
     name: { type: String, required: true, trim: true },
-    birtdate: { type: Date, required: true },
+    birtdate: { type: Date }, // Bỏ required
     avatar: { type: String, default: null },
-    phone: { type: String, required: true, unique: true },
+    
+    // sparse: true giúp cho phép nhiều người cùng chưa cập nhật số điện thoại (bỏ qua lỗi duplicate null)
+    phone: { type: String, unique: true, sparse: true }, 
     email: { type: String, trim: true },
     address: { type: String },
     identityCard: { type: String, unique: true, sparse: true },
 
-    // Professional Certificates
     certificate: [
       {
         name: { type: String, required: true },
@@ -72,21 +73,18 @@ const GuideSchema: Schema = new Schema(
       },
     ],
 
-    // Languages
     languages: {
       type: [String],
       default: ['Vietnamese'],
       enum: ['Vietnamese', 'English', 'French', 'Chinese', 'Japanese', 'Korean', 'German', 'Spanish', 'Russian', 'Italian', 'Thai'],
     },
 
-    // Experience
     experience: {
-      years: { type: Number, required: true, min: 0 },
+      years: { type: Number, default: 0, min: 0 }, // Sửa thành default: 0 thay vì bắt buộc
       specialization: { type: String },
       description: { type: String },
     },
 
-    // Tour History
     history: [
       {
         tourId: { type: Schema.Types.ObjectId, ref: 'Tour' },
@@ -97,7 +95,6 @@ const GuideSchema: Schema = new Schema(
       },
     ],
 
-    // Rating and Reviews
     rating: {
       average: { type: Number, default: 0, min: 0, max: 5 },
       totalReviews: { type: Number, default: 0 },
@@ -111,7 +108,6 @@ const GuideSchema: Schema = new Schema(
       ],
     },
 
-    // Classification
     group_type: {
       type: String,
       enum: ['domestic', 'international', 'specialized_line', 'group_specialist'],
@@ -119,7 +115,6 @@ const GuideSchema: Schema = new Schema(
       required: true,
     },
 
-    // Health Status
     health_status: {
       type: String,
       enum: ['healthy', 'sick', 'on_leave', 'retired'],

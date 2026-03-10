@@ -189,11 +189,7 @@ const GuideList = () => {
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h1 style={{ margin: 0 }}>Quản lý Hướng dẫn viên</h1>
-          <Link to="/admin/guides/create">
-            <Button type="primary" icon={<PlusOutlined />} size="large">
-              Thêm HDV mới
-            </Button>
-          </Link>
+          
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>

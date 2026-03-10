@@ -78,6 +78,13 @@ const BookingSchema: Schema = new Schema({
     enum: ['pending', 'confirmed', 'paid', 'cancelled'],
     default: 'pending' 
   },
+  passengers: [{
+    name: String,
+    birthYear: String,
+    gender: String,
+    phone: String,
+    note: String
+  }],
   paymentMethod: { 
     type: String, 
     default: 'offline' 

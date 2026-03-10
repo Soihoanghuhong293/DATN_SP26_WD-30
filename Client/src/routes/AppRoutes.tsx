@@ -9,7 +9,6 @@ import TourList from '../features/admin/tours/TourList';
 import TourDetail from '../features/admin/tours/TourDetail';
 
 import GuideList from '../pages/admin/guides/GuideList';
-import GuideCreate from '../pages/admin/guides/GuideCreate';
 import GuideEdit from '../pages/admin/guides/GuideEdit';
 
 import CategoryList from '../pages/admin/categories/CategoryList';
@@ -57,7 +56,9 @@ const AppRoutes = () => {
         <Route path="tours/:id/edit" element={<TourEdit />} />
 
         <Route path="guides" element={<GuideList />} />
-        <Route path="guides/create" element={<GuideCreate />} />
+       
+        
+        <Route path='guides' element={<GuideList />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
 
         <Route path="categories" element={<CategoryList />} />
