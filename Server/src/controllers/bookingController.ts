@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
-import Booking from '../models/Booking'; // Đảm bảo import đúng Schema mới
+import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
 
-// 1. ADMIN: Lấy tất cả đơn đặt tour
+// lấy tất cả đơn đặt tour
 export const getAllBookings = async (req: Request, res: Response) => {
   try {
     const bookings = await Booking.find()
-      // Đổi path thành tour_id và user_id cho khớp Schema
       .populate({ path: 'tour_id', select: 'name images duration_days price' })
       .populate({ path: 'user_id', select: 'name email phone' })
       .sort({ created_at: -1 });
@@ -24,7 +23,7 @@ export const getAllBookings = async (req: Request, res: Response) => {
   }
 };
 
-// 2. ADMIN/USER: Lấy chi tiết 1 đơn hàng
+// lấy chi tiết 1 đơn hàng
 export const getBooking = async (req: Request, res: Response) => {
   try {
     const booking = await Booking.findById(req.params.id)
@@ -50,15 +49,15 @@ export const getBooking = async (req: Request, res: Response) => {
   }
 };
 
-// 3. ADMIN/USER: Tạo đơn đặt tour mới
+// tyạo đơn đặt tour mới
 export const createBooking = async (req: Request, res: Response) => {
   try {
-    console.log('Received booking request:', req.body); // Debug log
+    console.log('Dữ liệu Frontend gửi lên:', req.body); 
 
-    // 1️⃣ Lấy dữ liệu từ Frontend gửi lên
-    const { tour_id, startDate, customerName, phone, email, groupSize, paymentMethod } = req.body;
+    
+    const { tour_id, startDate, customer_name, customer_phone, groupSize } = req.body;
 
-    // 2️⃣ Validate các trường bắt buộc
+    // validate các trường bắt buộc
     if (!tour_id || !startDate) {
       return res.status(400).json({
         status: 'fail',
@@ -66,14 +65,14 @@ export const createBooking = async (req: Request, res: Response) => {
       });
     }
 
-    if (!customerName || !phone || !email || !groupSize) {
+    if (!customer_name || !customer_phone || !groupSize) {
       return res.status(400).json({
         status: 'fail',
         message: 'Thiếu thông tin khách hàng'
       });
     }
 
-    // 3️⃣ Kiểm tra tour tồn tại
+    // kiểm tra tour tồn tại
     const tour = await Tour.findById(tour_id);
     if (!tour) {
       return res.status(404).json({
@@ -82,31 +81,12 @@ export const createBooking = async (req: Request, res: Response) => {
       });
     }
 
-    // 4️⃣ Tính tổng tiền (giả sử giá tour * số lượng khách)
-    const total_price = (tour.price || 0) * groupSize;
+    // lưu toàn bộ dữ liệu vào db
+    const newBooking = await Booking.create({
+      ...req.body
+    });
 
-    // 5️⃣ Xác định trạng thái
-    const status = paymentMethod === 'full' ? 'paid' : 'pending';
-
-    // 6️⃣ Chuẩn bị dữ liệu lưu vào Database
-    const bookingPayload = {
-      tour_id,
-      startDate,
-      customer_name: customerName,
-      customer_phone: phone,
-      customer_email: email,
-      groupSize,
-      paymentMethod,
-      total_price,
-      status,
-    };
-
-    console.log('Saving booking:', bookingPayload); // Debug log
-
-    // 7️⃣ Tạo booking
-    const newBooking = await Booking.create(bookingPayload);
-
-    console.log('Booking created successfully:', newBooking); // Debug log
+    console.log('Tạo Booking thành công:', newBooking._id);
 
     res.status(201).json({
       status: 'success',
@@ -114,7 +94,7 @@ export const createBooking = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    console.error('Error creating booking:', error); // Debug log
+    console.error('Lỗi khi tạo booking:', error);
     res.status(400).json({
       status: 'fail',
       message: error.message || 'Lỗi khi tạo đơn hàng'
@@ -122,7 +102,7 @@ export const createBooking = async (req: Request, res: Response) => {
   }
 };
 
-// 4. ADMIN: Cập nhật trạng thái đơn hàng
+// cập nhật trạng thái đơn hàng
 export const updateBookingStatus = async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
@@ -152,7 +132,7 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
   }
 };
 
-// 5. ADMIN: Xóa đơn hàng
+// xóa đơn hàng
 export const deleteBooking = async (req: Request, res: Response) => {
   try {
     await Booking.findByIdAndDelete(req.params.id);
