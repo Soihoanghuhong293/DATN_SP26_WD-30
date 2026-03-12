@@ -8,8 +8,7 @@ function getIsChatOnline(): boolean {
   const force = (import.meta as any)?.env?.VITE_CHAT_ONLINE;
   if (force === 'true') return true;
   if (force === 'false') return false;
-  const hour = new Date().getHours();
-  return hour >= 8 && hour < 22; // 8h sáng - 10h tối
+  return false; // Luôn offline
 }
 
 /** Gợi ý ban đầu khi chưa có tin nhắn (chỉ dùng khi online) */

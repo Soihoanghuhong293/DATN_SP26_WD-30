@@ -42,7 +42,6 @@ const AppRoutes = () => {
         <Route path="register" element={<RegisterPage />} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
-        <Route path="login" element={<div>Login Page</div>} />
       </Route>
 
       {/* ===== ADMIN ===== */}
