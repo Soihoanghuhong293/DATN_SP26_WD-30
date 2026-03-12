@@ -5,6 +5,7 @@ import { ArrowLeftOutlined, CalendarOutlined, DollarOutlined, CheckCircleOutline
 import { getTour } from '../services/api';
 import { ITour } from '../types/tour.types';
 import './styles/TourDetail.css';
+import BookingForm from '../components/Client/BookingForm';
 
 const TourDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +13,7 @@ const TourDetailPage = () => {
   const [tour, setTour] = useState<ITour | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchTourDetail = async () => {
@@ -252,6 +254,7 @@ const TourDetailPage = () => {
               block
               className="booking-btn"
               style={{ marginTop: '16px' }}
+              onClick={() => setIsBookingModalVisible(true)}
             >
               Đặt tour ngay
             </Button>
@@ -292,6 +295,12 @@ const TourDetailPage = () => {
           </div>
         </div>
       </div>
+
+      <BookingForm
+        visible={isBookingModalVisible}
+        onClose={() => setIsBookingModalVisible(false)}
+        tourId={id!}
+      />
     </div>
   );
 };

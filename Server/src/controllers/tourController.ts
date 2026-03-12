@@ -17,7 +17,7 @@ export const getAllTours = async (req: Request, res: Response) => {
   }
 };
 
-// 2. GET ONE: Lấy chi tiết 1 Tour
+//  Lấy chi tiết 1 Tour
 export const getTour = async (req: Request, res: Response) => {
   try {
     const tour = await Tour.findById(req.params.id).populate('category_id');

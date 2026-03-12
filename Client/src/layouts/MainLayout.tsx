@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Client/Header';
-import Footer from '../components/Client/Footer'; 
+import Footer from '../components/Client/Footer';
+import ChatWidget from '../components/ChatWidget';
 import { Layout } from 'antd';
 
 const { Content } = Layout;
@@ -14,7 +15,8 @@ const MainLayout = () => {
            <Outlet />
         </div>
       </Content>
-      <Footer />  
+      <Footer />
+      <ChatWidget />
     </Layout>
   );
 };

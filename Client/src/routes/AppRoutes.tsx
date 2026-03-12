@@ -9,7 +9,6 @@ import TourList from '../features/admin/tours/TourList';
 import TourDetail from '../features/admin/tours/TourDetail';
 
 import GuideList from '../pages/admin/guides/GuideList';
-import GuideCreate from '../pages/admin/guides/GuideCreate';
 import GuideEdit from '../pages/admin/guides/GuideEdit';
 
 import CategoryList from '../pages/admin/categories/CategoryList';
@@ -21,12 +20,15 @@ import ProviderDetail from '../pages/admin/providers/ProviderDetail';
 import ProviderEdit from '../pages/admin/providers/ProviderEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
+import ContactMessageList from '../pages/admin/ContactMessageList';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import BookingCreate from '../features/bookings/BookingCreate';
 import BookingList from '../features/bookings/BookingList';
+import UserList from '../features/admin/users/UserList';
+import UserCreate from '../features/admin/users/UserCreate';
 
 const AppRoutes = () => {
   return (
@@ -57,7 +59,6 @@ const AppRoutes = () => {
        
         
         <Route path='guides' element={<GuideList />} />
-        <Route path="guides/create" element={<GuideCreate />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
 
         <Route path="categories" element={<CategoryList />} />
@@ -69,10 +70,12 @@ const AppRoutes = () => {
         <Route path="providers/:id" element={<ProviderDetail />} />
 
 
-               <Route path="bookings" element={<BookingList />} />
-
+        <Route path="bookings" element={<BookingList />} />
         <Route path="bookings/create" element={<BookingCreate />} />
+          <Route path="users" element={<UserList />} />
+          <Route path="users/create" element={<UserCreate />} />
 
+        <Route path="contact-messages" element={<ContactMessageList />} />
       </Route>
 
       <Route

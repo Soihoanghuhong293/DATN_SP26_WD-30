@@ -9,7 +9,8 @@ import {
   UnorderedListOutlined,
   TagsOutlined,
   TeamOutlined,
-  ShopOutlined
+  ShopOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 
@@ -98,11 +99,7 @@ const AdminSidebar = () => {
                 icon: <UnorderedListOutlined />,
                 label: <Link to="/admin/guides">Danh sách HDV</Link>,
               },
-              {
-                key: "/admin/guides/create",
-                icon: <PlusCircleOutlined />,
-                label: <Link to="/admin/guides/create">Thêm HDV mới</Link>,
-              },
+             
             ],
           },
 
@@ -143,6 +140,11 @@ const AdminSidebar = () => {
           },
 
           
+          {
+            key: "/admin/contact-messages",
+            icon: <MessageOutlined />,
+            label: <Link to="/admin/contact-messages">Tin nhắn offline</Link>,
+          },
           {
             key: "/admin/users",
             icon: <UserOutlined />,
