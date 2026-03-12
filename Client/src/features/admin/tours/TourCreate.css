@@ -1,0 +1,53 @@
+/* TourCreate.css */
+
+/* Khối thêm giá theo mùa - Đổi sang màu tím nhạt */
+.seasonal-price-card {
+  border: 1px solid #d8b4fe !important; /* Tailwind purple-300 */
+  background-color: #f3e8ff !important; /* Tailwind purple-100 */
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.seasonal-price-card .ant-card-head {
+  background-color: #e9d5ff; /* Tailwind purple-200 */
+  border-bottom: 1px solid #d8b4fe;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Khối nhập giá chi tiết lồng bên trong */
+.nested-price-container {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px dashed #c084fc; /* Tailwind purple-400 */
+  margin-top: 12px;
+}
+
+/* Khối lịch trình */
+.schedule-card {
+  border-left: 4px solid #8b5cf6 !important; /* Tailwind purple-500 */
+  background-color: #f5f3ff !important; /* Tailwind purple-50 */
+}
+
+/* Custom khoảng cách và màu cho nút thêm */
+.add-btn-dashed {
+  margin-top: 8px;
+  border-color: #8b5cf6 !important;
+  color: #8b5cf6 !important;
+}
+.add-btn-dashed:hover {
+  background-color: #f3e8ff !important;
+  border-color: #7c3aed !important;
+  color: #7c3aed !important;
+}
+
+/* Nút lưu chính */
+.btn-primary-vigo {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
+  border: none !important;
+  color: white !important;
+}
+.btn-primary-vigo:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%) !important;
+  opacity: 0.9;
+}
