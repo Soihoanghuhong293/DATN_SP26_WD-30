@@ -14,7 +14,7 @@ import {
 } from '@ant-design/icons';
 import './TourCreate.css'; 
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
@@ -43,7 +43,6 @@ const TourCreate = () => {
   });
   const providers = providersData?.data?.providers ?? [];
 
-  // Đã fix lỗi TS: Thêm (error: any)
   const mutation = useMutation({
     mutationFn: async (values: any) => {
       return await axios.post('http://localhost:5000/api/v1/tours', values);
@@ -59,7 +58,22 @@ const TourCreate = () => {
     }
   });
 
-  // Đã fix lỗi TS: Thêm (values: any) và (season: any)
+  // tự động tính giá
+  const handleValuesChange = (changedValues: any) => {
+    if (changedValues.price !== undefined) {
+      const basePrice = changedValues.price || 0;
+      const currentPrices = form.getFieldValue('prices') || [];
+
+      const updatedPrices = currentPrices.map((item: any, index: number) => {
+        if (index === 0) return { ...item, price: basePrice }; 
+        if (index === 1) return { ...item, price: Math.round(basePrice * 0.8) }; 
+        return item; 
+      });
+
+      form.setFieldsValue({ prices: updatedPrices });
+    }
+  };
+
   const onFinish = (values: any) => {
     const finalValues = { ...values };
     finalValues.suppliers = values.suppliers ? [values.suppliers] : [];
@@ -80,7 +94,6 @@ const TourCreate = () => {
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen font-sans">
       <div className="max-w-7xl mx-auto">
         
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <Space size="middle">
             <Button 
@@ -107,16 +120,16 @@ const TourCreate = () => {
           form={form}
           layout="vertical"
           onFinish={onFinish}
+          onValuesChange={handleValuesChange} 
           initialValues={{ 
             status: 'draft', 
             duration_days: 1,
             schedule: [{ day: 1, title: '', activities: [] }],
             prices: DEFAULT_PRICE_CATEGORIES
           }}
-          requiredMark="optional" // Ẩn dấu sao đỏ mặc định để nhìn thoáng hơn
+          requiredMark="optional"
         >
           <Row gutter={24}>
-            {/* Cột Trái */}
             <Col xs={24} lg={16}>
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Thông tin cơ bản</div>
@@ -255,7 +268,6 @@ const TourCreate = () => {
               </Card>
             </Col>
 
-            {/* Cột Phải */}
             <Col xs={24} lg={8}>
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Thiết lập chung</div>
@@ -278,16 +290,16 @@ const TourCreate = () => {
 
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Giá bán mặc định</div>
-                <Form.Item name="price" label={<span className="font-medium text-gray-600">Giá gốc (Hiển thị nổi bật)</span>} rules={[{ required: true }]}>
+                <Form.Item name="price" label={<span className="font-medium text-gray-600">Giá gốc (VNĐ) </span>} rules={[{ required: true }]}>
                   <InputNumber 
-                    className="w-full rounded-lg" size="large" 
+                    className="w-full rounded-lg" size="large" placeholder="VD: 500,000"
                     formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
                     parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')} 
                   />
                 </Form.Item>
                 
                 <Divider />
-                <div className="text-sm font-medium text-gray-500 mb-3">Cấu hình giá chi tiết</div>
+                <div className="text-sm font-medium text-gray-500 mb-3">Cấu hình giá chi tiết </div>
                 
                 <Form.List name="prices">
                   {(fields, { add, remove }) => (
@@ -328,10 +340,10 @@ const TourCreate = () => {
 
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Media & Bổ sung</div>
-                <Form.Item name="images" label={<span className="font-medium text-gray-600">Link Hình ảnh (Enter)</span>}>
+                <Form.Item name="images" label={<span className="font-medium text-gray-600">Link Hình ảnh </span>}>
                    <Select mode="tags" placeholder="Nhập link..." open={false} className="rounded-lg" />
                 </Form.Item>
-                <Form.Item name="policies" label={<span className="font-medium text-gray-600">Chính sách nổi bật (Enter)</span>} style={{marginBottom: 0}}>
+                <Form.Item name="policies" label={<span className="font-medium text-gray-600">Chính sách </span>} style={{marginBottom: 0}}>
                    <Select mode="tags" placeholder="Ví dụ: Xe đưa đón..." open={false} className="rounded-lg" />
                 </Form.Item>
               </Card>
