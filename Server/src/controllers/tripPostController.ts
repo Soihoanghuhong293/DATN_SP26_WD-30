@@ -27,7 +27,7 @@ export const getTripPosts = async (req: Request, res: Response) => {
 // 2. Tạo bài viết mới
 export const createTripPost = async (req: Request, res: Response) => {
   try {
-    const { booking_id, title, content, images, status } = req.body;
+    const { booking_id, title, content, status } = req.body;
     const author_id = req.user?.id; // Giả sử từ auth middleware
 
     if (!booking_id || !title || !content) {
@@ -40,11 +40,14 @@ export const createTripPost = async (req: Request, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Booking không tồn tại' });
     }
 
+    // Xử lý ảnh upload
+    const images = req.files ? (req.files as Express.Multer.File[]).map(file => `/uploads/${file.filename}`) : [];
+
     const newTripPost = await TripPost.create({
       booking_id,
       title,
       content,
-      images: images || [],
+      images,
       author_id,
       status: status || 'draft'
     });
@@ -61,10 +64,17 @@ export const createTripPost = async (req: Request, res: Response) => {
 // 3. Cập nhật bài viết
 export const updateTripPost = async (req: Request, res: Response) => {
   try {
-    const { title, content, images, status } = req.body;
+    const { title, content, status } = req.body;
+
+    // Xử lý ảnh upload (nếu có)
+    const images = req.files ? (req.files as Express.Multer.File[]).map(file => `/uploads/${file.filename}`) : undefined;
+
+    const updateData: any = { title, content, status };
+    if (images) updateData.images = images;
+
     const tripPost = await TripPost.findByIdAndUpdate(
       req.params.id,
-      { title, content, images, status },
+      updateData,
       { new: true, runValidators: true }
     );
 
