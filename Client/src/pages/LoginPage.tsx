@@ -17,6 +17,7 @@ const LoginPage = () => {
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
+      localStorage.setItem("user_email", values.email);
 
       message.success("Đăng nhập thành công");
 

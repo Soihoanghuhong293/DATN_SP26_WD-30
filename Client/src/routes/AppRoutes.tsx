@@ -23,6 +23,7 @@ import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
 import HdvDashboard from '../pages/HdvDashboard';
+import HdvPlaceholder from '../pages/HdvPlaceholder';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -49,6 +50,8 @@ const AppRoutes = () => {
       {/* ===== HDV (Hướng dẫn viên) ===== */}
       <Route path="/hdv" element={<HdvLayout />}>
         <Route index element={<HdvDashboard />} />
+        <Route path="tours" element={<HdvPlaceholder title="Tour của tôi" />} />
+        <Route path="schedule" element={<HdvPlaceholder title="Lịch làm việc" />} />
       </Route>
 
       {/* ===== ADMIN ===== */}
