@@ -1,8 +1,11 @@
 import express from 'express';
 import * as bookingController from '../controllers/bookingController';
+import { protect, restrictToGuide } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
+// Phải đặt trước /:id để "guide" không bị hiểu là id
+router.get('/guide/me', protect, restrictToGuide, bookingController.getMyBookings);
 
 router
   .route('/')

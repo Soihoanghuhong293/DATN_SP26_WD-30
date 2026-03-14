@@ -1,6 +1,33 @@
 import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
+import { AuthRequest } from '../middlewares/auth.middleware';
+
+// Lấy danh sách booking của HDV đang đăng nhập (guide_id = user._id)
+export const getMyBookings = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const bookings = await Booking.find({ guide_id: guideId })
+      .populate({ path: 'tour_id', select: 'name images duration_days price' })
+      .populate({ path: 'user_id', select: 'name email phone' })
+      .sort({ startDate: 1 });
+
+    res.status(200).json({
+      status: 'success',
+      results: bookings.length,
+      data: bookings
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
 
 // lấy tất cả đơn đặt tour
 export const getAllBookings = async (req: Request, res: Response) => {

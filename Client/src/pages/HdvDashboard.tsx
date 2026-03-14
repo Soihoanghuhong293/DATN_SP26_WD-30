@@ -1,33 +1,56 @@
-import { Card, Row, Col, Statistic } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import { Card, Row, Col, Statistic, List, Tag } from "antd";
 import {
   CarOutlined,
   CalendarOutlined,
   StarOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
+import dayjs from "dayjs";
+
+const getAuthHeader = () => ({
+  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+});
 
 const HdvDashboard = () => {
-  // Dữ liệu mẫu - sẽ thay bằng API thật khi có
+  const { data: bookings = [] } = useQuery({
+    queryKey: ["hdv-bookings"],
+    queryFn: async () => {
+      const res = await axios.get(
+        "http://localhost:5000/api/v1/bookings/guide/me",
+        getAuthHeader()
+      );
+      return res.data?.data || [];
+    },
+  });
+
+  const upcomingBookings = bookings.filter(
+    (b: any) =>
+      b.status !== "cancelled" &&
+      dayjs(b.startDate).isSameOrAfter(dayjs(), "day")
+  );
+
   const stats = [
     {
       title: "Tour đã dẫn",
-      value: 24,
+      value: bookings.filter((b: any) => b.status !== "cancelled" && dayjs(b.endDate || b.startDate).isBefore(dayjs(), "day")).length,
       icon: <CarOutlined style={{ fontSize: 28, color: "#667eea" }} />,
     },
     {
       title: "Tour sắp tới",
-      value: 3,
+      value: upcomingBookings.length,
       icon: <CalendarOutlined style={{ fontSize: 28, color: "#10b981" }} />,
     },
     {
       title: "Đánh giá trung bình",
-      value: "4.8",
+      value: "—",
       suffix: "/5",
       icon: <StarOutlined style={{ fontSize: 28, color: "#f59e0b" }} />,
     },
     {
       title: "Khách đã phục vụ",
-      value: 156,
+      value: bookings.reduce((sum: number, b: any) => sum + (b.groupSize || 0), 0),
       icon: <TeamOutlined style={{ fontSize: 28, color: "#8b5cf6" }} />,
     },
   ];
@@ -114,19 +137,41 @@ const HdvDashboard = () => {
               boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
             }}
           >
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px 20px",
-                color: "#9ca3af",
-              }}
-            >
-              <CalendarOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-              <p style={{ margin: 0 }}>Chưa có lịch tour nào sắp tới</p>
-              <p style={{ margin: "8px 0 0 0", fontSize: 13 }}>
-                Dữ liệu sẽ hiển thị khi có booking được gán cho bạn
-              </p>
-            </div>
+            {upcomingBookings.length > 0 ? (
+              <List
+                dataSource={upcomingBookings.slice(0, 5)}
+                renderItem={(b: any) => (
+                  <List.Item>
+                    <div style={{ width: "100%" }}>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                        {b.tour_id?.name || "Tour"}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#6b7280" }}>
+                        {dayjs(b.startDate).format("DD/MM/YYYY")}
+                        {b.endDate && ` - ${dayjs(b.endDate).format("DD/MM/YYYY")}`} • {b.groupSize} khách
+                      </div>
+                      <Tag color={b.status === "confirmed" ? "blue" : b.status === "paid" ? "green" : "orange"} style={{ marginTop: 4 }}>
+                        {b.status === "confirmed" ? "Đã xác nhận" : b.status === "paid" ? "Đã thanh toán" : "Chờ duyệt"}
+                      </Tag>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px 20px",
+                  color: "#9ca3af",
+                }}
+              >
+                <CalendarOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+                <p style={{ margin: 0 }}>Chưa có lịch tour nào sắp tới</p>
+                <p style={{ margin: "8px 0 0 0", fontSize: 13 }}>
+                  Dữ liệu sẽ hiển thị khi Admin gán tour cho bạn
+                </p>
+              </div>
+            )}
           </Card>
         </Col>
         <Col xs={24} lg={8}>
