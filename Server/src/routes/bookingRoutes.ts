@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/guide/me', protect, restrictToGuide, bookingController.getMyBookings);
 router.get('/guide/:id', protect, restrictToGuide, bookingController.getMyBookingDetail);
 router.patch('/guide/:id/checkin', protect, restrictToGuide, bookingController.checkInPassenger);
+router.patch('/guide/:id/stage', protect, restrictToGuide, bookingController.updateTourStage);
 
 router
   .route('/')

@@ -111,6 +111,43 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// HDV: Cập nhật giai đoạn tour
+export const updateTourStage = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const b = booking as any;
+    const bookingGuideId = b.guide_id?.toString?.();
+    if (bookingGuideId !== guideId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    const { tour_stage } = req.body;
+    const validStages = ['scheduled', 'in_progress', 'completed'];
+    if (!tour_stage || !validStages.includes(tour_stage)) {
+      return res.status(400).json({ status: 'fail', message: 'tour_stage không hợp lệ' });
+    }
+
+    const updated = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { tour_stage },
+      { new: true }
+    );
+
+    res.status(200).json({ status: 'success', data: updated });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 // lấy tất cả đơn đặt tour
 export const getAllBookings = async (req: Request, res: Response) => {
   try {

@@ -24,6 +24,7 @@ export interface IBooking extends Document {
   notes?: string;
 
   status: 'pending' | 'confirmed' | 'paid' | 'cancelled';
+  tour_stage?: 'scheduled' | 'in_progress' | 'completed';  // Giai đoạn tour (HDV cập nhật)
   paymentMethod?: string;
   created_at: Date;
   updated_at: Date;
@@ -77,6 +78,11 @@ const BookingSchema: Schema = new Schema({
     type: String,
     enum: ['pending', 'confirmed', 'paid', 'cancelled'],
     default: 'pending' 
+  },
+  tour_stage: {
+    type: String,
+    enum: ['scheduled', 'in_progress', 'completed'],
+    default: 'scheduled'
   },
   passengers: [{
     name: String,

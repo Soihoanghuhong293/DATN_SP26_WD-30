@@ -11,6 +11,8 @@ import {
   Tabs,
   Spin,
   Empty,
+  Steps,
+  message,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -18,6 +20,9 @@ import {
   TeamOutlined,
   CheckCircleOutlined,
   UserOutlined,
+  RocketOutlined,
+  SyncOutlined,
+  CheckOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -41,6 +46,18 @@ const HdvBookingDetail = () => {
       return res.data?.data;
     },
     enabled: !!id,
+  });
+
+  const updateStageMutation = useMutation({
+    mutationFn: async (tour_stage: string) => {
+      await axios.patch(`${API}/guide/${id}/stage`, { tour_stage }, getAuthHeader());
+    },
+    onSuccess: (_, stage) => {
+      const label = stage === "scheduled" ? "Sắp khởi hành" : stage === "in_progress" ? "Đang diễn ra" : "Đã kết thúc";
+      message.success(`Đã cập nhật: ${label}`);
+      queryClient.invalidateQueries({ queryKey: ["hdv-booking", id] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-bookings"] });
+    },
   });
 
   const checkInMutation = useMutation({
@@ -68,6 +85,13 @@ const HdvBookingDetail = () => {
   const scheduleDetail = booking.schedule_detail || "";
   const passengers = booking.passengers || [];
   const leaderCheckedIn = booking.leaderCheckedIn || false;
+  const tourStage = booking.tour_stage || "scheduled";
+
+  const STAGES = [
+    { key: "scheduled", label: "Sắp khởi hành", icon: <RocketOutlined /> },
+    { key: "in_progress", label: "Đang diễn ra", icon: <SyncOutlined spin /> },
+    { key: "completed", label: "Đã kết thúc", icon: <CheckOutlined /> },
+  ];
 
   // Danh sách hiển thị: Trưởng đoàn + passengers
   const displayList = [
@@ -164,7 +188,8 @@ const HdvBookingDetail = () => {
                     })
                   }
                   loading={checkInMutation.isPending}
-                  checkedChildren="Đã check-in"
+                  checkedChildren="Có mặt"
+                  unCheckedChildren="Vắng mặt"
                 />,
               ]}
             >
@@ -196,10 +221,10 @@ const HdvBookingDetail = () => {
                         {item.role}
                       </Tag>
                     )}
-                    {item.checkedIn && (
-                      <Tag color="green" style={{ marginLeft: 8 }}>
-                        Đã check-in
-                      </Tag>
+                    {item.checkedIn ? (
+                      <Tag color="green" style={{ marginLeft: 8 }}>Có mặt</Tag>
+                    ) : (
+                      <Tag color="default" style={{ marginLeft: 8 }}>Vắng mặt</Tag>
                     )}
                   </span>
                 }
@@ -220,10 +245,10 @@ const HdvBookingDetail = () => {
       children: (
         <Card>
           <p style={{ color: "#6b7280", marginBottom: 16 }}>
-            Bật/tắt công tắc bên cạnh từng khách trong tab &quot;Danh sách khách&quot; để đánh dấu check-in.
+            Gạt công tắc sang &quot;Có mặt&quot; khi khách đến điểm tập trung. Chưa gạt = Vắng mặt.
           </p>
           <div style={{ fontSize: 14 }}>
-            Đã check-in:{" "}
+            Có mặt:{" "}
             <strong>
               {displayList.filter((p) => p.checkedIn).length} / {displayList.length}
             </strong>{" "}
@@ -248,11 +273,35 @@ const HdvBookingDetail = () => {
         <Title level={4} style={{ marginBottom: 4 }}>
           {tour?.name || "Chi tiết booking"}
         </Title>
+        <Card style={{ marginBottom: 24 }} title="Trạng thái giai đoạn tour">
+          <Steps
+            current={STAGES.findIndex((s) => s.key === tourStage)}
+            items={STAGES.map((s) => ({
+              title: s.label,
+              icon: s.icon,
+              description: (
+                <Button
+                  type={tourStage === s.key ? "primary" : "default"}
+                  size="small"
+                  disabled={updateStageMutation.isPending}
+                  loading={updateStageMutation.isPending}
+                  onClick={() => updateStageMutation.mutate(s.key)}
+                >
+                  {tourStage === s.key ? "Đang ở giai đoạn này" : `Xác nhận ${s.label}`}
+                </Button>
+              ),
+            }))}
+          />
+        </Card>
+
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <Text type="secondary">
             {dayjs(booking.startDate).format("DD/MM/YYYY")}
             {booking.endDate && ` - ${dayjs(booking.endDate).format("DD/MM/YYYY")}`}
           </Text>
+          <Tag color={tourStage === "completed" ? "green" : tourStage === "in_progress" ? "blue" : "default"}>
+            {STAGES.find((s) => s.key === tourStage)?.label || "Sắp khởi hành"}
+          </Tag>
           <Tag color={booking.status === "cancelled" ? "red" : "blue"}>
             {booking.status === "confirmed"
               ? "Đã xác nhận"
