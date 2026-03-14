@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Popconfirm, message, Input, Select, Modal } from 'antd';
+import { Table, Button, Space, Tag, Popconfirm, message, Input, Select, Modal, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { getGuides, deleteGuide } from '../../../services/api';
@@ -164,7 +164,7 @@ const GuideList = () => {
             Chi tiết
           </Button>
           <Link to={`/admin/guides/edit/${record.id}`}>
-            <Button type="default" size="small" icon={<EditOutlined />}>
+            <Button type="primary" size="small" icon={<EditOutlined />}>
               Sửa
             </Button>
           </Link>
@@ -175,7 +175,7 @@ const GuideList = () => {
             okText="Xóa"
             cancelText="Hủy"
           >
-            <Button danger size="small" icon={<DeleteOutlined />}>
+            <Button type="primary" danger size="small" icon={<DeleteOutlined />}>
               Xóa
             </Button>
           </Popconfirm>
@@ -186,11 +186,17 @@ const GuideList = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h1 style={{ margin: 0 }}>Quản lý Hướng dẫn viên</h1>
-          
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Quản lý hướng dẫn viên
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Danh sách HDV trong hệ thống
+          </p>
         </div>
+      </div>
+      <div style={{ marginBottom: 16 }}>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           <Input
@@ -226,18 +232,22 @@ const GuideList = () => {
         </div>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={guides.map((guide) => ({ ...guide, key: guide.id }))}
-        loading={loading}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: pagination.total,
-          onChange: (page) => fetchGuides(page),
-        }}
-        scroll={{ x: 1200 }}
-      />
+      <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <Table
+          columns={columns}
+          dataSource={guides.map((guide) => ({ ...guide, key: guide.id }))}
+          loading={loading}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: pagination.total,
+            onChange: (page) => fetchGuides(page),
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} HDV`,
+          }}
+          scroll={{ x: 1200 }}
+        />
+      </Card>
 
       <Modal
         title="Chi tiết Hướng dẫn viên"

@@ -130,9 +130,9 @@ const ContactMessageList = () => {
       key: 'action',
       width: 140,
       render: (_: unknown, record: IContactMessage) => (
-        <Space>
+        <Space size="small">
           <Button
-            type="link"
+            type="primary"
             size="small"
             icon={<EyeOutlined />}
             onClick={() => setSelectedMsg(record)}
@@ -141,7 +141,7 @@ const ContactMessageList = () => {
           </Button>
           {record.status === 'unread' && (
             <Button
-              type="link"
+              type="primary"
               size="small"
               icon={<CheckOutlined />}
               onClick={() => markReadMutation.mutate(record._id)}
@@ -157,7 +157,7 @@ const ContactMessageList = () => {
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
           >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+            <Button type="primary" danger size="small" icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),
@@ -166,37 +166,40 @@ const ContactMessageList = () => {
 
   return (
     <div>
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <MessageOutlined style={{ fontSize: 28, color: '#6366f1' }} />
-            <div>
-              <Title level={4} style={{ margin: 0 }}>
-                Tin nhắn offline
-              </Title>
-              <Text type="secondary">Tin nhắn từ form chat khi hệ thống offline</Text>
-            </div>
-          </div>
-          <Select
-            value={statusFilter}
-            onChange={setStatusFilter}
-            style={{ width: 160 }}
-            options={[
-              { value: 'all', label: 'Tất cả' },
-              { value: 'unread', label: 'Chưa đọc' },
-              { value: 'read', label: 'Đã đọc' },
-            ]}
-          />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Tin nhắn offline
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Tin nhắn từ form liên hệ khi hệ thống offline
+          </p>
         </div>
-      </Card>
+        <Select
+          value={statusFilter}
+          onChange={setStatusFilter}
+          style={{ width: 160 }}
+          options={[
+            { value: 'all', label: 'Tất cả' },
+            { value: 'unread', label: 'Chưa đọc' },
+            { value: 'read', label: 'Đã đọc' },
+          ]}
+        />
+      </div>
 
-      <Table
-        columns={columns}
-        dataSource={messages}
-        rowKey="_id"
-        loading={isLoading}
-        pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (t) => `Tổng ${t} tin nhắn` }}
-      />
+      <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <Table
+          columns={columns}
+          dataSource={messages || []}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} tin nhắn`,
+          }}
+        />
+      </Card>
 
       <Modal
         title="Chi tiết tin nhắn"

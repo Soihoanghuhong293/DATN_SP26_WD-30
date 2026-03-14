@@ -1,18 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { 
-  Table, Button, Space, Avatar, Tag, Popconfirm, message, 
-  Typography, Input, Breadcrumb, Tooltip, ConfigProvider, theme 
-} from 'antd';
-import { 
-  DeleteOutlined, EditOutlined, PlusOutlined, 
-  SearchOutlined, EyeOutlined, HomeOutlined 
-} from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Table, Button, Space, Tag, Popconfirm, message, Typography, Input, Card } from 'antd';
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, EyeOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface ITour {
   _id: string;
@@ -30,8 +24,6 @@ const TourList = () => {
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = useState('');
   
-  const { token } = theme.useToken();
-
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours'],
     queryFn: async () => {
@@ -59,7 +51,7 @@ const TourList = () => {
 
   const columns: ColumnsType<ITour> = [
     {
-      title: 'TOUR DETAILS',
+      title: 'Tour',
       dataIndex: 'name',
       key: 'name',
       width: 350,
@@ -88,7 +80,7 @@ const TourList = () => {
       },
     },
     {
-      title: 'PRICE',
+      title: 'Giá',
       dataIndex: 'price',
       key: 'price',
       sorter: (a, b) => a.price - b.price,
@@ -99,7 +91,7 @@ const TourList = () => {
       ),
     },
     {
-      title: 'DURATION',
+      title: 'Thời lượng',
       dataIndex: 'duration_days',
       key: 'duration_days',
       render: (days) => (
@@ -111,12 +103,12 @@ const TourList = () => {
             fontWeight: 600, 
             color: '#4b5563' 
         }}>
-            {days} Days
+            {days} ngày
         </span>
       ),
     },
     {
-      title: 'STATUS',
+      title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
@@ -129,48 +121,33 @@ const TourList = () => {
                 boxShadow: isActive ? '0 0 0 2px rgba(16, 185, 129, 0.2)' : 'none'
             }} />
             <Text style={{ fontSize: 13, color: isActive ? '#065f46' : '#92400e' }}>
-                {isActive ? 'Active' : 'Draft'}
+                {isActive ? 'Hoạt động' : 'Nháp'}
             </Text>
           </div>
         );
       },
     },
     {
-      title: '',
+      title: 'Hành động',
       key: 'action',
       width: 140,
       align: 'right',
       render: (_, record) => (
         <Space size={4}>
-          <Tooltip title="View Details">
-            <Link to={`/admin/tours/${record._id}`}>
-                <Button 
-                  type="text" 
-                  style={{ color: '#2563eb', backgroundColor: '#eff6ff' }} // Xanh dương nhẹ
-                  icon={<EyeOutlined />} 
-                />
-            </Link>
-          </Tooltip>
-
-          <Tooltip title="Edit">
-            <Button 
-              type="text" 
-              icon={<EditOutlined style={{ color: '#6b7280' }} />} 
-              onClick={() => navigate(`/admin/tours/${record._id}/edit`)}
-            />
-          </Tooltip>
-          
+          <Button type="primary" size="small" icon={<EyeOutlined />} onClick={() => navigate(`/admin/tours/${record._id}`)}>
+            Chi tiết
+          </Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/admin/tours/${record._id}/edit`)}>
+            Sửa
+          </Button>
           <Popconfirm
-            title="Delete this tour?"
-            description="This action cannot be undone."
+            title="Xóa tour này?"
             onConfirm={() => deleteMutation.mutate(record._id)}
-            okText="Delete"
-            cancelText="Cancel"
+            okText="Xóa"
+            cancelText="Hủy"
             okButtonProps={{ danger: true }}
           >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
+            <Button danger size="small" icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),
@@ -178,104 +155,45 @@ const TourList = () => {
   ];
 
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          colorPrimary: '#0f172a', // Màu Slate-900 (SaaS Dark)
-          borderRadius: 6,         // Bo góc vừa phải (Modern)
-        },
-        components: {
-          Table: {
-            headerBg: '#f9fafb',   // Header màu xám rất nhạt
-            headerColor: '#6b7280', // Text header màu xám trung tính
-            headerSplitColor: 'transparent', // Bỏ vạch ngăn cách header
-            rowHoverBg: '#f8fafc',
-            borderColor: '#e5e7eb', // Border màu xám nhạt tinh tế
-          },
-          Button: {
-             fontWeight: 500,
-          }
-        }
-      }}
-    >
-      <div style={{ padding: '32px 40px', backgroundColor: '#fff', minHeight: '100vh' }}>
-        
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb 
-            items={[
-                { href: '/admin', title: <HomeOutlined /> },
-                { title: 'Tours Management' },
-            ]}
-            style={{ marginBottom: 16 }}
-        />
-
-        {/* Page Header */}
-        <div style={{ 
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-            marginBottom: 32 
-        }}>
-          <div>
-            <Title level={2} style={{ margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Tours</Title>
-            <Text type="secondary">Manage your travel packages and inventory.</Text>
-          </div>
-          
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Button icon={<SearchOutlined />} style={{ minWidth: 40 }} /> 
-            {/* Nút chính nổi bật */}
-            <Button 
-                type="primary" 
-                size="large"
-                icon={<PlusOutlined />} 
-                onClick={() => navigate('/admin/tours/create')}
-                style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
-            >
-                Add Product
-            </Button>
-          </div>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Quản lý Tour
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Quản lý các tour du lịch trong hệ thống
+          </p>
         </div>
-
-        {/* Search Bar & Filters Area */}
-        <div style={{ marginBottom: 20 }}>
-            <Input 
-                prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
-                placeholder="Filter by tour name..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ 
-                    maxWidth: 320, 
-                    height: 40,
-                    backgroundColor: '#fff',
-                    borderColor: '#e5e7eb'
-                }}
-            />
-        </div>
-
-        {/* Main Table Container */}
-        <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: 8, 
-            overflow: 'hidden' 
-        }}>
-            <Table 
-                columns={columns} 
-                dataSource={filteredData} 
-                rowKey="_id"
-                loading={isLoading}
-                pagination={{ 
-                    pageSize: 8, 
-                    position: ['bottomRight'],
-                    showSizeChanger: false,
-                    itemRender: (_, type, originalElement) => {
-                        if (type === 'prev') return <Button type="text" size="small">Previous</Button>;
-                        if (type === 'next') return <Button type="text" size="small">Next</Button>;
-                        return originalElement;
-                    }
-                }}
-            />
-        </div>
+        <Space>
+          <Input
+            prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+            placeholder="Tìm theo tên tour..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 240 }}
+            allowClear
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/tours/create')}>
+            Thêm Tour
+          </Button>
+        </Space>
       </div>
-    </ConfigProvider>
+
+      <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <Table
+          columns={columns}
+          dataSource={filteredData || []}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} tour`,
+          }}
+        />
+      </Card>
+    </div>
   );
 };
 

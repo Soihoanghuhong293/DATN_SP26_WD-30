@@ -6,7 +6,7 @@ import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Too
 import { DeleteOutlined, LockOutlined, UnlockOutlined, CrownOutlined, UserOutlined, PlusOutlined, IdcardOutlined, FilterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 interface IUser {
@@ -154,28 +154,27 @@ const UserList = () => {
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <Title level={3} className="m-0 text-gray-800">Quản lý Tài Khoản</Title>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Quản lý người dùng
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Quản lý tài khoản trong hệ thống
+          </p>
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          size="large"
-          className="bg-blue-600 shadow-md"
-          onClick={() => navigate('/admin/users/create')} /* 👈 ĐỔI THÀNH NÚT CHUYỂN TRANG */
-        >
-          Thêm Tài Khoản
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/users/create')}>
+          Thêm người dùng
         </Button>
       </div>
 
-      <div className="mb-4 bg-white p-3 rounded-lg shadow-sm flex items-center">
-        <Space>
+      <div style={{ marginBottom: 16, padding: 16, borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', background: '#fff' }}>
+        <Space wrap>
           <FilterOutlined className="text-gray-400 text-lg mr-2" />
           <Text strong>Lọc theo đối tượng: </Text>
           <Radio.Group value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} buttonStyle="solid">
-            <Radio.Button value="all">Tất cả ({users.length})</Radio.Button>
+            <Radio.Button value="all">Tất cả ({(users || []).length})</Radio.Button>
             <Radio.Button value="admin">Quản trị viên</Radio.Button>
             <Radio.Button value="guide">Hướng dẫn viên</Radio.Button>
             <Radio.Button value="hdv">HDV</Radio.Button>
@@ -184,14 +183,19 @@ const UserList = () => {
         </Space>
       </div>
 
-      <Table 
-        columns={columns} 
-        dataSource={filteredUsers} 
-        rowKey="_id" 
-        loading={isLoading}
-        pagination={{ pageSize: 10 }}
-        className="shadow-sm bg-white rounded-lg overflow-hidden"
-      />
+      <div style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+        <Table
+          columns={columns}
+          dataSource={filteredUsers || []}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} người dùng`,
+          }}
+        />
+      </div>
     </div>
   );
 };

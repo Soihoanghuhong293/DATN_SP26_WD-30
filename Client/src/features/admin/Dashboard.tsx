@@ -3,25 +3,18 @@ import { Card, Row, Col } from "antd";
 const Dashboard = () => {
   return (
     <div>
-      {/* Title */}
-      <h1
-        style={{
-          fontSize: 24,
-          fontWeight: 600,
-          marginBottom: 24,
-        }}
-      >
-        Tổng quan hệ thống
+      <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: "#1f2937" }}>
+        Tổng quan
       </h1>
+      <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+        Thống kê tổng quan hệ thống
+      </p>
 
-      {/* Stats */}
       <Row gutter={24}>
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 12,
-            }}
+            style={{ borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
           >
             <div style={{ color: "#6b7280", marginBottom: 8 }}>
               Tổng Booking
@@ -30,12 +23,10 @@ const Dashboard = () => {
           </Card>
         </Col>
 
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 12,
-            }}
+            style={{ borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
           >
             <div style={{ color: "#6b7280", marginBottom: 8 }}>
               Doanh thu
@@ -44,12 +35,10 @@ const Dashboard = () => {
           </Card>
         </Col>
 
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card
             bordered={false}
-            style={{
-              borderRadius: 12,
-            }}
+            style={{ borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
           >
             <div style={{ color: "#6b7280", marginBottom: 8 }}>
               Khách mới

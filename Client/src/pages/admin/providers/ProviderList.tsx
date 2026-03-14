@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Button, Input, Select, Space, Table, Tag, Typography } from 'antd';
+import { Button, Input, Select, Space, Table, Tag, Typography, Card } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProviders } from '../../../services/api';
@@ -88,7 +89,7 @@ const ProviderList = () => {
         key: 'actions',
         width: 120,
         render: (_, record) => (
-          <Button type="link" size="small" onClick={() => navigate(`/admin/providers/${record.id || record._id}`)}>
+          <Button type="primary" size="small" onClick={() => navigate(`/admin/providers/${record.id || record._id}`)}>
             Chi tiết
           </Button>
         ),
@@ -99,16 +100,21 @@ const ProviderList = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Danh sách Nhà cung cấp
-        </Title>
-        <Button type="primary" onClick={() => navigate('/admin/providers/create')}>
-          Thêm nhà cung cấp mới
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Quản lý nhà cung cấp
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Danh sách nhà cung cấp trong hệ thống
+          </p>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/providers/create')}>
+          Thêm nhà cung cấp
         </Button>
       </div>
 
-      <div style={{ marginTop: 16, marginBottom: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <Space wrap>
           <Input.Search
             allowClear
@@ -135,30 +141,25 @@ const ProviderList = () => {
         </Space>
       </div>
 
-      {isError ? (
-        <div style={{ background: '#fff', padding: 16, border: '1px solid #eee' }}>
-          <Text type="danger">
-            Lỗi tải danh sách nhà cung cấp: {(error as any)?.message || 'Unknown error'}
-          </Text>
-          <div style={{ marginTop: 8 }}>
-            <Text type="secondary">
-              Gợi ý: hãy chắc chắn server chạy và `VITE_API_URL` trỏ tới `http://localhost:5000/api/v1`.
-            </Text>
+      <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        {isError ? (
+          <div style={{ padding: 24 }}>
+            <Text type="danger">Lỗi tải danh sách: {(error as any)?.message || 'Unknown error'}</Text>
           </div>
-        </div>
-      ) : (
-        <Table<IProvider>
-          loading={isLoading}
-          rowKey={(r) => r.id || r._id || Math.random().toString(16)}
-          dataSource={providers}
-          columns={columns}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: false,
-          }}
-          style={{ background: '#fff', borderRadius: 8 }}
-        />
-      )}
+        ) : (
+          <Table<IProvider>
+            loading={isLoading}
+            rowKey={(r) => r.id || r._id || Math.random().toString(16)}
+            dataSource={providers}
+            columns={columns}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+              showTotal: (total) => `Tổng ${total} nhà cung cấp`,
+            }}
+          />
+        )}
+      </Card>
     </div>
   );
 };

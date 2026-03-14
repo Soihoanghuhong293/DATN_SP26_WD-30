@@ -2,17 +2,17 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Tooltip } from 'antd';
-import { DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Empty, Card } from 'antd';
+import { DeleteOutlined, PlusOutlined, EyeOutlined, BookOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
+const { Text } = Typography;
 
 interface IBooking {
   _id: string;
-  tour_id?: { _id: string; name: string }; 
+  tour_id?: { _id: string; name: string; duration_days?: number }; 
   user_id?: { _id: string; name: string; email: string }; 
+  guide_id?: { name: string; email?: string };
   customer_name?: string;
   customer_phone?: string;
   total_price?: number;
@@ -21,6 +21,8 @@ interface IBooking {
   endDate?: string;
   groupSize: number;
   status: 'pending' | 'confirmed' | 'paid' | 'cancelled';
+  tour_stage?: 'scheduled' | 'in_progress' | 'completed';
+  checkInCompleted?: boolean;
   created_at: string;
 }
 
@@ -69,146 +71,176 @@ const BookingList = () => {
 
   const columns = [
     {
-      title: 'Mã Đơn',
-      dataIndex: '_id',
+      title: 'Mã đơn',
       key: 'id',
-      render: (id: string) => <Text strong className="text-gray-500">#{id.slice(-6).toUpperCase()}</Text>,
+      width: 100,
+      render: (_: any, record: IBooking) => (
+        <Text type="secondary" style={{ fontWeight: 600 }}>#{record._id?.slice(-6).toUpperCase()}</Text>
+      ),
+    },
+    {
+      title: 'Tour',
+      key: 'tour',
+      render: (_: any, record: IBooking) => (
+        <div>
+          <div style={{ fontWeight: 600, color: '#1f2937' }}>
+            {record.tour_id?.name || '—'}
+          </div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {record.tour_id?.duration_days ? `${record.tour_id.duration_days} ngày` : ''}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Thời gian',
+      key: 'dates',
+      render: (_: any, record: IBooking) => (
+        <div>
+          <div>{dayjs(record.startDate).format('DD/MM/YYYY')}</div>
+          {record.endDate && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              → {dayjs(record.endDate).format('DD/MM/YYYY')}
+            </Text>
+          )}
+        </div>
+      ),
     },
     {
       title: 'Khách hàng',
       key: 'customer',
       render: (_: any, record: IBooking) => {
-        const name = record.customer_name || record.user_id?.name || 'Khách vãng lai';
-        const contact = record.customer_phone || record.user_id?.email || 'Chưa cập nhật LH';
+        const name = record.customer_name || record.user_id?.name || '—';
+        const contact = record.customer_phone || record.user_id?.email || '';
         return (
           <div>
-            <div className="font-bold text-blue-600">{name}</div>
-            <div className="text-xs text-gray-500"><i className="bi bi-telephone"></i> {contact}</div>
+            <div>{name}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>{contact}</Text>
           </div>
         );
       },
     },
     {
-      title: 'Tour & Thời gian',
-      key: 'tour',
-      render: (_: any, record: IBooking) => (
-        <div>
-          <Tooltip title={record.tour_id?.name}>
-            <div className="font-bold text-gray-800 truncate max-w-[200px]">
-              {record.tour_id?.name || 'Tour đã bị xóa'}
-            </div>
-          </Tooltip>
-          <div className="text-xs mt-1 text-gray-500">
-            {dayjs(record.startDate).format('DD/MM/YYYY')} 
-            {record.endDate && ` - ${dayjs(record.endDate).format('DD/MM/YYYY')}`}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Khách',
+      title: 'Số khách',
       dataIndex: 'groupSize',
       key: 'groupSize',
-      align: 'center' as const,
-      render: (size: number) => <Tag color="geekblue">{size} người</Tag>,
+      render: (val: number) => `${val || 0} người`,
     },
     {
       title: 'Tổng tiền',
       key: 'totalPrice',
-      align: 'right' as const,
       render: (_: any, record: IBooking) => {
         const money = record.total_price || record.price || 0;
-        return <Text type="danger" strong>{money.toLocaleString()} đ</Text>;
+        return money ? `${money.toLocaleString('vi-VN')} đ` : '—';
       },
+    },
+    {
+      title: 'Giai đoạn',
+      key: 'tourStage',
+      render: (_: any, record: IBooking) => (
+        <div>
+          <Tag color={record.tour_stage === 'completed' ? 'green' : record.tour_stage === 'in_progress' ? 'blue' : 'default'}>
+            {record.tour_stage === 'scheduled' ? 'Sắp đi' : record.tour_stage === 'in_progress' ? 'Đang đi' : record.tour_stage === 'completed' ? 'Hoàn thành' : '—'}
+          </Tag>
+          {record.checkInCompleted && (
+            <div style={{ fontSize: 12, color: '#10b981', marginTop: 2 }}>✓ Đã check-in</div>
+          )}
+        </div>
+      ),
     },
     {
       title: 'Trạng thái',
       key: 'status',
-      width: 150,
-      render: (_: any, record: IBooking) => {
-        let bgColor = 'bg-gray-50';
-        if (record.status === 'pending') bgColor = 'bg-orange-50';
-        if (record.status === 'confirmed') bgColor = 'bg-blue-50';
-        if (record.status === 'paid') bgColor = 'bg-green-50';
-        if (record.status === 'cancelled') bgColor = 'bg-red-50';
-
-        return (
-          <Select
-            value={record.status}
-            style={{ width: '100%' }}
-            onChange={(val) => handleStatusChange(record._id, val)}
-            className={`status-select ${bgColor} rounded border-none font-medium`}
-            loading={updateStatusMutation.isPending}
-          >
-            <Option value="pending"><span className="text-orange-500">Chờ duyệt</span></Option>
-            <Option value="confirmed"><span className="text-blue-500">Đã xác nhận</span></Option>
-            <Option value="paid"><span className="text-green-600">Đã thanh toán</span></Option>
-            <Option value="cancelled"><span className="text-red-500">Đã hủy</span></Option>
-          </Select>
-        );
-      },
+      width: 140,
+      render: (_: any, record: IBooking) => (
+        <Select
+          value={record.status}
+          size="small"
+          style={{ width: '100%' }}
+          onChange={(val) => handleStatusChange(record._id, val)}
+          loading={updateStatusMutation.isPending}
+          options={[
+            { value: 'pending', label: 'Chờ duyệt' },
+            { value: 'confirmed', label: 'Đã xác nhận' },
+            { value: 'paid', label: 'Đã thanh toán' },
+            { value: 'cancelled', label: 'Đã hủy' },
+          ]}
+        />
+      ),
     },
     {
       title: 'Hành động',
       key: 'action',
-      align: 'center' as const,
       render: (_: any, record: IBooking) => (
         <Space size="small">
-          {/* Nút Xem chi tiết */}
-          <Tooltip title="Xem chi tiết">
-            <Button 
-            type="primary" 
-            ghost 
-            icon={<EyeOutlined />} 
-            onClick={() => navigate(`/admin/bookings/${record._id}`)} // Mấu chốt ở dòng này!
+          <Button
+            type="primary"
+            icon={<EyeOutlined />}
+            size="small"
+            onClick={() => navigate(`/admin/bookings/${record._id}`)}
           >
-            Chi tiết
+            Xem chi tiết
           </Button>
-          </Tooltip>
-
-          <Tooltip title="Xóa đơn">
-            <Popconfirm
-              title="Xóa đơn đặt tour này?"
-              description="Dữ liệu sẽ bị mất vĩnh viễn!"
-              onConfirm={() => deleteMutation.mutate(record._id)}
-              okText="Xóa luôn"
-              cancelText="Hủy"
-              okButtonProps={{ danger: true }}
-            >
-              <Button danger icon={<DeleteOutlined />} type="text" />
-            </Popconfirm>
-          </Tooltip>
+          <Popconfirm
+            title="Xóa đơn đặt tour này?"
+            description="Dữ liệu sẽ bị mất vĩnh viễn!"
+            onConfirm={() => deleteMutation.mutate(record._id)}
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+          >
+            <Button danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
         </Space>
       ),
     },
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <Title level={3} className="m-0 text-gray-800">Quản lý Đơn Hàng</Title>
-          <Text type="secondary">Theo dõi và cập nhật trạng thái các booking đặt tour</Text>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Quản lý đơn hàng
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Theo dõi và cập nhật trạng thái các booking đặt tour
+          </p>
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          size="large"
-          className="bg-blue-600 shadow-md"
-          onClick={() => navigate('/admin/bookings/create')}
-        >
-          TẠO ĐƠN MỚI
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/bookings/create')}>
+          Tạo đơn mới
         </Button>
       </div>
 
-      <Table 
-        columns={columns} 
-        dataSource={bookings} 
-        rowKey="_id" 
-        loading={isLoading}
-        pagination={{ pageSize: 10 }}
-        className="shadow-sm bg-white rounded-lg overflow-hidden"
-      />
+      <Card
+        bordered={false}
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        }}
+      >
+        {(!bookings || bookings.length === 0) && !isLoading ? (
+          <Empty
+            image={<BookOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+            description="Chưa có đơn đặt tour nào"
+            style={{ padding: 48 }}
+          >
+            <Text type="secondary">Tạo đơn mới để bắt đầu quản lý booking</Text>
+          </Empty>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={bookings || []}
+            rowKey="_id"
+            loading={isLoading}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+              showTotal: (total) => `Tổng ${total} đơn`,
+            }}
+          />
+        )}
+      </Card>
     </div>
   );
 };

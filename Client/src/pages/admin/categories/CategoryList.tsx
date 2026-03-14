@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Button, Input, Select, Space, Table, Tag, Typography, Popconfirm, message } from 'antd';
+import { Button, Input, Select, Space, Table, Tag, Typography, Popconfirm, message, Card } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteCategory, getCategories } from '../../../services/api';
 import type { ICategory } from '../../../types/tour.types';
@@ -91,8 +92,10 @@ const CategoryList = () => {
         key: 'actions',
         width: 220,
         render: (_, record) => (
-          <Space>
+          <Space size="small">
             <Button
+              type="primary"
+              size="small"
               onClick={() =>
                 navigate(`/admin/categories/edit/${record.id || record._id}`)
               }
@@ -105,7 +108,7 @@ const CategoryList = () => {
               cancelText="Huỷ"
               onConfirm={() => mutateDelete(record.id || record._id || '')}
             >
-              <Button danger loading={isDeleting} disabled={!record.id && !record._id}>
+              <Button type="primary" danger size="small" loading={isDeleting} disabled={!record.id && !record._id}>
                 Xoá
               </Button>
             </Popconfirm>
@@ -118,18 +121,21 @@ const CategoryList = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Danh sách Danh mục Tour
-          </Title>
+          <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: '#1f2937' }}>
+            Quản lý danh mục
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+            Quản lý các danh mục tour trong hệ thống
+          </p>
         </div>
-        <Button type="primary" onClick={() => navigate('/admin/categories/create')}>
-          Thêm danh mục mới
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/categories/create')}>
+          Thêm danh mục
         </Button>
       </div>
 
-      <div style={{ marginTop: 16, marginBottom: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <Space wrap>
           <Input.Search
             allowClear
@@ -153,34 +159,30 @@ const CategoryList = () => {
           <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['categories'] })}>
             Tải lại
           </Button>
-          <Link to="/admin/categories/create">Tạo danh mục</Link>
         </Space>
       </div>
 
-      {isError ? (
-        <div style={{ background: '#fff', padding: 16, border: '1px solid #eee' }}>
-          <Text type="danger">
-            Lỗi tải danh sách danh mục: {(error as any)?.message || 'Unknown error'}
-          </Text>
-          <div style={{ marginTop: 8 }}>
-            <Text type="secondary">
-              Gợi ý: hãy chắc chắn server chạy và `VITE_API_URL` trỏ tới `http://localhost:5000/api/v1`.
+      <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        {isError ? (
+          <div style={{ padding: 24 }}>
+            <Text type="danger">
+              Lỗi tải danh sách: {(error as any)?.message || 'Unknown error'}
             </Text>
           </div>
-        </div>
-      ) : (
-        <Table<ICategory>
-          loading={isLoading}
-          rowKey={(r) => r.id || r._id || Math.random().toString(16)}
-          dataSource={categories}
-          columns={columns}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: false,
-          }}
-          style={{ background: '#fff', borderRadius: 8 }}
-        />
-      )}
+        ) : (
+          <Table<ICategory>
+            loading={isLoading}
+            rowKey={(r) => r.id || r._id || Math.random().toString(16)}
+            dataSource={categories}
+            columns={columns}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+              showTotal: (total) => `Tổng ${total} danh mục`,
+            }}
+          />
+        )}
+      </Card>
     </div>
   );
 };
