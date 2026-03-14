@@ -86,6 +86,7 @@ const UserCreate = () => {
             <Select size="large">
               <Option value="user">Khách hàng (User)</Option>
               <Option value="guide">Hướng dẫn viên (Guide)</Option>
+              <Option value="hdv">HDV</Option>
               <Option value="admin">Quản trị viên (Admin)</Option>
             </Select>
           </Form.Item>

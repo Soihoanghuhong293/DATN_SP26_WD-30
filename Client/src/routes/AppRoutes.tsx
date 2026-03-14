@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import HdvLayout from '../layouts/HdvLayout';
 import HomePage from '../pages/HomePage';
 import ToursPage from '../pages/ToursPage';
 import TourDetailPage from '../pages/TourDetailPage';
@@ -21,6 +22,7 @@ import ProviderEdit from '../pages/admin/providers/ProviderEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
+import HdvDashboard from '../pages/HdvDashboard';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -42,7 +44,11 @@ const AppRoutes = () => {
         <Route path="register" element={<RegisterPage />} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
-        <Route path="login" element={<div>Login Page</div>} />
+      </Route>
+
+      {/* ===== HDV (Hướng dẫn viên) ===== */}
+      <Route path="/hdv" element={<HdvLayout />}>
+        <Route index element={<HdvDashboard />} />
       </Route>
 
       {/* ===== ADMIN ===== */}

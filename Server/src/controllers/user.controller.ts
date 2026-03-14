@@ -18,7 +18,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 export const updateRole = async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
-    if (!["user", "admin", "guide"].includes(role)) {
+    if (!["user", "admin", "guide", "hdv"].includes(role)) {
       return res.status(400).json({ message: "Quyền không hợp lệ" });
     }
 
