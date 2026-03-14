@@ -12,8 +12,7 @@ import {
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,
-  FileExcelOutlined, PlusOutlined, UploadOutlined, SaveOutlined,
-  ShopOutlined 
+  FileExcelOutlined, PlusOutlined, UploadOutlined, ShopOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
@@ -34,6 +33,7 @@ const BookingDetail = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form] = Form.useForm();
 
+  // 1. API GET DATA
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', id],
     queryFn: async () => {
@@ -59,9 +59,10 @@ const BookingDetail = () => {
     }
   });
 
+  // cập nhật gueslistr
   useEffect(() => {
-    if (booking?.guests || booking?.guest_list) {
-      setGuestList(booking.guests || booking.guest_list);
+    if (booking?.passengers || booking?.guests || booking?.guest_list) {
+      setGuestList(booking.passengers || booking.guests || booking.guest_list);
     }
   }, [booking]);
 
@@ -75,6 +76,22 @@ const BookingDetail = () => {
     return usersData?.find((u: any) => u._id === (booking.guide_id?._id || booking.guide_id)) || booking.guide_id;
   }, [booking, usersData]);
 
+  // tự động lưu danh sách khách vào db
+  const saveGuestsMutation = useMutation({
+    mutationFn: async (updatedGuests: any[]) => { 
+      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { passengers: updatedGuests }, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã lưu danh sách khách hàng lên server!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Lưu danh sách thất bại!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] }); 
+    }
+  });
+
+  // xóa booking
   const deleteMutation = useMutation({
     mutationFn: async () => {
       await axios.delete(`http://localhost:5000/api/v1/bookings/${id}`, getAuthHeader());
@@ -87,17 +104,19 @@ const BookingDetail = () => {
     onError: () => message.error('Xóa thất bại')
   });
 
+  // xuất excel
   const handleExportExcel = () => {
     if (guestList.length === 0) {
       message.warning('Không có dữ liệu hành khách để xuất!');
       return;
     }
+    
     const exportData = guestList.map((guest: any, index: number) => ({
       'STT': index + 1,
-      'Họ và Tên': guest.full_name || guest.name || '',
+      'Họ và Tên': guest.name || guest.full_name || '',
       'Giới tính': guest.gender || '',
       'Phân loại': guest.type || guest.age_group || 'Người lớn',
-      'Số điện thoại': guest.phone || '',
+      'Số điện thoại': guest.phone || guest.phoneNumber || '',
       'Số phòng': guest.room_name || guest.room || '',
       'Ghi chú': guest.note || ''
     }));
@@ -111,61 +130,54 @@ const BookingDetail = () => {
     message.success('Đã xuất file Excel thành công!');
   };
 
+  // import excerl
   const handleImportExcel = (file: any) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const rawData: any[] = XLSX.utils.sheet_to_json(worksheet);
         
         const importedGuests = rawData.map((row, index) => ({
           id: `temp-${Date.now()}-${index}`,
-          full_name: row['Họ và Tên'] || row['Tên'] || '',
+          name: row['Họ và Tên'] || row['Tên'] || '',
+          phone: row['Số điện thoại'] || row['SĐT'] || '',
           gender: row['Giới tính'] || 'Khác',
           type: row['Phân loại'] || 'Người lớn',
           room: row['Phòng'] || row['Số phòng'] || '',
           note: row['Ghi chú'] || ''
-        })).filter(g => g.full_name);
+        })).filter(g => g.name);
 
         if (importedGuests.length > 0) {
-          setGuestList([...guestList, ...importedGuests]);
-          message.success(`Đã import thành công ${importedGuests.length} hành khách!`);
+          const newGuests = [...guestList, ...importedGuests];
+          setGuestList(newGuests);
+          saveGuestsMutation.mutate(newGuests); 
         } else {
-          message.warning('File Excel trống hoặc không đúng định dạng cột.');
+          message.warning('File Excel trống hoặc sai định dạng!');
         }
-      } catch (error) {
-        message.error('Lỗi khi đọc file Excel!');
-      }
+      } catch (error) { message.error('Lỗi khi đọc file Excel!'); }
     };
     reader.readAsBinaryString(file);
     return false; 
   };
 
+  // thêm khách thủ công
   const handleManualAdd = (values: any) => {
-    setGuestList([...guestList, { id: `temp-${Date.now()}`, ...values }]);
+    const newGuests = [...guestList, { id: `temp-${Date.now()}`, ...values }];
+    setGuestList(newGuests);
     setIsAddModalOpen(false);
     form.resetFields();
-    message.success('Đã thêm khách vào danh sách chờ!');
+    saveGuestsMutation.mutate(newGuests); 
   };
 
+  // xóa khách
   const handleRemoveGuest = (guestId: string) => {
-    setGuestList(guestList.filter(g => g.id !== guestId && g._id !== guestId));
+    const newGuests = guestList.filter(g => g.id !== guestId && g._id !== guestId);
+    setGuestList(newGuests);
+    saveGuestsMutation.mutate(newGuests); 
   };
-
-  const saveGuestsMutation = useMutation({
-    mutationFn: async () => {
-      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { guests: guestList }, getAuthHeader());
-    },
-    onSuccess: () => {
-      message.success('Đã lưu danh sách khách hàng lên server!');
-      queryClient.invalidateQueries({ queryKey: ['booking', id] });
-    },
-    onError: () => message.error('Lưu danh sách thất bại!')
-  });
 
   if (isLoading) return <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>;
   if (!booking) return <div style={{ padding: 40, textAlign: 'center' }}>Không tìm thấy dữ liệu!</div>;
@@ -181,8 +193,6 @@ const BookingDetail = () => {
   };
 
   const logs = booking.logs || [];
-  
-  // MAP DATA NHÀ CUNG CẤP TỪ DATA CÓ SẴN (Đổi 'provider' thành key tương ứng của bạn)
   const providerData = booking.provider || booking.supplier || booking.provider_id;
 
   const OverviewTab = () => {
@@ -218,10 +228,11 @@ const BookingDetail = () => {
             extra={
               <Space className="print:hidden">
                 <Upload accept=".xlsx, .xls" showUploadList={false} beforeUpload={handleImportExcel}>
-                  <Button icon={<UploadOutlined />} className="text-green-600 border-green-200 bg-green-50" size="small">Nhập Excel</Button>
+                  <Button icon={<UploadOutlined />} className="text-green-600 border-green-200 bg-green-50" size="small" loading={saveGuestsMutation.isPending}>Nhập Excel</Button>
                 </Upload>
                 <Button type="dashed" icon={<PlusOutlined />} size="small" onClick={() => setIsAddModalOpen(true)}>Thêm tay</Button>
                 <Button type="primary" ghost size="small" icon={<FileExcelOutlined />} onClick={handleExportExcel}>Xuất Excel</Button>
+                <Button type="link" size="small" icon={<PrinterOutlined />} onClick={() => window.print()}>In</Button>
               </Space>
             }
           >
@@ -233,7 +244,8 @@ const BookingDetail = () => {
               locale={{ emptyText: 'Chưa có danh sách khách hàng' }}
               columns={[
                 { title: '#', render: (_, __, i) => i + 1, width: 40 },
-                { title: 'Họ và Tên', dataIndex: ['full_name', 'name'], render: (_, record) => <Text strong>{record.full_name || record.name}</Text> },
+                { title: 'Họ và Tên', render: (_, record) => <Text strong>{record.name || record.full_name}</Text> },
+                { title: 'Số điện thoại', dataIndex: 'phone', render: (text) => text || '---' },
                 { title: 'Loại', dataIndex: 'type', render: (t) => <Tag>{t || 'Người lớn'}</Tag> },
                 { title: 'Giới tính', dataIndex: 'gender' },
                 { title: 'Phòng', dataIndex: ['room_name', 'room'] },
@@ -241,23 +253,12 @@ const BookingDetail = () => {
                   title: '', width: 50, className: 'print:hidden',
                   render: (_, record) => (
                     <Popconfirm title="Xóa khách này?" onConfirm={() => handleRemoveGuest(record.id || record._id)}>
-                      <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                      <Button type="text" danger icon={<DeleteOutlined />} size="small" loading={saveGuestsMutation.isPending} />
                     </Popconfirm>
                   ) 
                 }
               ]}
             />
-            <div className="mt-4 flex justify-end gap-3 pt-4 border-t border-gray-100 print:hidden">
-              <Button icon={<PrinterOutlined />} onClick={() => window.print()}>In danh sách</Button>
-              <Button 
-                type="primary" 
-                icon={<SaveOutlined />} 
-                onClick={() => saveGuestsMutation.mutate()} 
-                loading={saveGuestsMutation.isPending}
-              >
-                Lưu danh sách khách
-              </Button>
-            </div>
           </Card>
         </Col>
 
@@ -301,7 +302,6 @@ const BookingDetail = () => {
               </Space>
           </Card>
 
-          {/* THÔNG TIN NHÀ CUNG CẤP */}
           {providerData && (
             <Card 
               title={<Space><ShopOutlined style={{ color: '#8b5cf6' }} /> Nhà cung cấp dịch vụ</Space>} 
@@ -326,7 +326,6 @@ const BookingDetail = () => {
             </Card>
           )}
 
-          {/* LỊCH SỬ XỬ LÝ */}
           <Card 
             title={<Space><ClockCircleOutlined /> Lịch sử xử lý</Space>} 
             bordered={true} 
@@ -461,8 +460,11 @@ const BookingDetail = () => {
           onOk={() => form.submit()} okText="Thêm vào danh sách" cancelText="Hủy"
         >
           <Form form={form} layout="vertical" onFinish={handleManualAdd}>
-            <Form.Item name="full_name" label="Họ và Tên" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
+            <Form.Item name="name" label="Họ và Tên" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
               <Input placeholder="Nguyễn Văn A" />
+            </Form.Item>
+            <Form.Item name="phone" label="Số điện thoại">
+              <Input placeholder="09xxxxxxxx" />
             </Form.Item>
             <div style={{ display: 'flex', gap: '16px' }}>
               <Form.Item name="gender" label="Giới tính" style={{ flex: 1 }} initialValue="Nam">

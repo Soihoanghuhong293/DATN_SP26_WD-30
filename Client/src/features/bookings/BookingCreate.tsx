@@ -66,7 +66,7 @@ const BookingCreate = () => {
 
   // Tách users thành Khách hàng và HDV
   const customers = useMemo(() => usersData?.filter((u: any) => u.role === 'user') || [], [usersData]);
-  const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide') || [], [usersData]);
+  const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide' || u.role === 'hdv') || [], [usersData]);
 
   // tìm hdv rảnh
   const availableGuides = useMemo(() => {

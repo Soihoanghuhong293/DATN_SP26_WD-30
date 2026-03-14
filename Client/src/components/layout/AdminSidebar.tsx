@@ -12,10 +12,19 @@ import {
   ShopOutlined,
   MessageOutlined,
 } from "@ant-design/icons";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const AdminSidebar = () => {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const email = localStorage.getItem("user_email") || "Admin";
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user_email");
+    navigate("/login");
+  };
 
   const getOpenKeys = () => {
     const keys = [];
@@ -29,12 +38,14 @@ const AdminSidebar = () => {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: 24, display: "flex", gap: 12 }}>
-        <Avatar size={40}>VIGO</Avatar>
-        <div>
-          <div style={{ fontWeight: 700 }}>Tour Admin</div>
-          <div style={{ fontSize: 12, color: "#0f4694" }}>
-            Quản trị Tour ViGo
+      <div style={{ padding: 24, display: "flex", gap: 12, alignItems: "center" }}>
+        <Avatar size={40} style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+          <UserOutlined />
+        </Avatar>
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Quản trị viên</div>
+          <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {email}
           </div>
         </div>
       </div>
@@ -42,8 +53,8 @@ const AdminSidebar = () => {
       <Menu
         mode="inline"
         selectedKeys={[pathname]}
-        defaultOpenKeys={getOpenKeys()} 
-        style={{ border: "none" }}
+        defaultOpenKeys={getOpenKeys()}
+        style={{ border: "none", flex: 1 }}
         items={[
          
           {
@@ -157,6 +168,22 @@ const AdminSidebar = () => {
           },
         ]}
       />
+
+      <div style={{ padding: 16, borderTop: "1px solid #f0f0f0" }}>
+        <Menu
+          mode="inline"
+          selectedKeys={[]}
+          style={{ border: "none" }}
+          items={[
+            {
+              key: "logout",
+              icon: <UserOutlined />,
+              label: "Đăng xuất",
+              onClick: handleLogout,
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 };
