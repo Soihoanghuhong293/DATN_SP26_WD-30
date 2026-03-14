@@ -83,8 +83,10 @@ const BookingSchema: Schema = new Schema({
     birthYear: String,
     gender: String,
     phone: String,
-    note: String
+    note: String,
+    checkedIn: { type: Boolean, default: false }
   }],
+  leaderCheckedIn: { type: Boolean, default: false },
   paymentMethod: { 
     type: String, 
     default: 'offline' 

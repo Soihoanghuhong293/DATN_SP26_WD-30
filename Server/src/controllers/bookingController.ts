@@ -29,6 +29,88 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// HDV: Lấy chi tiết 1 booking (chỉ khi guide_id = user)
+export const getMyBookingDetail = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id)
+      .populate({ path: 'tour_id', select: 'name schedule duration_days images' })
+      .populate({ path: 'user_id', select: 'name email phone' });
+
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const bookingGuideId = (booking as any).guide_id?._id?.toString?.() ?? (booking as any).guide_id?.toString?.();
+    if (bookingGuideId !== guideId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền xem đơn này' });
+    }
+
+    res.status(200).json({ status: 'success', data: booking });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// HDV: Check-in khách (trưởng đoàn hoặc passenger)
+export const checkInPassenger = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const b = booking as any;
+    const bookingGuideId = b.guide_id?.toString?.();
+    if (bookingGuideId !== guideId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    const { type, passengerIndex } = req.body; // type: 'leader' | 'passenger', passengerIndex (nếu passenger)
+    let updated;
+
+    if (type === 'leader') {
+      updated = await Booking.findByIdAndUpdate(
+        req.params.id,
+        { leaderCheckedIn: !b.leaderCheckedIn },
+        { new: true }
+      );
+    } else if (type === 'passenger' && typeof passengerIndex === 'number') {
+      const passengers = (b.passengers || []).map((p: any, i: number) => {
+        const obj = p.toObject ? p.toObject() : p;
+        if (i === passengerIndex) {
+          return { ...obj, checkedIn: !obj.checkedIn };
+        }
+        return obj;
+      });
+      if (passengers[passengerIndex]) {
+        updated = await Booking.findByIdAndUpdate(
+          req.params.id,
+          { passengers },
+          { new: true }
+        );
+      } else {
+        return res.status(400).json({ status: 'fail', message: 'Chỉ mục khách không hợp lệ' });
+      }
+    } else {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu type hoặc passengerIndex' });
+    }
+
+    res.status(200).json({ status: 'success', data: updated });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 // lấy tất cả đơn đặt tour
 export const getAllBookings = async (req: Request, res: Response) => {
   try {

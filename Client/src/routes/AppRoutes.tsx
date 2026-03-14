@@ -25,6 +25,7 @@ import ContactMessageList from '../pages/admin/ContactMessageList';
 import HdvDashboard from '../pages/HdvDashboard';
 import HdvPlaceholder from '../pages/HdvPlaceholder';
 import HdvTours from '../pages/HdvTours';
+import HdvBookingDetail from '../pages/HdvBookingDetail';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -52,6 +53,7 @@ const AppRoutes = () => {
       <Route path="/hdv" element={<HdvLayout />}>
         <Route index element={<HdvDashboard />} />
         <Route path="tours" element={<HdvTours />} />
+        <Route path="tours/:id" element={<HdvBookingDetail />} />
         <Route path="schedule" element={<HdvPlaceholder title="Lịch làm việc" />} />
       </Route>
 

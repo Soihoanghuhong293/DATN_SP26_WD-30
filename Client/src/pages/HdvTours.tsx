@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Card, Table, Tag, Typography, Empty } from "antd";
-import { CarOutlined } from "@ant-design/icons";
+import { Card, Table, Tag, Typography, Empty, Button } from "antd";
+import { CarOutlined, EyeOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
@@ -30,6 +31,7 @@ const statusMap: Record<string, { color: string; label: string }> = {
 };
 
 const HdvTours = () => {
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({
     queryKey: ["hdv-bookings"],
     queryFn: async () => {
@@ -106,6 +108,19 @@ const HdvTours = () => {
         const s = statusMap[status] || { color: "default", label: status };
         return <Tag color={s.color}>{s.label}</Tag>;
       },
+    },
+    {
+      title: "Hành động",
+      key: "actions",
+      render: (_: unknown, record: IBooking) => (
+        <Button
+          type="primary"
+          icon={<EyeOutlined />}
+          onClick={() => navigate(`/hdv/tours/${record._id}`)}
+        >
+          Xem chi tiết
+        </Button>
+      ),
     },
   ];
 
