@@ -56,6 +56,15 @@ const BookingCreate = () => {
     }
   });
 
+  const { data: providersData } = useQuery({
+    queryKey: ['providers'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/providers', getAuthHeader());
+      return res.data?.data?.providers || res.data?.data || [];
+    }
+  });
+  const providers = Array.isArray(providersData) ? providersData : [];
+
   const { data: allBookings } = useQuery({
     queryKey: ['bookings'],
     queryFn: async () => {
@@ -96,7 +105,7 @@ const BookingCreate = () => {
  const mutation = useMutation({
     mutationFn: async (values: any) => {
       // Tách file ra để không gửi nhầm object vào JSON
-      const { files, ...restValues } = values;
+      const { files, provider_detail, ...restValues } = values;
 
       const payload: any = { ...restValues };
       
@@ -152,6 +161,23 @@ const BookingCreate = () => {
         fieldsToUpdate.service_detail = selectedTour.policies.map((p: string) => `- ${p}`).join('\n');
       } else {
         fieldsToUpdate.service_detail = '';
+      }
+
+      // Tự động fill nhà cung cấp
+      const supplier = selectedTour.suppliers?.[0];
+      if (supplier) {
+        const actualId = typeof supplier === 'object' ? (supplier._id || supplier.id) : supplier;
+        const foundProvider = providers.find((p: any) => p._id === actualId || p.id === actualId);
+        
+        if (foundProvider) {
+          fieldsToUpdate.provider_detail = `Tên NCC: ${foundProvider.name}\nSĐT: ${foundProvider.phone || 'Không có'}\nEmail: ${foundProvider.email || 'Không có'}\nĐịa chỉ: ${foundProvider.address || 'Không có'}`;
+        } else if (typeof supplier === 'object' && supplier.name) {
+          fieldsToUpdate.provider_detail = `Tên NCC: ${supplier.name}\nSĐT: ${supplier.phone || 'Không có'}\nEmail: ${supplier.email || 'Không có'}`;
+        } else {
+          fieldsToUpdate.provider_detail = 'Không tìm thấy thông tin nhà cung cấp.';
+        }
+      } else {
+        fieldsToUpdate.provider_detail = 'Tour này chưa được gắn nhà cung cấp.';
       }
     }
 
@@ -291,6 +317,16 @@ const BookingCreate = () => {
               {/* ... Giữ nguyên các phần TextArea chi tiết, policies và Upload file ... */}
               <Row gutter={16}>
                 <Col span={12}>
+                  <Form.Item name="provider_detail" label="Nhà cung cấp">
+                    <TextArea rows={4} placeholder="Thông tin nhà cung cấp sẽ tự động tải..." className="bg-gray-50" readOnly />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="notes" label="Ghi chú chung">
+                    <TextArea rows={4} placeholder="Ghi chú nội bộ cho booking này..." />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
                   <Form.Item name="schedule_detail" label="Lịch trình chi tiết">
                     <TextArea rows={8} placeholder="Nội dung sẽ tự động tải khi chọn tour..." />
                   </Form.Item>
@@ -298,11 +334,6 @@ const BookingCreate = () => {
                 <Col span={12}>
                   <Form.Item name="service_detail" label="Dịch vụ bao gồm (Chính sách)">
                     <TextArea rows={8} placeholder="Chi tiết dịch vụ sẽ tự động tải..." />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item name="notes" label="Ghi chú chung">
-                    <TextArea rows={2} placeholder="Ghi chú nội bộ cho booking này..." />
                   </Form.Item>
                 </Col>
               </Row>
