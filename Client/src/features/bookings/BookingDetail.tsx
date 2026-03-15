@@ -221,7 +221,19 @@ const BookingDetail = () => {
         })).filter(g => g.name);
 
         if (importedGuests.length > 0) {
-          const newGuests = [...guestList, ...importedGuests];
+          const maxCount = booking?.groupSize || 0;
+          const availableSlots = maxCount - guestList.length;
+
+          if (availableSlots <= 0) {
+            return message.error(`Đã đủ ${maxCount} khách, không thể thêm!`);
+          }
+          
+          let finalImport = importedGuests;
+          if (importedGuests.length > availableSlots) {
+             finalImport = importedGuests.slice(0, availableSlots);
+             message.warning(`Chỉ có thể thêm ${availableSlots} khách. Đã tự động bỏ qua các dòng dư thừa trong file.`);
+          }
+          const newGuests = [...guestList, ...finalImport];
           setGuestList(newGuests);
           saveGuestsMutation.mutate(newGuests); 
         } else {
@@ -235,6 +247,10 @@ const BookingDetail = () => {
 
   // thêm khách thủ công
   const handleManualAdd = (values: any) => {
+    if (guestList.length >= (booking?.groupSize || 0)) {
+      message.error(`Đoàn đã đủ ${booking?.groupSize} khách, không thể thêm!`);
+      return;
+    }
     const newGuests = [...guestList, { id: `temp-${Date.now()}`, ...values }];
     setGuestList(newGuests);
     setIsAddModalOpen(false);
@@ -265,6 +281,8 @@ const BookingDetail = () => {
   const logs = booking.logs || [];
 
   const OverviewTab = () => {
+    const isGuestListFull = guestList.length >= (booking.groupSize || 0);
+
     return (
       <Row gutter={24}>
         {/* CỘT TRÁI */}
@@ -296,10 +314,10 @@ const BookingDetail = () => {
             className="saas-card mb-6"
             extra={
               <Space className="print:hidden">
-                <Upload accept=".xlsx, .xls" showUploadList={false} beforeUpload={handleImportExcel}>
-                  <Button icon={<UploadOutlined />} className="text-green-600 border-green-200 bg-green-50" size="small" loading={saveGuestsMutation.isPending}>Nhập Excel</Button>
+                <Upload accept=".xlsx, .xls" showUploadList={false} beforeUpload={handleImportExcel} disabled={isGuestListFull}>
+                  <Button icon={<UploadOutlined />} className="text-green-600 border-green-200 bg-green-50" size="small" loading={saveGuestsMutation.isPending} disabled={isGuestListFull}>Nhập Excel</Button>
                 </Upload>
-                <Button type="dashed" icon={<PlusOutlined />} size="small" onClick={() => setIsAddModalOpen(true)}>Thêm tay</Button>
+                <Button type="dashed" icon={<PlusOutlined />} size="small" onClick={() => setIsAddModalOpen(true)} disabled={isGuestListFull}>Thêm tay</Button>
                 <Button type="primary" ghost size="small" icon={<FileExcelOutlined />} onClick={handleExportExcel}>Xuất Excel</Button>
                 <Button type="link" size="small" icon={<PrinterOutlined />} onClick={() => window.print()}>In</Button>
               </Space>
