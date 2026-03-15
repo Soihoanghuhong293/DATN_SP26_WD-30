@@ -124,9 +124,7 @@ const CategoryList = () => {
             Danh sách Danh mục Tour
           </Title>
         </div>
-        <Button type="primary" onClick={() => navigate('/admin/categories/create')}>
-          Thêm danh mục mới
-        </Button>
+       
       </div>
 
       <div style={{ marginTop: 16, marginBottom: 16 }}>
@@ -153,7 +151,7 @@ const CategoryList = () => {
           <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['categories'] })}>
             Tải lại
           </Button>
-          <Link to="/admin/categories/create">Tạo danh mục</Link>
+          
         </Space>
       </div>
 

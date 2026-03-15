@@ -251,9 +251,8 @@ const TourCreate = () => {
                                     </Row>
                                   );
                                 })}
-                                <Button type="link" onClick={() => addPrice()} icon={<PlusOutlined />} className="p-0 mt-2 text-purple-600">
-                                  Thêm phân loại giá khác
-                                </Button>
+                                
+
                               </div>
                             )}
                           </Form.List>
@@ -331,9 +330,7 @@ const TourCreate = () => {
                           </Row>
                         );
                       })}
-                      <Button type="link" onClick={() => add()} icon={<PlusOutlined />} className="p-0 text-purple-600">
-                        Thêm phân loại giá
-                      </Button>
+                      
                     </div>
                   )}
                 </Form.List>

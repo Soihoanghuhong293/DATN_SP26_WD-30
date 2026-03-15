@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Tooltip } from 'antd';
-import { DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Tag, Popconfirm, message, Typography, Tooltip, Input } from 'antd';
+import { DeleteOutlined, PlusOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 interface IBooking {
   _id: string;
@@ -27,6 +26,7 @@ interface IBooking {
 const BookingList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchText, setSearchText] = useState('');
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['bookings'],
@@ -36,19 +36,6 @@ const BookingList = () => {
       });
       return res.data?.data || res.data || [];
     },
-  });
-  // ca[ nhat trang thai tren bang
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { status }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-    },
-    onSuccess: () => {
-      message.success('Cập nhật trạng thái thành công!');
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-    },
-    onError: () => message.error('Cập nhật trạng thái thất bại!')
   });
 
   const deleteMutation = useMutation({
@@ -63,9 +50,20 @@ const BookingList = () => {
     },
   });
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    updateStatusMutation.mutate({ id, status: newStatus });
-  };
+  const filteredBookings = useMemo(() => {
+    if (!bookings) return [];
+    if (!searchText) return bookings;
+    
+    const lowerText = searchText.toLowerCase();
+    return bookings.filter((b: IBooking) => {
+      const customerName = (b.customer_name || b.user_id?.name || '').toLowerCase();
+      const customerPhone = (b.customer_phone || b.user_id?.email || '').toLowerCase();
+      const tourName = (b.tour_id?.name || '').toLowerCase();
+      const id = (b._id || '').toLowerCase();
+      
+      return customerName.includes(lowerText) || customerPhone.includes(lowerText) || tourName.includes(lowerText) || id.includes(lowerText);
+    });
+  }, [bookings, searchText]);
 
   const columns = [
     {
@@ -126,26 +124,14 @@ const BookingList = () => {
       key: 'status',
       width: 150,
       render: (_: any, record: IBooking) => {
-        let bgColor = 'bg-gray-50';
-        if (record.status === 'pending') bgColor = 'bg-orange-50';
-        if (record.status === 'confirmed') bgColor = 'bg-blue-50';
-        if (record.status === 'paid') bgColor = 'bg-green-50';
-        if (record.status === 'cancelled') bgColor = 'bg-red-50';
+        let color = 'default';
+        let text = 'Chưa rõ';
+        if (record.status === 'pending') { color = 'warning'; text = 'Chờ duyệt'; }
+        if (record.status === 'confirmed') { color = 'processing'; text = 'Đã xác nhận'; }
+        if (record.status === 'paid') { color = 'success'; text = 'Đã thanh toán'; }
+        if (record.status === 'cancelled') { color = 'error'; text = 'Đã hủy'; }
 
-        return (
-          <Select
-            value={record.status}
-            style={{ width: '100%' }}
-            onChange={(val) => handleStatusChange(record._id, val)}
-            className={`status-select ${bgColor} rounded border-none font-medium`}
-            loading={updateStatusMutation.isPending}
-          >
-            <Option value="pending"><span className="text-orange-500">Chờ duyệt</span></Option>
-            <Option value="confirmed"><span className="text-blue-500">Đã xác nhận</span></Option>
-            <Option value="paid"><span className="text-green-600">Đã thanh toán</span></Option>
-            <Option value="cancelled"><span className="text-red-500">Đã hủy</span></Option>
-          </Select>
-        );
+        return <Tag color={color} bordered={false} className="px-2 py-1 text-sm font-medium">{text}</Tag>;
       },
     },
     {
@@ -154,15 +140,15 @@ const BookingList = () => {
       align: 'center' as const,
       render: (_: any, record: IBooking) => (
         <Space size="small">
-          {/* Nút Xem chi tiết */}
+         
           <Tooltip title="Xem chi tiết">
             <Button 
             type="primary" 
             ghost 
             icon={<EyeOutlined />} 
-            onClick={() => navigate(`/admin/bookings/${record._id}`)} // Mấu chốt ở dòng này!
+            onClick={() => navigate(`/admin/bookings/${record._id}`)}
           >
-            Chi tiết
+           
           </Button>
           </Tooltip>
 
@@ -188,22 +174,25 @@ const BookingList = () => {
       <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
         <div>
           <Title level={3} className="m-0 text-gray-800">Quản lý Đơn Hàng</Title>
-          <Text type="secondary">Theo dõi và cập nhật trạng thái các booking đặt tour</Text>
+         
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          size="large"
-          className="bg-blue-600 shadow-md"
-          onClick={() => navigate('/admin/bookings/create')}
-        >
-          TẠO ĐƠN MỚI
-        </Button>
+        
       </div>
+    <div className="mb-4">
+        <Input 
+          prefix={<SearchOutlined className="text-gray-400" />}
+          placeholder="Tìm theo mã đơn, tên khách, SĐT, tên tour..."
+          allowClear
+          size="large"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="max-w-md shadow-sm"
+        />
+    </div>
 
       <Table 
         columns={columns} 
-        dataSource={bookings} 
+        dataSource={filteredBookings} 
         rowKey="_id" 
         loading={isLoading}
         pagination={{ pageSize: 10 }}

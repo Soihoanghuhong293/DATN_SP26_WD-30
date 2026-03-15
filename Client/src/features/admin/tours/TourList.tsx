@@ -59,7 +59,7 @@ const TourList = () => {
 
   const columns: ColumnsType<ITour> = [
     {
-      title: 'TOUR DETAILS',
+      title: 'TOUR',
       dataIndex: 'name',
       key: 'name',
       width: 350,
@@ -88,7 +88,7 @@ const TourList = () => {
       },
     },
     {
-      title: 'PRICE',
+      title: 'GIÁ TOUR',
       dataIndex: 'price',
       key: 'price',
       sorter: (a, b) => a.price - b.price,
@@ -99,7 +99,7 @@ const TourList = () => {
       ),
     },
     {
-      title: 'DURATION',
+      title: 'THỜI LƯỢNG',
       dataIndex: 'duration_days',
       key: 'duration_days',
       render: (days) => (
@@ -116,7 +116,7 @@ const TourList = () => {
       ),
     },
     {
-      title: 'STATUS',
+      title:'TRẠNG THÁI',
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
@@ -221,17 +221,8 @@ const TourList = () => {
           </div>
           
           <div style={{ display: 'flex', gap: 12 }}>
-            <Button icon={<SearchOutlined />} style={{ minWidth: 40 }} /> 
-            {/* Nút chính nổi bật */}
-            <Button 
-                type="primary" 
-                size="large"
-                icon={<PlusOutlined />} 
-                onClick={() => navigate('/admin/tours/create')}
-                style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
-            >
-                Add Product
-            </Button>
+           
+            
           </div>
         </div>
 
