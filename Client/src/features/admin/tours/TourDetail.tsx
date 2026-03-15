@@ -5,9 +5,9 @@ import axios from 'axios';
 import { getProvider, getProviders } from '../../../services/api';
 import { 
   Button, Card, Descriptions, Spin, Tabs, Tag, 
-  Timeline, Image, Table, Typography, Space, Popconfirm, 
-  message, Breadcrumb, Row, Col, ConfigProvider, Divider,
-  Modal, Select
+  Timeline, Image, Table, Typography, Space, Popconfirm, message, 
+  Breadcrumb, Row, Col, ConfigProvider, Divider, Modal, Select,
+  Form, DatePicker, InputNumber
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -26,7 +26,9 @@ import {
   MailOutlined,
   ContactsOutlined,
   FileTextOutlined,
-  SwapOutlined
+  SwapOutlined,
+  PlusOutlined,
+  MinusCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -37,7 +39,9 @@ const TourDetail = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [changeProviderModalOpen, setChangeProviderModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
+  const [scheduleForm] = Form.useForm();
 
   // 1. API GET DATA
   const { data: tour, isLoading } = useQuery({
@@ -74,6 +78,42 @@ const TourDetail = () => {
 
   const handleChangeProvider = () => {
     changeProviderMutation.mutate(selectedProviderIds);
+  };
+
+  const updateScheduleMutation = useMutation({
+    mutationFn: async (schedule: any[]) => {
+      const payload = schedule.map(item => ({
+        ...item,
+        date: item.date ? dayjs(item.date).format('YYYY-MM-DD') : null
+      })).filter(item => item.date);
+      
+      await axios.put(`http://localhost:5000/api/v1/tours/${id}`, {
+        departure_schedule: payload,
+      }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+    },
+    onSuccess: () => {
+      message.success('Đã cập nhật lịch khởi hành');
+      queryClient.invalidateQueries({ queryKey: ['tour', id] });
+      setIsScheduleModalOpen(false);
+    },
+    onError: () => message.error('Cập nhật lịch khởi hành thất bại'),
+  });
+
+  const handleOpenScheduleModal = () => {
+    const schedule = tour.departure_schedule?.map((item: any) => ({
+      ...item,
+      date: item.date ? dayjs(item.date) : null
+    })) || [];
+    scheduleForm.setFieldsValue({ departure_schedule: schedule });
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleUpdateSchedule = () => {
+    scheduleForm.validateFields().then(values => {
+      updateScheduleMutation.mutate(values.departure_schedule || []);
+    }).catch(info => {
+      console.log('Validate Failed:', info);
+    });
   };
 
   // 2. API DELETE
@@ -154,6 +194,30 @@ const TourDetail = () => {
                     <Text>{dayjs(tour.created_at).format('DD/MM/YYYY')}</Text>
                 </div>
             </Space>
+        </Card>
+
+        <Card 
+          title={
+            <Space>
+              <CalendarOutlined />
+              <span>Lịch khởi hành</span>
+            </Space>
+          }
+          extra={<Button size="small" icon={<EditOutlined />} onClick={handleOpenScheduleModal}>Chỉnh sửa</Button>}
+          bordered={true} 
+          className="saas-card mb-6"
+        >
+          <Table
+            dataSource={tour.departure_schedule}
+            rowKey="date"
+            pagination={false}
+            size="small"
+            locale={{ emptyText: 'Chưa có lịch khởi hành cụ thể.' }}
+            columns={[
+                { title: 'Ngày', dataIndex: 'date', key: 'date', render: (date) => <Text strong>{dayjs(date).format('DD/MM/YYYY')}</Text> },
+                { title: 'Số chỗ', dataIndex: 'slots', key: 'slots', align: 'right', render: (slots) => <Tag color="blue">{slots}</Tag> }
+            ]}
+          />
         </Card>
 
         <Card 
@@ -430,6 +494,43 @@ const TourDetail = () => {
               Bỏ chọn để gỡ nhà cung cấp khỏi tour
             </Text>
           </div>
+        </Modal>
+
+        <Modal
+            title="Chỉnh sửa Lịch khởi hành"
+            open={isScheduleModalOpen}
+            onOk={handleUpdateSchedule}
+            onCancel={() => setIsScheduleModalOpen(false)}
+            confirmLoading={updateScheduleMutation.isPending}
+            width={600}
+            okText="Cập nhật"
+            cancelText="Hủy"
+            destroyOnClose
+        >
+            <Form form={scheduleForm} layout="vertical" autoComplete="off">
+                <Form.List name="departure_schedule">
+                    {(fields, { add, remove }) => (
+                        <div style={{maxHeight: '60vh', overflowY: 'auto', padding: '8px 16px 8px 0'}}>
+                            {fields.map(({ key, name, ...restField }) => (
+                                <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                                    <Form.Item {...restField} name={[name, 'date']} rules={[{ required: true, message: 'Chọn ngày!' }]} style={{ flex: 1 }}>
+                                        <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" style={{ width: '100%' }} />
+                                    </Form.Item>
+                                    <Form.Item {...restField} name={[name, 'slots']} rules={[{ required: true, message: 'Nhập số chỗ!' }]}>
+                                        <InputNumber min={1} placeholder="Số chỗ" />
+                                    </Form.Item>
+                                    <MinusCircleOutlined className="text-gray-400 hover:text-red-500" onClick={() => remove(name)} />
+                                </Space>
+                            ))}
+                            <Form.Item>
+                                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                                    Thêm ngày khởi hành
+                                </Button>
+                            </Form.Item>
+                        </div>
+                    )}
+                </Form.List>
+            </Form>
         </Modal>
 
         {/* Style Global nhỏ để Card đẹp hơn */}

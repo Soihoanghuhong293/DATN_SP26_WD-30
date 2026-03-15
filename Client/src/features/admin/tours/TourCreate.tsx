@@ -87,6 +87,13 @@ const TourCreate = () => {
       }));
     }
 
+    if (finalValues.departure_schedule) {
+      finalValues.departure_schedule = finalValues.departure_schedule.map((item: any) => ({
+        ...item,
+        date: item.date ? item.date.format('YYYY-MM-DD') : null
+      })).filter((item: any) => item.date);
+    }
+
     mutation.mutate(finalValues);
   };
 
@@ -190,6 +197,38 @@ const TourCreate = () => {
                       <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} className="h-10 rounded-xl text-purple-600 border-purple-200 hover:border-purple-400 hover:bg-purple-50">
                         Thêm ngày mới
                       </Button>
+                    </div>
+                  )}
+                </Form.List>
+              </Card>
+
+              <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
+                <div className="text-lg font-semibold text-gray-800 mb-4">Lịch khởi hành & Số chỗ</div>
+                <Form.List name="departure_schedule">
+                  {(fields, { add, remove }) => (
+                    <div className="space-y-4">
+                      {fields.map(({ key, name, ...restField }) => (
+                        <Space key={key} align="baseline" className="w-full bg-gray-50 p-3 rounded-lg">
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'date']}
+                            rules={[{ required: true, message: 'Chọn ngày!' }]}
+                            className="flex-1 mb-0"
+                          >
+                            <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" className="w-full" />
+                          </Form.Item>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'slots']}
+                            rules={[{ required: true, message: 'Nhập số chỗ!' }]}
+                            className="mb-0"
+                          >
+                            <InputNumber min={1} placeholder="Số chỗ" />
+                          </Form.Item>
+                          <MinusCircleOutlined onClick={() => remove(name)} className="text-gray-400 hover:text-red-500" />
+                        </Space>
+                      ))}
+                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày khởi hành</Button>
                     </div>
                   )}
                 </Form.List>

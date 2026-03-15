@@ -42,15 +42,21 @@ export interface ITour extends Document {
 
 
 const TourSchema: Schema = new Schema({
+  // qly lihcj khởi hành
+departure_schedule: [{
+  date: { type: String }, 
+  slots: { type: Number, min: 1 }
+}],
+
   seasonalPrices: [{
     title: { type: String, required: true },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     
-    // THÊM BẢNG GIÁ CHI TIẾT CHO MÙA NÀY
+   //giá chi tiết
     prices: [{
-      name: String,  // VD: Người lớn, Trẻ em
-      price: Number  // VD: 2500000, 1800000
+      name: String, 
+      price: Number  
     }]
   }],
   name: { 

@@ -5,12 +5,13 @@ import axios from 'axios';
 import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
-  Space, Typography, message, Select, Divider, Spin 
+  Space, Typography, message, Select, Divider, Spin, DatePicker
 } from 'antd';
 import { 
   MinusCircleOutlined, PlusOutlined, 
   ArrowLeftOutlined, SaveOutlined 
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -53,6 +54,10 @@ const TourEdit = () => {
         ...tour,
         category_id: tour.category_id?._id || tour.category_id,
         suppliers: suppliers,
+        departure_schedule: tour.departure_schedule?.map((item: any) => ({
+          ...item,
+          date: item.date ? dayjs(item.date) : null
+        })) || []
       };
       form.setFieldsValue(formattedData);
     }
@@ -78,6 +83,10 @@ const TourEdit = () => {
     const payload = {
       ...values,
       suppliers: Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []),
+      departure_schedule: values.departure_schedule?.map((item: any) => ({
+        ...item,
+        date: item.date ? item.date.format('YYYY-MM-DD') : null
+      })).filter((item: any) => item.date) || []
     };
     mutation.mutate(payload);
   };
@@ -150,6 +159,35 @@ const TourEdit = () => {
                       </Card>
                     ))}
                     <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày lịch trình</Button>
+                  </>
+                )}
+              </Form.List>
+            </Card>
+
+            <Card title="Lịch khởi hành & Số chỗ" className="mb-6 shadow-sm">
+              <Form.List name="departure_schedule">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'date']}
+                          rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}
+                        >
+                          <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" />
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          name={[name, 'slots']}
+                          rules={[{ required: true, message: 'Vui lòng nhập số chỗ!' }]}
+                        >
+                          <InputNumber min={1} placeholder="Số chỗ" />
+                        </Form.Item>
+                        <MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />
+                      </Space>
+                    ))}
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày khởi hành</Button>
                   </>
                 )}
               </Form.List>
