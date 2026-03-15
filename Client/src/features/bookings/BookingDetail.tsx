@@ -59,6 +59,15 @@ const BookingDetail = () => {
     }
   });
 
+  const { data: providersData } = useQuery({
+    queryKey: ['providers'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/providers', getAuthHeader());
+      return res.data?.data?.providers || res.data?.data || [];
+    }
+  });
+  const providers = Array.isArray(providersData) ? providersData : [];
+
   // cập nhật gueslistr
   useEffect(() => {
     if (booking?.passengers || booking?.guests || booking?.guest_list) {
@@ -70,6 +79,14 @@ const BookingDetail = () => {
     if (!booking) return null;
     return toursData?.find((t: any) => t._id === (booking.tour_id?._id || booking.tour_id)) || booking.tour_id;
   }, [booking, toursData]);
+
+  const tourProviders = useMemo(() => {
+    if (!tourInfo || !tourInfo.suppliers) return [];
+    return tourInfo.suppliers.map((sId: any) => {
+      const id = typeof sId === 'object' ? (sId._id || sId.id) : sId;
+      return providers.find((p: any) => p.id === id || p._id === id) || (typeof sId === 'object' ? sId : null);
+    }).filter(Boolean);
+  }, [tourInfo, providers]);
 
   const guideInfo = useMemo(() => {
     if (!booking) return null;
@@ -193,7 +210,6 @@ const BookingDetail = () => {
   };
 
   const logs = booking.logs || [];
-  const providerData = booking.provider || booking.supplier || booking.provider_id;
 
   const OverviewTab = () => {
     return (
@@ -260,6 +276,40 @@ const BookingDetail = () => {
               ]}
             />
           </Card>
+
+          {tourProviders.length > 0 && (
+            <Card 
+              title={<Space><ShopOutlined style={{ color: '#8b5cf6' }} /> Nhà cung cấp dịch vụ</Space>} 
+              bordered={true} 
+              className="saas-card mb-6"
+            >
+              {tourProviders.map((provider: any, index: number) => (
+                <div key={provider.id || provider._id || index} style={{ marginBottom: index !== tourProviders.length - 1 ? 16 : 0, paddingBottom: index !== tourProviders.length - 1 ? 16 : 0, borderBottom: index !== tourProviders.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 8 }}>
+                    <Link to={`/admin/providers/${provider.id || provider._id}`}>
+                      {provider.name || provider.provider_name || 'Tên nhà cung cấp'}
+                    </Link>
+                    {provider.status && (
+                      <Tag color={provider.status === 'active' ? 'green' : 'red'} style={{ marginLeft: 8 }}>
+                        {provider.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                      </Tag>
+                    )}
+                  </div>
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    {(provider.phone || provider.contact_phone) && (
+                      <div><PhoneOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.phone || provider.contact_phone}</Text></div>
+                    )}
+                    {(provider.email || provider.contact_email) && (
+                      <div><MailOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.email || provider.contact_email}</Text></div>
+                    )}
+                    {(provider.address) && (
+                      <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text type="secondary">{provider.address}</Text></div>
+                    )}
+                  </Space>
+                </div>
+              ))}
+            </Card>
+          )}
         </Col>
 
         {/* CỘT PHẢI */}
@@ -301,30 +351,6 @@ const BookingDetail = () => {
                   </div>
               </Space>
           </Card>
-
-          {providerData && (
-            <Card 
-              title={<Space><ShopOutlined style={{ color: '#8b5cf6' }} /> Nhà cung cấp dịch vụ</Space>} 
-              bordered={true} 
-              size="small"
-              className="saas-card mb-6"
-            >
-              <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 8 }}>
-                {providerData.name || providerData.provider_name || 'Tên nhà cung cấp'}
-              </div>
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                {(providerData.phone || providerData.contact_phone) && (
-                  <div><PhoneOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{providerData.phone || providerData.contact_phone}</Text></div>
-                )}
-                {(providerData.email || providerData.contact_email) && (
-                  <div><MailOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{providerData.email || providerData.contact_email}</Text></div>
-                )}
-                {(providerData.address) && (
-                  <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text type="secondary">{providerData.address}</Text></div>
-                )}
-              </Space>
-            </Card>
-          )}
 
           <Card 
             title={<Space><ClockCircleOutlined /> Lịch sử xử lý</Space>} 
