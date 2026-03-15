@@ -15,7 +15,14 @@ import {
   FileExcelOutlined, PlusOutlined, UploadOutlined, ShopOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import * as XLSX from 'xlsx';
+
+dayjs.extend(isBetween);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -32,6 +39,8 @@ const BookingDetail = () => {
   const [guestList, setGuestList] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form] = Form.useForm();
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [selectedGuideId, setSelectedGuideId] = useState<string | undefined>();
 
   // 1. API GET DATA
   const { data: booking, isLoading } = useQuery({
@@ -68,6 +77,14 @@ const BookingDetail = () => {
   });
   const providers = Array.isArray(providersData) ? providersData : [];
 
+  const { data: allBookings } = useQuery({
+    queryKey: ['bookings'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/bookings', getAuthHeader());
+      return res.data?.data || res.data?.results || [];
+    }
+  });
+
   // cập nhật gueslistr
   useEffect(() => {
     if (booking?.passengers || booking?.guests || booking?.guest_list) {
@@ -92,6 +109,30 @@ const BookingDetail = () => {
     if (!booking) return null;
     return usersData?.find((u: any) => u._id === (booking.guide_id?._id || booking.guide_id)) || booking.guide_id;
   }, [booking, usersData]);
+
+  const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide' || u.role === 'hdv') || [], [usersData]);
+
+  const availableGuides = useMemo(() => {
+    if (!booking?.startDate || !booking?.endDate) return allGuides;
+
+    return allGuides.filter((guide: any) => {
+      const isBusy = allBookings?.some((b: any) => {
+        if (b._id === booking._id) return false;
+        if (b.status === 'cancelled') return false;
+
+        const currentGuideId = b.guide_id?._id || b.guide_id;
+        if (!currentGuideId || currentGuideId !== guide._id) return false;
+
+        const bStart = dayjs(b.startDate);
+        const bEnd = dayjs(b.endDate);
+        const currentStart = dayjs(booking.startDate);
+        const currentEnd = dayjs(booking.endDate);
+
+        return currentStart.isSameOrBefore(bEnd, 'day') && currentEnd.isSameOrAfter(bStart, 'day');
+      });
+      return !isBusy;
+    });
+  }, [allGuides, allBookings, booking]);
 
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
@@ -119,6 +160,18 @@ const BookingDetail = () => {
       navigate('/admin/bookings');
     },
     onError: () => message.error('Xóa thất bại')
+  });
+
+  const assignGuideMutation = useMutation({
+    mutationFn: async (guideId: string | null) => {
+      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { guide_id: guideId }, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã cập nhật Hướng dẫn viên!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+      setIsGuideModalOpen(false);
+    },
+    onError: () => message.error('Cập nhật HDV thất bại!'),
   });
 
   // xuất excel
@@ -340,14 +393,22 @@ const BookingDetail = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Space><UserOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">HDV</Text></Space>
-                      <Text style={{ textAlign: 'right' }}>
+                      <div style={{ textAlign: 'right' }}>
                         {guideInfo?.name ? (
                           <>
                             <div style={{ fontWeight: 600 }}>{guideInfo.name}</div>
                             {guideInfo.phone && <div style={{ fontSize: 12, color: '#6b7280' }}>{guideInfo.phone}</div>}
                           </>
                         ) : <span style={{color: '#9ca3af'}}>Chưa phân công</span>}
-                      </Text>
+                        <div style={{ marginTop: 4 }}>
+                          <Button type="link" size="small" onClick={() => {
+                            setSelectedGuideId(guideInfo?._id || guideInfo?.id || undefined);
+                            setIsGuideModalOpen(true);
+                          }}>
+                            Thay đổi/Phân công
+                          </Button>
+                        </div>
+                      </div>
                   </div>
               </Space>
           </Card>
@@ -503,6 +564,40 @@ const BookingDetail = () => {
             <Form.Item name="room" label="Số phòng"><Input placeholder="VD: P.201" /></Form.Item>
             <Form.Item name="note" label="Ghi chú"><Input.TextArea rows={2} placeholder="Ăn chay, dị ứng..." /></Form.Item>
           </Form>
+        </Modal>
+
+        <Modal
+          title="Phân công Hướng dẫn viên"
+          open={isGuideModalOpen}
+          onOk={() => assignGuideMutation.mutate(selectedGuideId || null)}
+          onCancel={() => setIsGuideModalOpen(false)}
+          okText="Cập nhật"
+          cancelText="Hủy"
+          confirmLoading={assignGuideMutation.isPending}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Text type="secondary">Chọn HDV cho tour này (Hệ thống tự động lọc HDV rảnh):</Text>
+          </div>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="-- Chọn Hướng dẫn viên --"
+            value={selectedGuideId}
+            onChange={setSelectedGuideId}
+            allowClear
+            showSearch
+            optionFilterProp="children"
+          >
+            {availableGuides.map((g: any) => (
+              <Option key={g._id} value={g._id}>
+                {g.name} - {g.email || g.phone}
+              </Option>
+            ))}
+          </Select>
+          <div style={{ marginTop: 12 }}>
+             <Text type="secondary" style={{ fontSize: 12 }}>
+               Lưu ý: Bỏ chọn (nhấn dấu x trên ô chọn) rồi Cập nhật để gỡ phân công HDV hiện tại.
+             </Text>
+          </div>
         </Modal>
 
         <style>{`

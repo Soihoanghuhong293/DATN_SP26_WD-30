@@ -12,13 +12,7 @@ import {
   CalculatorOutlined, SettingOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import isBetween from 'dayjs/plugin/isBetween';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 
-dayjs.extend(isBetween);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -36,9 +30,6 @@ const BookingCreate = () => {
   const [calculatedPrice, setCalculatedPrice] = useState(0);
   const [currentPrices, setCurrentPrices] = useState<any[]>([]); 
   const [activeSeasonName, setActiveSeasonName] = useState<string | null>(null);
-
-  // lưu trữ ngày được chọn để tính hdv rảnh
-  const [selectedDates, setSelectedDates] = useState<{ start: dayjs.Dayjs | null, end: dayjs.Dayjs | null }>({ start: null, end: null });
 
   const { data: tours, isLoading: isToursLoading } = useQuery({
     queryKey: ['tours'],
@@ -65,42 +56,10 @@ const BookingCreate = () => {
   });
   const providers = Array.isArray(providersData) ? providersData : [];
 
-  const { data: allBookings } = useQuery({
-    queryKey: ['bookings'],
-    queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/bookings', getAuthHeader());
-      return res.data?.data || res.data?.results || [];
-    }
-  });
 
   // Tách users thành Khách hàng và HDV
   const customers = useMemo(() => usersData?.filter((u: any) => u.role === 'user') || [], [usersData]);
-  const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide' || u.role === 'hdv') || [], [usersData]);
 
-  // tìm hdv rảnh
-  const availableGuides = useMemo(() => {
-    if (!selectedDates.start || !selectedDates.end) return allGuides; 
-
-    return allGuides.filter((guide: any) => {
-      const isBusy = allBookings?.some((booking: any) => {
-        if (booking.status === 'cancelled') return false; 
-        
-        const currentGuideId = booking.guide_id?._id || booking.guide_id;
-        
-        if (!currentGuideId || currentGuideId !== guide._id) return false;
-
-        const bookingStart = dayjs(booking.startDate);
-        const bookingEnd = dayjs(booking.endDate);
-
-        const isOverlapping = selectedDates.start!.isSameOrBefore(bookingEnd, 'day') && 
-                              selectedDates.end!.isSameOrAfter(bookingStart, 'day');
-        
-        return isOverlapping;
-      });
-
-      return !isBusy; 
-    });
-  }, [allGuides, allBookings, selectedDates]);
   // submit Form
  const mutation = useMutation({
     mutationFn: async (values: any) => {
@@ -113,7 +72,6 @@ const BookingCreate = () => {
       payload.endDate = values.endDate ? values.endDate.format('YYYY-MM-DD') : undefined;
 
       if (!payload.user_id) delete payload.user_id;
-      if (!payload.guide_id) delete payload.guide_id;
 
       return await axios.post('http://localhost:5000/api/v1/bookings', payload, getAuthHeader());
     },
@@ -138,12 +96,6 @@ const BookingCreate = () => {
         const duration = selectedTour.duration_days || 1;
         const newEndDate = dayjs(allValues.startDate).add(duration - 1, 'day');
         fieldsToUpdate.endDate = newEndDate;
-        
-        // cập nhật lại ngày để kích hạot hdc
-        setSelectedDates({ start: allValues.startDate, end: newEndDate });
-
-        // chọn lại hdv nếu ngày thay đổi
-        if (changedValues.startDate) fieldsToUpdate.guide_id = undefined;
       }
     }
 
@@ -380,37 +332,6 @@ const BookingCreate = () => {
 
             <Card title={<><SettingOutlined className="text-yellow-500 mr-2" /> Điều hành</>} className="mb-6 shadow-sm border-t-4 border-t-yellow-500">
               
-              {/* DROPDOWN CHỌN HDV THÔNG MINH */}
-              <Form.Item 
-                name="guide_id" 
-                label={
-                  <div className="flex justify-between w-full">
-                    <span>Phân công HDV</span>
-                    {selectedDates.start && (
-                      <span className="text-xs text-green-600 font-normal">
-                        Có {availableGuides.length} HDV rảnh
-                      </span>
-                    )}
-                  </div>
-                }
-                tooltip="Hệ thống tự động loại bỏ các HDV bị trùng lịch trong ngày diễn ra tour"
-              >
-                <Select 
-                  placeholder={!selectedDates.start ? "Vui lòng chọn Ngày Khởi Hành trước" : "-- Chọn Hướng dẫn viên --"} 
-                  allowClear 
-                  size="large"
-                  disabled={!selectedDates.start}
-                  showSearch
-                  optionFilterProp="children"
-                >
-                  {availableGuides.map((g: any) => (
-                    <Option key={g._id} value={g._id}>
-                      {g.name} - {g.email || g.phone}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-
               <Form.Item name="status" label="Trạng thái đơn">
                 <Select size="large">
                   <Option value="pending">Chờ duyệt</Option>
