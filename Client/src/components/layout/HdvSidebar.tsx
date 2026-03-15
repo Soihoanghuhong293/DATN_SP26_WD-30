@@ -20,7 +20,7 @@ const HdvSidebar = () => {
   };
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", position: "sticky", top: 0 }}>
       <div style={{ padding: 24, display: "flex", gap: 12, alignItems: "center" }}>
         <Avatar size={40} style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
           <UserOutlined />
@@ -36,7 +36,7 @@ const HdvSidebar = () => {
       <Menu
         mode="inline"
         selectedKeys={[pathname]}
-        style={{ border: "none", flex: 1 }}
+        style={{ border: "none", flex: 1, overflowY: "auto", overflowX: "hidden" }}
         items={[
           {
             key: "/hdv",
