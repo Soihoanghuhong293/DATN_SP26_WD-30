@@ -164,15 +164,15 @@ const BookingCreate = () => {
       }
 
       // Tự động fill nhà cung cấp
-      const supplier = selectedTour.suppliers?.[0];
-      if (supplier) {
-        const actualId = typeof supplier === 'object' ? (supplier._id || supplier.id) : supplier;
-        const foundProvider = providers.find((p: any) => p._id === actualId || p.id === actualId);
-        
-        if (foundProvider) {
-          fieldsToUpdate.provider_detail = `Tên NCC: ${foundProvider.name}\nSĐT: ${foundProvider.phone || 'Không có'}\nEmail: ${foundProvider.email || 'Không có'}\nĐịa chỉ: ${foundProvider.address || 'Không có'}`;
-        } else if (typeof supplier === 'object' && supplier.name) {
-          fieldsToUpdate.provider_detail = `Tên NCC: ${supplier.name}\nSĐT: ${supplier.phone || 'Không có'}\nEmail: ${supplier.email || 'Không có'}`;
+      const tourSuppliers = selectedTour.suppliers || [];
+      if (tourSuppliers.length > 0) {
+        const foundProviders = tourSuppliers.map((supplier: any) => {
+          const actualId = typeof supplier === 'object' ? (supplier._id || supplier.id) : supplier;
+          return providers.find((p: any) => p._id === actualId || p.id === actualId) || (typeof supplier === 'object' ? supplier : null);
+        }).filter(Boolean);
+
+        if (foundProviders.length > 0) {
+          fieldsToUpdate.provider_detail = foundProviders.map((p: any, i: number) => `--- NCC ${i+1} ---\nTên NCC: ${p.name || 'Không có'}\nSĐT: ${p.phone || 'Không có'}\nEmail: ${p.email || 'Không có'}\nĐịa chỉ: ${p.address || 'Không có'}`).join('\n\n');
         } else {
           fieldsToUpdate.provider_detail = 'Không tìm thấy thông tin nhà cung cấp.';
         }

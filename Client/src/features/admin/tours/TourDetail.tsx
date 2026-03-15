@@ -37,7 +37,7 @@ const TourDetail = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [changeProviderModalOpen, setChangeProviderModalOpen] = useState(false);
-  const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>();
+  const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
 
   // 1. API GET DATA
   const { data: tour, isLoading } = useQuery({
@@ -49,40 +49,31 @@ const TourDetail = () => {
     enabled: !!id,
   });
 
-  const supplierId = tour?.suppliers?.[0];
-  const { data: providerData, isError: isProviderError } = useQuery({
-    queryKey: ['provider', supplierId],
-    queryFn: () => getProvider(supplierId),
-    enabled: !!supplierId && !!tour,
-    retry: false,
-  });
-  const provider = providerData?.data?.provider;
-
   const { data: providersData } = useQuery({
     queryKey: ['providers'],
     queryFn: () => getProviders({}),
-    enabled: changeProviderModalOpen,
   });
   const providers = providersData?.data?.providers ?? [];
 
+  const tourProviders = tour?.suppliers?.map((sId: string) => providers.find((p: any) => p.id === sId || p._id === sId)).filter(Boolean) || [];
+
   const changeProviderMutation = useMutation({
-    mutationFn: async (providerId: string | null) => {
+    mutationFn: async (providerIds: string[]) => {
       await axios.put(`http://localhost:5000/api/v1/tours/${id}`, {
-        suppliers: providerId ? [providerId] : [],
+        suppliers: providerIds,
       });
     },
     onSuccess: () => {
       message.success('Đã cập nhật nhà cung cấp');
       queryClient.invalidateQueries({ queryKey: ['tour', id] });
-      queryClient.invalidateQueries({ queryKey: ['provider', supplierId] });
       setChangeProviderModalOpen(false);
-      setSelectedProviderId(undefined);
+      setSelectedProviderIds([]);
     },
     onError: () => message.error('Cập nhật nhà cung cấp thất bại'),
   });
 
   const handleChangeProvider = () => {
-    changeProviderMutation.mutate(selectedProviderId || null);
+    changeProviderMutation.mutate(selectedProviderIds);
   };
 
   // 2. API DELETE
@@ -175,11 +166,11 @@ const TourDetail = () => {
                 size="small" 
                 icon={<SwapOutlined />} 
                 onClick={() => {
-                  setSelectedProviderId(supplierId || undefined);
+                  setSelectedProviderIds(tour?.suppliers || []);
                   setChangeProviderModalOpen(true);
                 }}
               >
-                Thay đổi
+                Thay đổi/Thêm
               </Button>
             </Space>
           }
@@ -187,8 +178,9 @@ const TourDetail = () => {
           bordered={true} 
           className="saas-card mb-6"
         >
-          {provider ? (
-            <div>
+          {tourProviders.length > 0 ? (
+            tourProviders.map((provider: any, index: number) => (
+            <div key={provider.id || provider._id} style={{ marginBottom: index !== tourProviders.length - 1 ? 16 : 0, paddingBottom: index !== tourProviders.length - 1 ? 16 : 0, borderBottom: index !== tourProviders.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
               <div style={{ marginBottom: 12 }}>
                 <Link to={`/admin/providers/${provider.id || provider._id}`} style={{ fontWeight: 600, fontSize: 15 }}>
                   {provider.name}
@@ -209,21 +201,6 @@ const TourDetail = () => {
                 {provider.address && (
                   <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text type="secondary">{provider.address}</Text></div>
                 )}
-                {provider.emergency_contact && (
-                  <div><ContactsOutlined style={{ color: '#ef4444', marginRight: 8 }} /><Text type="danger">Khẩn cấp: {provider.emergency_contact}</Text></div>
-                )}
-                {provider.contract_info && (
-                  <div style={{ marginTop: 8 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>Hợp đồng: </Text>
-                    <div style={{ fontSize: 13, marginTop: 2 }}>{provider.contract_info}</div>
-                  </div>
-                )}
-                {provider.preferred_pricing && (
-                  <div style={{ marginTop: 4 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>Giá ưu đãi: </Text>
-                    <div style={{ fontSize: 13, marginTop: 2 }}>{provider.preferred_pricing}</div>
-                  </div>
-                )}
               </Space>
               <div style={{ marginTop: 12 }}>
                 <Link to={`/admin/providers/${provider.id || provider._id}`}>
@@ -231,15 +208,9 @@ const TourDetail = () => {
                 </Link>
               </div>
             </div>
-          ) : supplierId && !isProviderError ? (
-            <Spin size="small" />
-          ) : supplierId && isProviderError ? (
-            <div>
-              <Text>Nhà cung cấp: {supplierId}</Text>
-              <div style={{ marginTop: 8 }}>
-                <Button type="link" size="small" onClick={() => setChangeProviderModalOpen(true)}>Thay đổi</Button>
-              </div>
-            </div>
+            ))
+          ) : tour?.suppliers?.length > 0 ? (
+            <Spin size="small" tip="Đang tải thông tin NCC..." />
           ) : (
             <div>
               <Text type="secondary">Chưa chọn nhà cung cấp</Text>
@@ -430,7 +401,7 @@ const TourDetail = () => {
           onOk={handleChangeProvider}
           onCancel={() => {
             setChangeProviderModalOpen(false);
-            setSelectedProviderId(undefined);
+            setSelectedProviderIds([]);
           }}
           okText="Cập nhật"
           cancelText="Huỷ"
@@ -441,10 +412,11 @@ const TourDetail = () => {
             <Text type="secondary">Chọn nhà cung cấp cho tour này:</Text>
           </div>
           <Select
+            mode="multiple"
             style={{ width: '100%' }}
             placeholder="Chọn nhà cung cấp"
-            value={selectedProviderId}
-            onChange={setSelectedProviderId}
+            value={selectedProviderIds}
+            onChange={setSelectedProviderIds}
             allowClear
             showSearch
             optionFilterProp="label"

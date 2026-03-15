@@ -76,7 +76,7 @@ const TourCreate = () => {
 
   const onFinish = (values: any) => {
     const finalValues = { ...values };
-    finalValues.suppliers = values.suppliers ? [values.suppliers] : [];
+    finalValues.suppliers = Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []);
 
     if (finalValues.seasonalPrices?.length > 0) {
       finalValues.seasonalPrices = finalValues.seasonalPrices.map((season: any) => ({
@@ -280,6 +280,7 @@ const TourCreate = () => {
                 </Form.Item>
                 <Form.Item name="suppliers" label={<span className="font-medium text-gray-600">Nhà cung cấp</span>} style={{marginBottom: 0}}>
                    <Select
+                     mode="multiple"
                      size="large" placeholder="Chọn nhà cung cấp" allowClear
                      loading={isProvidersLoading} optionFilterProp="label"
                      className="rounded-lg"
