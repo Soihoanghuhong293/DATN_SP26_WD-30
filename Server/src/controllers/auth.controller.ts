@@ -2,23 +2,23 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js"; 
-import Guide from "../models/Guide.js"; 
+import Guide from "../models/Guide.js"; // 👈 THÊM IMPORT NÀY
 
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, name, role } = req.body;
 
-    // trùng email
     const existed = await User.findOne({ email });
     if (existed) {
       return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const validRoles = ["user", "admin", "guide"];
+
+    const validRoles = ["user", "admin", "guide", "hdv"];
     const assignedRole = validRoles.includes(role) ? role : "user";
 
-    //tạo tk login
+    // 1. TẠO TÀI KHOẢN ĐĂNG NHẬP
     const user = await User.create({
       name,
       email,
@@ -26,20 +26,13 @@ export const register = async (req: Request, res: Response) => {
       role: assignedRole,
     });
 
-    // nếu là hdv tự động tạo trong qly hdv
+    // 2. NẾU LÀ HDV -> TỰ ĐỘNG TẠO HỒ SƠ GUIDE (Auto-Sync)
     if (assignedRole === "guide") {
-      try {
-        await Guide.create({
-          user_id: user._id, 
-          name: user.name,   
-          email: user.email, 
-        });
-      } catch (guideError) {
-        // nếu tạo bảng Guide thất bại xóa luôn useer
-        await User.findByIdAndDelete(user._id);
-        console.error("Lỗi DB khi tạo bảng Guide:", guideError);
-        return res.status(500).json({ message: "Lỗi đồng bộ dữ liệu HDV. Vui lòng thử lại!" });
-      }
+      await Guide.create({
+        user_id: user._id, // Khóa ngoại 1-1
+        name: user.name,   // Đẩy tên qua luôn
+        email: user.email, // Đẩy email qua
+      });
     }
 
     res.json({
@@ -53,8 +46,8 @@ export const register = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Lỗi đăng ký tổng thể:", error); 
-    res.status(500).json({ message: "Lỗi hệ thống khi đăng ký" });
+    console.error(error); // Nên log ra để dễ debug nếu có lỗi
+    res.status(500).json({ message: "Lỗi khi đăng ký" });
   }
 };
 

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import HdvLayout from '../layouts/HdvLayout';
 import HomePage from '../pages/HomePage';
 import ToursPage from '../pages/ToursPage';
 import TourDetailPage from '../pages/TourDetailPage';
@@ -21,14 +22,21 @@ import ProviderEdit from '../pages/admin/providers/ProviderEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
+import HdvDashboard from '../pages/HdvDashboard';
+import HdvPlaceholder from '../pages/HdvPlaceholder';
+import HdvTours from '../pages/HdvTours';
+import HdvBookingDetail from '../pages/HdvBookingDetail';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import BookingCreate from '../features/bookings/BookingCreate';
+
 import BookingList from '../features/bookings/BookingList';
+import BookingEdit from '../features/bookings/BookingEdit';
 import UserList from '../features/admin/users/UserList';
 import UserCreate from '../features/admin/users/UserCreate';
+import BookingDetail from '../features/bookings/BookingDetail';
 
 const AppRoutes = () => {
   return (
@@ -42,7 +50,14 @@ const AppRoutes = () => {
         <Route path="register" element={<RegisterPage />} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
-        <Route path="login" element={<div>Login Page</div>} />
+      </Route>
+
+      {/* ===== HDV (Hướng dẫn viên) ===== */}
+      <Route path="/hdv" element={<HdvLayout />}>
+        <Route index element={<HdvDashboard />} />
+        <Route path="tours" element={<HdvTours />} />
+        <Route path="tours/:id" element={<HdvBookingDetail />} />
+        <Route path="schedule" element={<HdvPlaceholder title="Lịch làm việc" />} />
       </Route>
 
       {/* ===== ADMIN ===== */}
@@ -72,6 +87,8 @@ const AppRoutes = () => {
 
         <Route path="bookings" element={<BookingList />} />
         <Route path="bookings/create" element={<BookingCreate />} />
+        <Route path="bookings/edit/:id" element={<BookingEdit />} />
+        <Route path="bookings/:id" element={<BookingDetail />} />
           <Route path="users" element={<UserList />} />
           <Route path="users/create" element={<UserCreate />} />
 

@@ -22,7 +22,7 @@ const AdminLayout = () => {
   // ✅ admin hợp lệ
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider width={260} theme="light">
+      <Sider width={260} theme="light" breakpoint="lg" collapsedWidth="0">
         <AdminSidebar />
       </Sider>
 

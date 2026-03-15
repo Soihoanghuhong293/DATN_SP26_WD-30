@@ -2,7 +2,7 @@ import { Layout } from "antd";
 
 const { Header } = Layout;
 
-const AdminHeader = () => {
+const HdvHeader = () => {
   return (
     <Header
       style={{
@@ -16,10 +16,10 @@ const AdminHeader = () => {
       }}
     >
       <div style={{ fontSize: 18, fontWeight: 600, color: "#1f2937" }}>
-        Khu vực quản trị
+        Khu vực làm việc HDV
       </div>
     </Header>
   );
 };
 
-export default AdminHeader;
+export default HdvHeader;

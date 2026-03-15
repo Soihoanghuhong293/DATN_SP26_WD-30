@@ -13,7 +13,7 @@ interface IUser {
   _id: string;
   name: string; // 👈 THÊM NAME VÀO ĐÂY
   email: string;
-  role: 'user' | 'admin' | 'guide'; 
+  role: 'user' | 'admin' | 'guide' | 'hdv'; 
   status: 'active' | 'inactive';
   createdAt: string;
 }
@@ -93,6 +93,7 @@ const UserList = () => {
         let textColor = 'text-blue-600';
         if (record.role === 'admin') textColor = 'text-red-600 font-bold';
         if (record.role === 'guide') textColor = 'text-green-600 font-medium';
+        if (record.role === 'hdv') textColor = 'text-emerald-600 font-medium';
 
         return (
           <Select
@@ -104,6 +105,7 @@ const UserList = () => {
           >
             <Option value="admin"><Space><CrownOutlined className="text-red-500" /> Quản trị viên</Space></Option>
             <Option value="guide"><Space><IdcardOutlined className="text-green-500" /> Hướng dẫn viên</Space></Option>
+            <Option value="hdv"><Space><IdcardOutlined className="text-emerald-500" /> HDV</Space></Option>
             <Option value="user"><Space><UserOutlined className="text-blue-500" /> Khách hàng</Space></Option>
           </Select>
         );
@@ -176,6 +178,7 @@ const UserList = () => {
             <Radio.Button value="all">Tất cả ({users.length})</Radio.Button>
             <Radio.Button value="admin">Quản trị viên</Radio.Button>
             <Radio.Button value="guide">Hướng dẫn viên</Radio.Button>
+            <Radio.Button value="hdv">HDV</Radio.Button>
             <Radio.Button value="user">Khách hàng</Radio.Button>
           </Radio.Group>
         </Space>

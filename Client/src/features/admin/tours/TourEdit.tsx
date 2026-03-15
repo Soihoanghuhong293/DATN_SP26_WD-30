@@ -52,7 +52,7 @@ const TourEdit = () => {
       const formattedData = {
         ...tour,
         category_id: tour.category_id?._id || tour.category_id,
-        suppliers: suppliers.length > 0 ? suppliers[0] : undefined,
+        suppliers: suppliers,
       };
       form.setFieldsValue(formattedData);
     }
@@ -77,7 +77,7 @@ const TourEdit = () => {
   const onFinish = (values: any) => {
     const payload = {
       ...values,
-      suppliers: values.suppliers ? [values.suppliers] : [],
+      suppliers: Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []),
     };
     mutation.mutate(payload);
   };
@@ -189,6 +189,7 @@ const TourEdit = () => {
               </Form.Item>
               <Form.Item name="suppliers" label="Nhà cung cấp">
                  <Select
+                   mode="multiple"
                    placeholder="Chọn nhà cung cấp"
                    allowClear
                    loading={isProvidersLoading}

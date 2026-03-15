@@ -35,3 +35,10 @@ export const restrictToAdmin = (req: AuthRequest, res: Response, next: NextFunct
   }
   next();
 };
+
+export const restrictToGuide = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user.role !== "guide" && req.user.role !== "hdv") {
+    return res.status(403).json({ message: "Chỉ Hướng dẫn viên mới có quyền thực hiện" });
+  }
+  next();
+};
