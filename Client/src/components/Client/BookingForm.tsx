@@ -17,15 +17,56 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const [holidayRules, setHolidayRules] = useState<any[]>([]);
+
+  // Fetch thông tin giá ngày lễ ngay khi mở form
+  useEffect(() => {
+    if (visible) {
+      axios.get('http://localhost:5000/api/v1/holiday-pricings')
+        .then(res => setHolidayRules(res.data.data || []))
+        .catch(err => console.error('Lỗi khi tải giá ngày lễ:', err));
+    }
+  }, [visible]);
 
   // Theo dõi sự thay đổi của trường Số lượng khách (groupSize) để tính tổng tiền realtime
   const currentGroupSize = Form.useWatch('groupSize', form) || 1;
 
   const departureSchedule = tour?.departure_schedule || [];
 
+  // Hàm tính hiển thị giá trực tiếp trên lịch
+  const getPriceForDate = (dateStr: string) => {
+    const basePrice = tour?.price || 0;
+    const targetTime = new Date(dateStr + 'T12:00:00Z').getTime();
+
+    const applicableRules = holidayRules.filter(rule => {
+      const isForTour = !rule.tour_id || rule.tour_id?._id === (tour?._id || tour?.id) || rule.tour_id === (tour?._id || tour?.id);
+      if (!isForTour) return false;
+
+      let end = new Date(rule.end_date).getTime();
+      // Vá lỗi cho các rule đã tạo cũ (cộng dồn cho hết ngày)
+      const endHr = new Date(rule.end_date).getUTCHours();
+      if (endHr === 17 || endHr === 0) end += 24 * 60 * 60 * 1000 - 1; 
+
+      const start = new Date(rule.start_date).getTime();
+      return targetTime >= start && targetTime <= end;
+    });
+
+    if (applicableRules.length > 0) {
+      applicableRules.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      const rule = applicableRules[0];
+      if (rule.fixed_price) return rule.fixed_price;
+      return basePrice * (rule.price_multiplier || 1);
+    }
+    return basePrice;
+  };
+
   const handleDateSelect = async (dateStr: string) => {
     setSelectedDate(dateStr);
     form.setFieldsValue({ startDate: dayjs(dateStr) });
+    
+    // Cập nhật ngay giá trị đã tính toán từ frontend để giao diện không bị delay
+    setCalculatedPrice(getPriceForDate(dateStr));
+
     setLoadingPrice(true);
     try {
       const res = await axios.post('http://localhost:5000/api/v1/holiday-pricings/calculate', {
@@ -53,7 +94,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
     
     if (!schedule) return null;
 
-    const basePrice = tour?.price || 0;
+    // Dùng hàm tính toán để lấy mức giá mới nhất thay vì dùng giá gốc
+    const displayPrice = getPriceForDate(dateStr);
     const isAvailable = schedule.slots > 0;
     const isSelected = selectedDate === dateStr;
 
@@ -74,7 +116,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         }}
       >
         <div style={{ fontWeight: 'bold', color: isAvailable ? '#f97316' : '#9ca3af', fontSize: '12px' }}>
-          {basePrice.toLocaleString('vi-VN')}đ
+          {displayPrice.toLocaleString('vi-VN')}đ
         </div>
         <div style={{ marginTop: '2px' }}>
           {isAvailable 

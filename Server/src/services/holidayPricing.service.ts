@@ -13,12 +13,18 @@ export const calculateFinalPrice = async (
   basePrice: number,
   departureDate: Date | string
 ): Promise<number> => {
-  const date = new Date(departureDate);
+  // Tách lấy chính xác phần ngày YYYY-MM-DD
+  const dateStr = typeof departureDate === 'string' 
+    ? departureDate.split('T')[0] 
+    : departureDate.toISOString().split('T')[0];
 
-  // tìm quy tắc ngày khởi hànhtrong thời gian áp dụng
+  const startOfSelectedDay = new Date(`${dateStr}T00:00:00.000Z`);
+  const endOfSelectedDay = new Date(`${dateStr}T23:59:59.999Z`);
+
   const applicableRules = await HolidayPricing.find({
-    start_date: { $lte: date },
-    end_date: { $gte: date },
+    // Bù trừ 10h để bao phủ cả trường hợp timezone lệch do MongoDB lưu UTC
+    start_date: { $lte: new Date(endOfSelectedDay.getTime() + 10 * 60 * 60 * 1000) },
+    end_date: { $gte: new Date(startOfSelectedDay.getTime() - 10 * 60 * 60 * 1000) },
     $or: [
       { tour_id: tourId },
       { tour_id: null },

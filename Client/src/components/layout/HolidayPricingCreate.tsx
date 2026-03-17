@@ -34,8 +34,8 @@ const HolidayPricingCreate = () => {
       const payload = {
         name: values.name,
         tour_id: values.tour_id || null,
-        start_date: values.dateRange[0].toDate(),
-        end_date: values.dateRange[1].toDate(),
+        start_date: values.dateRange[0].startOf('day').toDate(),
+        end_date: values.dateRange[1].endOf('day').toDate(),
         price_multiplier: values.price_multiplier,
         fixed_price: values.fixed_price,
         priority: values.priority,
