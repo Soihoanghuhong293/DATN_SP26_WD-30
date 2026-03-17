@@ -212,7 +212,7 @@ export const addDiaryEntryForGuide = async (req: AuthRequest, res: Response) => 
     b.diary_entries = b.diary_entries.filter((e: any) => Number(e?.day_no || 1) !== Number(safeDayNo));
 
     b.diary_entries.push({
-      ...(existing || {}),
+      ...(existing?._id ? { _id: existing._id } : {}),
       date: d,
       day_no: safeDayNo,
       title: title || '',

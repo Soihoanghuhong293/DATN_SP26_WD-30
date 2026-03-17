@@ -8,14 +8,12 @@ import {
   Typography,
   Tag,
   List,
-  Popconfirm,
   Switch,
   Tabs,
   Spin,
   Empty,
   Steps,
   message,
-  Divider,
   Form,
   Input,
   Segmented,
@@ -132,19 +130,6 @@ const HdvBookingDetail = () => {
     },
     onError: (err: any) => {
       message.error(err.response?.data?.message || "Lưu nhật kí thất bại");
-    },
-  });
-
-  const deleteDiaryMutation = useMutation({
-    mutationFn: async (dayNo: number) => {
-      await axios.delete(`${API}/guide/${id}/diary/${dayNo}`, getAuthHeader());
-    },
-    onSuccess: () => {
-      message.success("Đã xoá nhật kí");
-      queryClient.invalidateQueries({ queryKey: ["hdv-booking", id] });
-    },
-    onError: (err: any) => {
-      message.error(err.response?.data?.message || "Xoá nhật kí thất bại");
     },
   });
 
@@ -402,19 +387,6 @@ const HdvBookingDetail = () => {
               {selectedDiaryEntry && !isDiaryEditing ? (
                 <Button onClick={() => setIsDiaryEditing(true)}>Sửa</Button>
               ) : null}
-              {selectedDiaryEntry && !isDiaryEditing ? (
-                <Popconfirm
-                  title="Xoá nhật kí"
-                  description={`Bạn có chắc muốn xoá nhật kí Ngày ${selectedDiaryDayNo}?`}
-                  okText="Xoá"
-                  cancelText="Huỷ"
-                  onConfirm={() => deleteDiaryMutation.mutate(selectedDiaryDayNo)}
-                >
-                  <Button danger loading={deleteDiaryMutation.isPending}>
-                    Xoá
-                  </Button>
-                </Popconfirm>
-              ) : null}
             </div>
 
             {isDiaryEditing ? (
@@ -516,76 +488,6 @@ const HdvBookingDetail = () => {
               <Empty description={`Chưa có nhật kí cho Ngày ${selectedDiaryDayNo}`} />
             )}
           </div>
-
-          <Divider style={{ margin: "16px 0" }} />
-
-          {selectedDiaryEntry ? (
-            <List
-              itemLayout="vertical"
-              dataSource={[selectedDiaryEntry]}
-              renderItem={(entry: any) => (
-                <List.Item>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <Tag color="blue">{`Ngày ${entry.day_no || 1}`}</Tag>
-                      <Tag color="default">
-                        {entry.date ? dayjs(entry.date).format("DD/MM/YYYY") : "—"}
-                      </Tag>
-                      {entry.title ? (
-                        <Text style={{ fontWeight: 600, color: "#111827" }}>{entry.title}</Text>
-                      ) : (
-                        <Text style={{ fontWeight: 600, color: "#111827" }}>Nhật kí</Text>
-                      )}
-                    </div>
-
-                    {entry.content ? (
-                      <div>
-                        <Text strong>Nội dung:</Text>
-                        <div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{entry.content}</div>
-                      </div>
-                    ) : null}
-
-                    {entry.highlight ? (
-                      <div>
-                        <Text strong>Highlight:</Text>
-                        <div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{entry.highlight}</div>
-                      </div>
-                    ) : null}
-
-                    {entry.note ? (
-                      <div>
-                        <Text strong>Ghi chú:</Text> <Text>{entry.note}</Text>
-                      </div>
-                    ) : null}
-
-                    {Array.isArray(entry.images) && entry.images.length > 0 ? (
-                      <Image.PreviewGroup>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {entry.images.slice(0, 8).map((img: any, i: number) => (
-                            <Image
-                              key={i}
-                              width={96}
-                              height={96}
-                              style={{ objectFit: "cover", borderRadius: 8 }}
-                              src={img.url}
-                            />
-                          ))}
-                        </div>
-                      </Image.PreviewGroup>
-                    ) : null}
-
-                    {entry.created_by ? (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        Người ghi: {entry.created_by}
-                      </Text>
-                    ) : null}
-                  </div>
-                </List.Item>
-              )}
-            />
-          ) : (
-            <Empty description={`Chưa có nhật kí cho Ngày ${selectedDiaryDayNo}`} />
-          )}
         </Card>
       ),
     },
