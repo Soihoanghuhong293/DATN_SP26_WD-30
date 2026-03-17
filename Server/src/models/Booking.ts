@@ -137,4 +137,38 @@ const BookingSchema: Schema = new Schema(
   }
 );
 
+// validate chuyển trạng thái
+const validTransitions: Record<string, string[]> = {
+  pending: ["confirmed", "deposit", "paid", "cancelled"], // pending có thể sang các trạng thái này
+  confirmed: ["deposit", "paid", "cancelled"],
+  deposit: ["paid", "cancelled"],
+  paid: ["cancelled"], //  thanh toán thì chỉ có thể huỷ hoặc kết thúc
+  cancelled: ["refunded"], // huỷ thì chỉ được phép sang hoàn tiền
+  refunded: [], // k thể thay đổi
+};
+
+BookingSchema.pre("findOneAndUpdate", async function () {
+  const update = this.getUpdate() as any;
+
+  const newStatus = update.$set?.status || update.status;
+
+  if (newStatus) {
+    const docToUpdate = await this.model.findOne(this.getQuery());
+
+    if (docToUpdate) {
+      const oldStatus = docToUpdate.status;
+
+      if (oldStatus && oldStatus !== newStatus) {
+        const allowed = validTransitions[oldStatus] || [];
+
+        if (!allowed.includes(newStatus)) {
+          throw new Error(
+            `Không thể đổi trạng thái từ '${oldStatus}' sang '${newStatus}'`
+          );
+        }
+      }
+    }
+  }
+});
+
 export default mongoose.model<IBooking>("Booking", BookingSchema);

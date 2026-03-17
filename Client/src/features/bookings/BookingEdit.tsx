@@ -21,6 +21,16 @@ const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
 });
 
+//  trạng thái hợp lệ đồng bộ với   backend
+const validTransitions: Record<string, string[]> = {
+  pending: ['pending', 'confirmed', 'deposit', 'paid', 'cancelled'],
+  confirmed: ['confirmed', 'deposit', 'paid', 'cancelled'],
+  deposit: ['deposit', 'paid', 'cancelled'],
+  paid: ['paid', 'cancelled'],
+  cancelled: ['cancelled', 'refunded'],
+  refunded: ['refunded'],
+};
+
 const BookingEdit = () => {
   const { id } = useParams();
   const [form] = Form.useForm();
@@ -257,6 +267,10 @@ const BookingEdit = () => {
      return <div className="flex justify-center items-center h-screen"><Spin size="large" /></div>;
   }
 
+  // Lấy trạng thái gốc của đơn hàng hiện tại từ DB để tính toán danh sách được phép chuyển
+  const originalStatus = booking?.status || 'pending';
+  const allowedStatuses = validTransitions[originalStatus] || [];
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -320,14 +334,18 @@ const BookingEdit = () => {
               <Form.Item name="total_price" label={<span className="text-success font-bold uppercase">Tổng thành tiền (VND)</span>}><InputNumber className="w-full text-red-600 font-bold" size="large" readOnly formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} /></Form.Item>
             </Card>
             <Card title={<><SettingOutlined className="text-yellow-500 mr-2" /> Điều hành</>} className="mb-6 shadow-sm border-t-4 border-t-yellow-500">
-              <Form.Item name="status" label="Trạng thái đơn">
+              <Form.Item 
+                name="status" 
+                label="Trạng thái đơn"
+                extra={<span className="text-xs text-gray-500 italic mt-1 inline-block">Hệ thống làm mờ các trạng thái sai quy trình.</span>}
+              >
                 <Select size="large">
-                  <Option value="pending">Chờ duyệt</Option>
-                  <Option value="confirmed">Đã xác nhận</Option>
-                  <Option value="paid">Đã thanh toán</Option>
-                  <Option value="deposit">Đã cọc</Option>
-                  <Option value="refunded">Hoàn tiền</Option>
-                  <Option value="cancelled">Đã hủy</Option>
+                  <Option value="pending" disabled={!allowedStatuses.includes('pending')}>Chờ duyệt</Option>
+                  <Option value="confirmed" disabled={!allowedStatuses.includes('confirmed')}>Đã xác nhận</Option>
+                  <Option value="deposit" disabled={!allowedStatuses.includes('deposit')}>Đã cọc</Option>
+                  <Option value="paid" disabled={!allowedStatuses.includes('paid')}>Đã thanh toán</Option>
+                  <Option value="cancelled" disabled={!allowedStatuses.includes('cancelled')}>Đã hủy</Option>
+                  <Option value="refunded" disabled={!allowedStatuses.includes('refunded')}>Hoàn tiền</Option>
                 </Select>
               </Form.Item>
             </Card>
