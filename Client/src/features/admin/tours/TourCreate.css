@@ -1,28 +1,5 @@
 /* TourCreate.css */
 
-/* Khối thêm giá theo mùa - Đổi sang màu tím nhạt */
-.seasonal-price-card {
-  border: 1px solid #d8b4fe !important; /* Tailwind purple-300 */
-  background-color: #f3e8ff !important; /* Tailwind purple-100 */
-  border-radius: 8px;
-  margin-bottom: 24px;
-}
-
-.seasonal-price-card .ant-card-head {
-  background-color: #e9d5ff; /* Tailwind purple-200 */
-  border-bottom: 1px solid #d8b4fe;
-  border-radius: 8px 8px 0 0;
-}
-
-/* Khối nhập giá chi tiết lồng bên trong */
-.nested-price-container {
-  background-color: #ffffff;
-  padding: 16px;
-  border-radius: 6px;
-  border: 1px dashed #c084fc; /* Tailwind purple-400 */
-  margin-top: 12px;
-}
-
 /* Khối lịch trình */
 .schedule-card {
   border-left: 4px solid #8b5cf6 !important; /* Tailwind purple-500 */

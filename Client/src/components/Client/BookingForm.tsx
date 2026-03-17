@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Radio, Button, message, Calendar, Tag, Row, Col, Typography } from 'antd';
+import { Modal, Form, Input, InputNumber, Radio, Button, message, Calendar, Tag, Row, Col, Typography, Spin } from 'antd';
 import { UserOutlined, PhoneOutlined, MailOutlined, CalendarOutlined, TeamOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -15,26 +15,31 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+  const [loadingPrice, setLoadingPrice] = useState(false);
+
+  // Theo dõi sự thay đổi của trường Số lượng khách (groupSize) để tính tổng tiền realtime
+  const currentGroupSize = Form.useWatch('groupSize', form) || 1;
 
   const departureSchedule = tour?.departure_schedule || [];
 
-  const getPriceForDate = (dateStr: string) => {
-    let activePriceList = tour?.prices?.length > 0 
-      ? tour.prices 
-      : [{ name: 'Người lớn', price: tour?.price || 0 }];
-      
-    if (tour?.seasonalPrices?.length > 0) {
-      for (const season of tour.seasonalPrices) {
-        if (dateStr >= dayjs(season.startDate).format('YYYY-MM-DD') && 
-            dateStr <= dayjs(season.endDate).format('YYYY-MM-DD')) {
-          if (season.prices?.length > 0) {
-            activePriceList = season.prices;
-          }
-          break;
-        }
-      }
+  const handleDateSelect = async (dateStr: string) => {
+    setSelectedDate(dateStr);
+    form.setFieldsValue({ startDate: dayjs(dateStr) });
+    setLoadingPrice(true);
+    try {
+      const res = await axios.post('http://localhost:5000/api/v1/holiday-pricings/calculate', {
+        tour_id: tour?._id || tour?.id,
+        basePrice: tour?.price || 0,
+        departureDate: dateStr
+      });
+      setCalculatedPrice(res.data.data);
+    } catch (error) {
+      console.error('Lỗi khi tính giá:', error);
+      setCalculatedPrice(tour?.price || 0); // Mặc định về giá gốc nếu có lỗi
+    } finally {
+      setLoadingPrice(false);
     }
-    return activePriceList.find((p: any) => p.name === 'Người lớn')?.price || activePriceList[0]?.price || 0;
   };
 
   const getNormalizedDate = (dateVal: string) => {
@@ -48,7 +53,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
     
     if (!schedule) return null;
 
-    const price = getPriceForDate(dateStr);
+    const basePrice = tour?.price || 0;
     const isAvailable = schedule.slots > 0;
     const isSelected = selectedDate === dateStr;
 
@@ -58,8 +63,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         onClick={(e) => {
           e.stopPropagation();
           if (isAvailable) {
-            setSelectedDate(dateStr);
-            form.setFieldsValue({ startDate: dayjs(dateStr) });
+            handleDateSelect(dateStr);
           }
         }}
         style={{ 
@@ -70,7 +74,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         }}
       >
         <div style={{ fontWeight: 'bold', color: isAvailable ? '#f97316' : '#9ca3af', fontSize: '12px' }}>
-          {price.toLocaleString('vi-VN')}đ
+          {basePrice.toLocaleString('vi-VN')}đ
         </div>
         <div style={{ marginTop: '2px' }}>
           {isAvailable 
@@ -105,6 +109,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         startDate: selectedDate, 
         groupSize: values.groupSize,
         paymentMethod: values.paymentMethod,
+        // Truyền tổng tiền đã tính toán (sau khi áp dụng giá ngày lễ) xuống Backend
+        totalPrice: calculatedPrice * values.groupSize,
       };
 
       await axios.post('http://localhost:5000/api/v1/bookings', payload);
@@ -152,8 +158,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
           </div>
           {selectedDate && (
              <div style={{ marginTop: 16, padding: 12, backgroundColor: '#e6f7ff', borderRadius: 8, border: '1px solid #91d5ff' }}>
-               <span style={{ fontWeight: 600 }}>Ngày đã chọn: </span> 
-               <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{dayjs(selectedDate).format('DD/MM/YYYY')}</span>
+               <div style={{ marginBottom: 8 }}>
+                 <span style={{ fontWeight: 600 }}>Ngày khởi hành: </span> 
+                 <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{dayjs(selectedDate).format('DD/MM/YYYY')}</span>
+               </div>
+               <div>
+                 <span style={{ fontWeight: 600 }}>Giá áp dụng: </span>
+                 {loadingPrice ? <Spin size="small" /> : <span style={{ color: '#f5222d', fontWeight: 'bold', fontSize: 16 }}>{calculatedPrice.toLocaleString('vi-VN')}đ / khách</span>}
+               </div>
+               <div style={{ marginTop: 8, borderTop: '1px dashed #91d5ff', paddingTop: 8 }}>
+                 <span style={{ fontWeight: 600 }}>Tổng tiền dự kiến: </span>
+                 {loadingPrice ? <Spin size="small" /> : <span style={{ color: '#f5222d', fontWeight: 'bold', fontSize: 18 }}>{(calculatedPrice * currentGroupSize).toLocaleString('vi-VN')}đ</span>}
+               </div>
              </div>
           )}
         </Col>
