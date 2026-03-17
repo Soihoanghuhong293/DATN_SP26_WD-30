@@ -29,7 +29,15 @@ const BookingEdit = () => {
   
   const [calculatedPrice, setCalculatedPrice] = useState(0);
   const [currentPrices, setCurrentPrices] = useState<any[]>([]); 
-  const [activeSeasonName, setActiveSeasonName] = useState<string | null>(null);
+  const [activeHolidayName, setActiveHolidayName] = useState<string | null>(null);
+
+  const { data: holidayRules = [] } = useQuery({
+    queryKey: ['holiday-pricings'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/holiday-pricings', getAuthHeader());
+      return res.data?.data || [];
+    }
+  });
 
   const { data: booking, isLoading: isBookingLoading } = useQuery({
     queryKey: ['booking', id],
@@ -178,27 +186,43 @@ const BookingEdit = () => {
 
     if (allValues.tour_id && allValues.startDate && selectedTour) {
       const selectedDateStr = dayjs(allValues.startDate).format('YYYY-MM-DD');
+      const targetTime = new Date(selectedDateStr + 'T12:00:00Z').getTime();
       
       let activePriceList = (selectedTour.prices && selectedTour.prices.length > 0) 
-          ? selectedTour.prices 
+          ? JSON.parse(JSON.stringify(selectedTour.prices)) 
           : [{ name: 'Người lớn', price: selectedTour.price || 0 }];
-      let seasonTitle = null;
+      let holidayName = null;
 
-      if (selectedTour.seasonalPrices?.length > 0) {
-        for (const season of selectedTour.seasonalPrices) {
-          if (selectedDateStr >= dayjs(season.startDate).format('YYYY-MM-DD') && 
-              selectedDateStr <= dayjs(season.endDate).format('YYYY-MM-DD')) {
-            if (season.prices?.length > 0) {
-              activePriceList = season.prices;
-              seasonTitle = season.title;
-            }
-            break;
+      const applicableRules = holidayRules.filter((rule: any) => {
+        const isForTour = !rule.tour_id || rule.tour_id?._id === selectedTour._id || rule.tour_id === selectedTour._id;
+        if (!isForTour) return false;
+
+        let end = new Date(rule.end_date).getTime();
+        const endHr = new Date(rule.end_date).getUTCHours();
+        if (endHr === 17 || endHr === 0) end += 24 * 60 * 60 * 1000 - 1; 
+
+        const start = new Date(rule.start_date).getTime();
+        return targetTime >= start && targetTime <= end;
+      });
+
+      if (applicableRules.length > 0) {
+        applicableRules.sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
+        const rule = applicableRules[0];
+        holidayName = rule.name;
+
+        activePriceList = activePriceList.map((item: any) => {
+          let newPrice = item.price;
+          if (rule.fixed_price) {
+            newPrice = selectedTour.price > 0 ? Math.round(item.price * (rule.fixed_price / selectedTour.price)) : rule.fixed_price;
+          } else {
+            newPrice = Math.round(item.price * (rule.price_multiplier || 1));
           }
-        }
+          return { ...item, price: newPrice };
+        });
       }
 
       setCurrentPrices(activePriceList);
-      setActiveSeasonName(seasonTitle);
+      setActiveHolidayName(holidayName);
 
       let totalMoney = 0;
       let totalPeople = 0;
@@ -281,7 +305,7 @@ const BookingEdit = () => {
             <Card title={<><CalculatorOutlined className="text-green-500 mr-2" /> Chi phí & Số lượng</>} className="mb-6 shadow-sm border-t-4 border-t-green-500">
               {currentPrices.length > 0 ? (
                 <div className="mb-4">
-                  <div className="font-bold text-gray-700 mb-3">Số lượng hành khách {activeSeasonName && <div className="text-orange-500 font-normal text-xs mt-1">(Đang áp dụng: {activeSeasonName})</div>}</div>
+                  <div className="font-bold text-gray-700 mb-3">Số lượng hành khách {activeHolidayName && <div className="text-orange-500 font-normal text-xs mt-1">(Đang áp dụng: {activeHolidayName})</div>}</div>
                   {currentPrices.map((priceItem: any, index: number) => (
                     <div className="flex justify-between items-center mb-3" key={index}>
                       <div><div className="font-medium">{priceItem.name}</div><div className="text-xs text-gray-500">{priceItem.price.toLocaleString()} đ/người</div></div>
@@ -297,7 +321,12 @@ const BookingEdit = () => {
             <Card title={<><SettingOutlined className="text-yellow-500 mr-2" /> Điều hành</>} className="mb-6 shadow-sm border-t-4 border-t-yellow-500">
               <Form.Item name="status" label="Trạng thái đơn">
                 <Select size="large">
-                  <Option value="pending">Chờ duyệt</Option><Option value="confirmed">Đã xác nhận</Option><Option value="paid">Đã thanh toán</Option><Option value="cancelled">Đã hủy</Option>
+                  <Option value="pending">Chờ duyệt</Option>
+                  <Option value="confirmed">Đã xác nhận</Option>
+                  <Option value="paid">Đã thanh toán</Option>
+                  <Option value="deposit">Đã cọc</Option>
+                  <Option value="refunded">Hoàn tiền</Option>
+                  <Option value="cancelled">Đã hủy</Option>
                 </Select>
               </Form.Item>
             </Card>

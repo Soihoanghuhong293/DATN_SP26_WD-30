@@ -361,6 +361,8 @@ const BookingCreate = () => {
                   <Option value="pending">Chờ duyệt</Option>
                   <Option value="confirmed">Đã xác nhận</Option>
                   <Option value="paid">Đã thanh toán</Option>
+                  <Option value="deposit">Đã cọc</Option>
+                  <Option value="refunded">Hoàn tiền</Option>
                   <Option value="cancelled">Đã hủy</Option>
                 </Select>
               </Form.Item>

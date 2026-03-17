@@ -27,7 +27,9 @@ const statusMap: Record<string, { color: string; label: string }> = {
   pending: { color: "orange", label: "Chờ duyệt" },
   confirmed: { color: "blue", label: "Đã xác nhận" },
   paid: { color: "green", label: "Đã thanh toán" },
+  deposit: { color: "purple", label: "Đã cọc" },
   cancelled: { color: "red", label: "Đã hủy" },
+  refunded: { color: "gray", label: "Hoàn tiền" },
 };
 
 const HdvTours = () => {

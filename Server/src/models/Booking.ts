@@ -94,7 +94,7 @@ const BookingSchema: Schema = new Schema(
 
     status: {
       type: String,
-      enum: ["pending", "confirmed", "paid", "cancelled"],
+      enum: ["pending", "confirmed", "paid", "cancelled","refunded","deposit"],
       default: "confirmed",
     },
 

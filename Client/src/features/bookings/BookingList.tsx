@@ -130,6 +130,8 @@ const BookingList = () => {
         if (record.status === 'confirmed') { color = 'processing'; text = 'Đã xác nhận'; }
         if (record.status === 'paid') { color = 'success'; text = 'Đã thanh toán'; }
         if (record.status === 'cancelled') { color = 'error'; text = 'Đã hủy'; }
+        if (record.status === 'deposit') { color = 'purple'; text = 'Đã cọc'; }
+        if (record.status === 'refunded') { color = 'default'; text = 'Hoàn tiền'; }
 
         return <Tag color={color} bordered={false} className="px-2 py-1 text-sm font-medium">{text}</Tag>;
       },
