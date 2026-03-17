@@ -289,7 +289,8 @@ const BookingEdit = () => {
                 <Col span={12}><Form.Item name="customer_name" label="Họ và Tên" rules={[{ required: true }]}><Input size="large" /></Form.Item></Col>
                 <Col span={12}><Form.Item name="customer_phone" label="Số điện thoại" rules={[{ required: true }]}><Input size="large" /></Form.Item></Col>
                 <Col span={12}><Form.Item name="customer_email" label="Email / Liên hệ khác"><Input size="large" /></Form.Item></Col>
-                <Col span={12}><Form.Item name="customer_address" label="Địa chỉ / Ghi chú khách"><Input size="large" /></Form.Item></Col>
+                <Col span={12}><Form.Item name="customer_address" label="Địa chỉ"><Input size="large" /></Form.Item></Col>
+                <Col span={24}><Form.Item name="customer_note" label="Ghi chú từ khách hàng"><Input.TextArea rows={2} /></Form.Item></Col>
               </Row>
             </Card>
             <Card title={<><ProfileOutlined className="text-cyan-500 mr-2" /> Chi tiết nội dung</>} className="mb-6 shadow-sm">

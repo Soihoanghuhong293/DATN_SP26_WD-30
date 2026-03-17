@@ -282,8 +282,13 @@ const BookingCreate = () => {
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="customer_address" label="Địa chỉ / Ghi chú khách">
+                  <Form.Item name="customer_address" label="Địa chỉ">
                     <Input placeholder="Hà Nội..." size="large" />
+                  </Form.Item>
+                </Col>
+                <Col span={24}>
+                  <Form.Item name="customer_note" label="Ghi chú từ khách hàng">
+                    <Input.TextArea rows={2} placeholder="Yêu cầu đặc biệt, dị ứng, giờ đón..." />
                   </Form.Item>
                 </Col>
               </Row>

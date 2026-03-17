@@ -9,6 +9,7 @@ export interface IBooking extends Document {
   customer_phone: string;
   customer_email?: string;
   customer_address?: string;
+  customer_note?: string;
 
   total_price: number;
   startDate: Date;
@@ -19,7 +20,7 @@ export interface IBooking extends Document {
   service_detail?: string;
   notes?: string;
 
-  status: "pending" | "confirmed" | "paid" | "cancelled";
+  status: "pending" | "confirmed" | "paid" | "cancelled" | "deposit" | "refunded";
 
   tour_stage?: "scheduled" | "in_progress" | "completed";
 
@@ -69,6 +70,7 @@ const BookingSchema: Schema = new Schema(
 
     customer_email: { type: String },
     customer_address: { type: String },
+    customer_note: { type: String, default: "" },
 
     total_price: {
       type: Number,

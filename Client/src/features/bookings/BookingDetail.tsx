@@ -304,8 +304,12 @@ const BookingDetail = () => {
                 <div><MailOutlined style={{ color: '#6b7280', marginRight: 8 }} />{booking.customer_email || '---'}</div>
               </Col>
               <Col span={12}>
-                <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase' }}>Địa chỉ / Ghi chú</Text>
+                <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase' }}>Địa chỉ</Text>
                 <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} />{booking.customer_address || '---'}</div>
+              </Col>
+              <Col span={24}>
+                <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase' }}>Ghi chú từ khách hàng</Text>
+                <div style={{ padding: '8px 12px', backgroundColor: '#f3f4f6', borderRadius: 4, marginTop: 4 }}>{booking.customer_note || 'Không có ghi chú'}</div>
               </Col>
             </Row>
           </Card>
@@ -471,13 +475,15 @@ const BookingDetail = () => {
             )}
           </Card>
 
-          {booking.notes && (
-            <Card title="Ghi chú chung" size="small" bordered={true} className="saas-card mb-6">
+          <Card title="Ghi chú chung" size="small" bordered={true} className="saas-card mb-6">
+            {booking.notes ? (
               <div style={{ padding: '8px 12px', backgroundColor: '#fef3c7', borderLeft: '4px solid #f59e0b', color: '#92400e', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
                 {booking.notes}
               </div>
-            </Card>
-          )}
+            ) : (
+              <div className="text-gray-400 italic text-center py-2">Không có ghi chú chung.</div>
+            )}
+          </Card>
         </Col>
       </Row>
     );

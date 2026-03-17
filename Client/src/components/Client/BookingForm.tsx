@@ -151,6 +151,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         startDate: selectedDate, 
         groupSize: values.groupSize,
         paymentMethod: values.paymentMethod,
+        customer_note: values.customer_note,
         // Truyền tổng tiền đã tính toán (sau khi áp dụng giá ngày lễ) xuống Backend
         totalPrice: calculatedPrice * values.groupSize,
       };
@@ -280,6 +281,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
                 <Radio value="deposit">Đặt cọc trước</Radio>
                 <Radio value="later">Thanh toán sau</Radio>
               </Radio.Group>
+            </Form.Item>
+
+            <Form.Item
+              name="customer_note"
+              label="Ghi chú (Tùy chọn)"
+            >
+              <Input.TextArea rows={3} placeholder="Ví dụ: Ăn chay, dị ứng, yêu cầu đặc biệt..." />
             </Form.Item>
 
             <Form.Item>
