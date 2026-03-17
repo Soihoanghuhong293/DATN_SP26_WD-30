@@ -163,6 +163,64 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// HDV: Thêm 1 nhật kí theo ngày cho tour
+export const addDiaryEntryForGuide = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const b = booking as any;
+    const bookingGuideId = b.guide_id?.toString?.();
+    if (bookingGuideId !== guideId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    const {
+      date,
+      day_no,
+      title,
+      content,
+      highlight,
+      images
+    } = req.body || {};
+    if (!date) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu date' });
+    }
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) {
+      return res.status(400).json({ status: 'fail', message: 'date không hợp lệ' });
+    }
+
+    if (!Array.isArray(b.diary_entries)) b.diary_entries = [];
+    b.diary_entries.push({
+      date: d,
+      day_no: typeof day_no === 'number' && day_no > 0 ? day_no : 1,
+      title: title || '',
+      content: content || '',
+      highlight: highlight || '',
+      images: Array.isArray(images)
+        ? images
+            .filter((img: any) => img && typeof img.url === 'string' && img.url.length > 0)
+            .slice(0, 8)
+        : [],
+      created_by: req.user?.name || 'Hướng dẫn viên',
+      created_at: new Date()
+    });
+
+    await b.save();
+    return res.status(200).json({ status: 'success', data: b });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 //admiin
 
 // lấy tất cả đơn đặt tour

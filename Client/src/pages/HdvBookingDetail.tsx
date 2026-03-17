@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -13,6 +14,12 @@ import {
   Empty,
   Steps,
   message,
+  Divider,
+  Form,
+  Input,
+  Segmented,
+  Upload,
+  Image,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -27,6 +34,7 @@ import {
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -38,6 +46,9 @@ const HdvBookingDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [diaryForm] = Form.useForm();
+  const [diaryFileList, setDiaryFileList] = useState<any[]>([]);
+  const [selectedDiaryDayIndex, setSelectedDiaryDayIndex] = useState<number>(0);
 
   const { data, isLoading } = useQuery({
     queryKey: ["hdv-booking", id],
@@ -70,6 +81,28 @@ const HdvBookingDetail = () => {
     },
   });
 
+  const addDiaryMutation = useMutation({
+    mutationFn: async (payload: {
+      date: string;
+      day_no?: number;
+      title?: string;
+      content?: string;
+      highlight?: string;
+      images?: Array<{ name?: string; url: string }>;
+    }) => {
+      await axios.patch(`${API}/guide/${id}/diary`, payload, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success("Đã lưu nhật kí");
+      diaryForm.resetFields();
+      setDiaryFileList([]);
+      queryClient.invalidateQueries({ queryKey: ["hdv-booking", id] });
+    },
+    onError: (err: any) => {
+      message.error(err.response?.data?.message || "Lưu nhật kí thất bại");
+    },
+  });
+
   if (!id) return null;
   if (isLoading)
     return (
@@ -86,6 +119,15 @@ const HdvBookingDetail = () => {
   const passengers = booking.passengers || [];
   const leaderCheckedIn = booking.leaderCheckedIn || false;
   const tourStage = booking.tour_stage || "scheduled";
+
+  const diaryDays = useMemo(() => {
+    const start = dayjs(booking.startDate).startOf("day");
+    const end = dayjs(booking.endDate || booking.startDate).startOf("day");
+    const days = Math.max(0, end.diff(start, "day"));
+    return Array.from({ length: days + 1 }, (_, i) => start.add(i, "day"));
+  }, [booking.startDate, booking.endDate]);
+
+  const selectedDiaryDate = diaryDays[Math.min(selectedDiaryDayIndex, diaryDays.length - 1)] || dayjs(booking.startDate);
 
   const STAGES = [
     { key: "scheduled", label: "Sắp khởi hành", icon: <RocketOutlined /> },
@@ -254,6 +296,175 @@ const HdvBookingDetail = () => {
             </strong>{" "}
             khách
           </div>
+        </Card>
+      ),
+    },
+    {
+      key: "logs",
+      label: (
+        <span>
+          <SyncOutlined /> Nhật kí tour
+        </span>
+      ),
+      children: (
+        <Card>
+          <Form
+            form={diaryForm}
+            layout="vertical"
+            onFinish={(values) => {
+              const date = selectedDiaryDate ? selectedDiaryDate.toISOString() : dayjs(booking.startDate).toISOString();
+              const images = (diaryFileList || [])
+                .map((f: any) => ({ name: f.name, url: f.url || f.thumbUrl }))
+                .filter((x: any) => typeof x.url === "string" && x.url.length > 0);
+              addDiaryMutation.mutate({
+                date,
+                day_no: selectedDiaryDayIndex + 1,
+                title: values.title || "",
+                content: values.content || "",
+                highlight: values.highlight || "",
+                images,
+              });
+            }}
+          >
+            <div style={{ maxWidth: 720 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <Text type="secondary">Ngày:</Text>
+                  <Segmented
+                    value={selectedDiaryDayIndex}
+                    onChange={(v) => {
+                      setSelectedDiaryDayIndex(Number(v));
+                      diaryForm.resetFields();
+                      setDiaryFileList([]);
+                    }}
+                    options={diaryDays.map((d, idx) => ({
+                      label: `Ngày ${idx + 1} (${d.format("DD/MM")})`,
+                      value: idx,
+                    }))}
+                  />
+                </div>
+                <Form.Item name="title" label="Tiêu đề" style={{ marginBottom: 0 }}>
+                  <Input />
+                </Form.Item>
+              </div>
+
+              <Form.Item
+                name="content"
+                label="Nội dung"
+                rules={[{ required: true, message: "Vui lòng nhập nội dung" }]}
+              >
+                <TextArea rows={8} placeholder="Nhập nội dung..." />
+              </Form.Item>
+
+              <Form.Item label="Ảnh">
+                <Upload
+                  listType="picture-card"
+                  fileList={diaryFileList}
+                  onChange={({ fileList }) => setDiaryFileList(fileList)}
+                  beforeUpload={async (file) => {
+                    const toBase64 = (f: File) =>
+                      new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(String(reader.result || ""));
+                        reader.onerror = reject;
+                        reader.readAsDataURL(f);
+                      });
+                    const url = await toBase64(file as any);
+                    setDiaryFileList((prev) => [
+                      ...prev,
+                      { uid: (file as any).uid, name: file.name, status: "done", url },
+                    ]);
+                    return false; // không upload lên server file thô
+                  }}
+                  onRemove={(file) => {
+                    setDiaryFileList((prev) => prev.filter((x: any) => x.uid !== file.uid));
+                  }}
+                >
+                  + Upload
+                </Upload>
+              </Form.Item>
+
+              <Form.Item name="highlight" label="Highlight">
+                <TextArea rows={3} placeholder="- ..." />
+              </Form.Item>
+
+              <Button type="primary" htmlType="submit" loading={addDiaryMutation.isPending}>
+                Lưu
+              </Button>
+            </div>
+          </Form>
+
+          <Divider style={{ margin: "16px 0" }} />
+
+          {Array.isArray(booking.diary_entries) && booking.diary_entries.length > 0 ? (
+            <List
+              itemLayout="vertical"
+              dataSource={[...booking.diary_entries].sort(
+                (a: any, b: any) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()
+              )}
+              renderItem={(entry: any) => (
+                <List.Item>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <Tag color="blue">{`Ngày ${entry.day_no || 1}`}</Tag>
+                      <Tag color="default">
+                        {entry.date ? dayjs(entry.date).format("DD/MM/YYYY") : "—"}
+                      </Tag>
+                      {entry.title ? (
+                        <Text style={{ fontWeight: 600, color: "#111827" }}>{entry.title}</Text>
+                      ) : (
+                        <Text style={{ fontWeight: 600, color: "#111827" }}>Nhật kí</Text>
+                      )}
+                    </div>
+
+                    {entry.content ? (
+                      <div>
+                        <Text strong>Nội dung:</Text>
+                        <div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{entry.content}</div>
+                      </div>
+                    ) : null}
+
+                    {entry.highlight ? (
+                      <div>
+                        <Text strong>Highlight:</Text>
+                        <div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{entry.highlight}</div>
+                      </div>
+                    ) : null}
+
+                    {entry.note ? (
+                      <div>
+                        <Text strong>Ghi chú:</Text> <Text>{entry.note}</Text>
+                      </div>
+                    ) : null}
+
+                    {Array.isArray(entry.images) && entry.images.length > 0 ? (
+                      <Image.PreviewGroup>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {entry.images.slice(0, 8).map((img: any, i: number) => (
+                            <Image
+                              key={i}
+                              width={96}
+                              height={96}
+                              style={{ objectFit: "cover", borderRadius: 8 }}
+                              src={img.url}
+                            />
+                          ))}
+                        </div>
+                      </Image.PreviewGroup>
+                    ) : null}
+
+                    {entry.created_by ? (
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        Người ghi: {entry.created_by}
+                      </Text>
+                    ) : null}
+                  </div>
+                </List.Item>
+              )}
+            />
+          ) : (
+            <Empty description="Chưa có nhật kí theo ngày" />
+          )}
         </Card>
       ),
     },
