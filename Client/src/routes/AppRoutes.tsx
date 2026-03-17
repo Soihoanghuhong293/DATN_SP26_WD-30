@@ -37,6 +37,8 @@ import BookingEdit from '../features/bookings/BookingEdit';
 import UserList from '../features/admin/users/UserList';
 import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
+import HolidayPricingList from '../components/layout/HolidayPricingList';
+import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
 
 const AppRoutes = () => {
   return (
@@ -93,6 +95,9 @@ const AppRoutes = () => {
           <Route path="users/create" element={<UserCreate />} />
 
         <Route path="contact-messages" element={<ContactMessageList />} />
+        <Route path="/admin/holiday-pricing" element={<HolidayPricingList />} />
+        <Route path="holiday-pricing/create" element={<HolidayPricingCreate />} />
+
       </Route>
 
       <Route

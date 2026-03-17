@@ -210,8 +210,6 @@ const TourDetailPage = () => {
                 ))}
 
               </section>
-
-              <Divider />
             </>
           )}
 
@@ -300,7 +298,7 @@ const TourDetailPage = () => {
       <BookingForm
         visible={isBookingModalVisible}
         onClose={() => setIsBookingModalVisible(false)}
-        tourId={id!}
+        tour={tour}
       />
 
     </div>

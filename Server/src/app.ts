@@ -18,6 +18,9 @@ import providerRoutes from './routes/provider.routes.js';
 import bookingRouter from './routes/bookingRoutes';
 import chatRouter from './routes/chat.routes.js';
 import contactMessageRouter from './routes/contactMessage.routes.js';
+
+import holidayPricingRoutes from './routes/holidayPricing.routes';
+
 dotenv.config();
 
 const app = express();
@@ -47,6 +50,7 @@ app.use('/api/v1/bookings', bookingRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);
 
+app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
 // Handle 404https://gemini.google.com/gems/view
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
