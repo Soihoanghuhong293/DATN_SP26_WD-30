@@ -176,7 +176,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         // Truyền tổng tiền đã tính toán (sau khi áp dụng giá ngày lễ) xuống Backend
         totalPrice: calculatedPrice * currentGroupSize,
         passengers: passengers, // Gửi kèm danh sách hành khách chi tiết
+        notes: values.notes, // Gửi ghi chú đặc biệt
       };
+
+      // Tính lại tổng tiền chính xác trước khi gửi (đề phòng FE hiển thị khác)
+      // Người lớn 100%, Trẻ em 50%, Em bé 0%
+      const finalTotal = (adults * calculatedPrice) + (children * calculatedPrice * 0.5);
+      payload.totalPrice = finalTotal;
 
       await axios.post('http://localhost:5000/api/v1/bookings', payload);
       message.success('Đặt tour thành công!');
@@ -200,6 +206,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
       setInfants(0);
     }
   }, [visible, form]);
+
+  // Tính tổng tiền hiển thị
+  // Giả sử: Trẻ em = 50% giá, Em bé = Miễn phí
+  const totalAmount = (adults * calculatedPrice) + (children * calculatedPrice * 0.5);
 
   return (
     <Modal
@@ -236,7 +246,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
                </div>
                <div style={{ marginTop: 8, borderTop: '1px dashed #91d5ff', paddingTop: 8 }}>
                  <span style={{ fontWeight: 600 }}>Tổng tiền dự kiến: </span>
-                 {loadingPrice ? <Spin size="small" /> : <span style={{ color: '#f5222d', fontWeight: 'bold', fontSize: 18 }}>{(calculatedPrice * currentGroupSize).toLocaleString('vi-VN')}đ</span>}
+                 {loadingPrice ? <Spin size="small" /> : <span style={{ color: '#f5222d', fontWeight: 'bold', fontSize: 18 }}>{totalAmount.toLocaleString('vi-VN')}đ</span>}
                </div>
              </div>
           )}
@@ -309,15 +319,15 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
             {/* Form nhập thông tin chi tiết hành khách */}
             <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: 24, paddingRight: 4 }}>
               {[
-                { type: 'adults', count: adults, label: 'Người lớn' },
-                { type: 'children', count: children, label: 'Trẻ em' },
-                { type: 'infants', count: infants, label: 'Em bé' }
+                { type: 'adults', count: adults, label: 'Người lớn', ageRule: { min: 12, msg: '>= 12 tuổi' } },
+                { type: 'children', count: children, label: 'Trẻ em', ageRule: { min: 2, max: 12, msg: '2 - 11 tuổi' } },
+                { type: 'infants', count: infants, label: 'Em bé', ageRule: { max: 2, msg: '< 2 tuổi' } }
               ].map(group => (
                 Array.from({ length: group.count }).map((_, i) => (
                   <Card 
                     key={`${group.type}-${i}`} 
                     size="small" 
-                    title={`${group.label} ${i + 1}`}
+                    title={<span style={{ fontWeight: 600 }}>{group.label}</span>}
                     style={{ marginBottom: 12, background: '#fafafa', borderColor: '#d9d9d9' }}
                     bodyStyle={{ padding: '12px' }}
                   >
@@ -334,7 +344,19 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
                       <Col span={8}>
                          <Form.Item
                             name={['passengers', group.type, i, 'birthDate']}
-                            rules={[{ required: true, message: 'Ngày sinh' }]}
+                            rules={[
+                              { required: true, message: 'Ngày sinh' },
+                              () => ({
+                                validator(_, value) {
+                                  if (!value) return Promise.resolve();
+                                  const age = dayjs().diff(value, 'year', true);
+                                  if (group.type === 'adults' && age < 12) return Promise.reject(new Error('Phải >= 12 tuổi'));
+                                  if (group.type === 'children' && (age < 2 || age >= 12)) return Promise.reject(new Error('Từ 2 đến 11 tuổi'));
+                                  if (group.type === 'infants' && age >= 2) return Promise.reject(new Error('Phải < 2 tuổi'));
+                                  return Promise.resolve();
+                                },
+                              }),
+                            ]}
                             style={{ marginBottom: 0 }}
                          >
                            <DatePicker placeholder="Ngày sinh" format="DD/MM/YYYY" style={{ width: '100%' }} />
@@ -357,6 +379,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
                 ))
               ))}
             </div>
+
+            <Form.Item
+              name="notes"
+              label="Ghi chú đặc biệt"
+            >
+              <Input.TextArea rows={3} placeholder="Ví dụ: Ăn chay, dị ứng, phòng tầng thấp..." />
+            </Form.Item>
 
             <Form.Item
               name="paymentMethod"
