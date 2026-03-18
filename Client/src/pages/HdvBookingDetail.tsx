@@ -13,6 +13,9 @@ import {
   Empty,
   Steps,
   message,
+  Form,
+  Input,
+  Select,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -23,6 +26,7 @@ import {
   RocketOutlined,
   SyncOutlined,
   CheckOutlined,
+  ProfileOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -46,6 +50,30 @@ const HdvBookingDetail = () => {
       return res.data?.data;
     },
     enabled: !!id,
+  });
+
+  const { data: postsData, isLoading: isPostsLoading } = useQuery({
+    queryKey: ["hdv-booking-posts", id],
+    queryFn: async () => {
+      const res = await axios.get(`${API}/guide/${id}/posts`, getAuthHeader());
+      return res.data?.data || [];
+    },
+    enabled: !!id,
+  });
+
+  const createPostMutation = useMutation({
+    mutationFn: async (payload: {
+      title: string;
+      content: string;
+      type: string;
+      images?: string[];
+    }) => {
+      await axios.post(`${API}/guide/${id}/posts`, payload, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success("Đã thêm bài viết mới cho chuyến đi");
+      queryClient.invalidateQueries({ queryKey: ["hdv-booking-posts", id] });
+    },
   });
 
   const updateStageMutation = useMutation({
@@ -114,6 +142,8 @@ const HdvBookingDetail = () => {
       passengerIndex: i,
     })),
   ];
+
+  const posts = Array.isArray(postsData) ? postsData : [];
 
   const tabItems = [
     {
@@ -233,6 +263,180 @@ const HdvBookingDetail = () => {
             </List.Item>
           )}
         />
+      ),
+    },
+    {
+      key: "posts",
+      label: (
+        <span>
+          <ProfileOutlined /> Bài viết chuyến đi
+        </span>
+      ),
+      children: (
+        <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <Card
+            title="Thêm bài viết mới"
+            style={{ flex: 1, minWidth: 320, maxWidth: 420 }}
+          >
+            <Form
+              layout="vertical"
+              onFinish={(values: any) => {
+                const images =
+                  typeof values.imageUrls === "string" && values.imageUrls.trim()
+                    ? values.imageUrls
+                        .split(",")
+                        .map((s: string) => s.trim())
+                        .filter(Boolean)
+                    : [];
+                createPostMutation.mutate({
+                  title: values.title,
+                  content: values.content,
+                  type: values.type,
+                  images,
+                });
+              }}
+            >
+              <Form.Item
+                label="Loại bài viết"
+                name="type"
+                initialValue="activity"
+              >
+                <Select>
+                  <Select.Option value="activity">Hoạt động tour</Select.Option>
+                  <Select.Option value="photo">Hình ảnh thực tế</Select.Option>
+                  <Select.Option value="update">Cập nhật từ HDV</Select.Option>
+                  <Select.Option value="note">Ghi chú khác</Select.Option>
+                </Select>
+              </Form.Item>
+              <Form.Item
+                label="Tiêu đề"
+                name="title"
+              >
+                <Input placeholder="Ví dụ: Check-in tại điểm tham quan đầu tiên" />
+              </Form.Item>
+              <Form.Item
+                label="Nội dung"
+                name="content"
+              >
+                <Input.TextArea
+                  rows={4}
+                  placeholder="Mô tả hoạt động, cảm nhận của đoàn, lưu ý cho khách..."
+                />
+              </Form.Item>
+              <Form.Item
+                label="Link ảnh (tùy chọn)"
+                name="imageUrls"
+                extra="Nhập nhiều link, ngăn cách nhau bằng dấu phẩy"
+              >
+                <Input placeholder="https://..., https://..." />
+              </Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={createPostMutation.isPending}
+                block
+              >
+                Đăng bài viết
+              </Button>
+            </Form>
+          </Card>
+
+          <div style={{ flex: 2, minWidth: 320 }}>
+            <Title level={5} style={{ marginBottom: 16 }}>
+              Nhật ký chuyến đi
+            </Title>
+            {isPostsLoading ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <Spin />
+              </div>
+            ) : posts.length === 0 ? (
+              <Empty description="Chưa có bài viết nào cho chuyến đi" />
+            ) : (
+              <List
+                dataSource={posts}
+                renderItem={(post: any) => (
+                  <List.Item>
+                    <Card
+                      style={{ width: "100%" }}
+                      title={
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>{post.title}</span>
+                          <Tag
+                            color={
+                              post.type === "photo"
+                                ? "purple"
+                                : post.type === "update"
+                                ? "blue"
+                                : post.type === "note"
+                                ? "default"
+                                : "green"
+                            }
+                          >
+                            {post.type === "activity"
+                              ? "Hoạt động"
+                              : post.type === "photo"
+                              ? "Hình ảnh"
+                              : post.type === "update"
+                              ? "Cập nhật"
+                              : "Ghi chú"}
+                          </Tag>
+                        </div>
+                      }
+                    >
+                      <div style={{ marginBottom: 8, fontSize: 12, color: "#6b7280" }}>
+                        {post.created_at &&
+                          new Date(post.created_at).toLocaleString("vi-VN", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })}
+                      </div>
+                      <div
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          marginBottom: post.images?.length ? 12 : 0,
+                        }}
+                      >
+                        {post.content}
+                      </div>
+                      {post.images && post.images.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 8,
+                          }}
+                        >
+                          {post.images.map((url: string, index: number) => (
+                            <div
+                              key={index}
+                              style={{
+                                width: 100,
+                                height: 80,
+                                borderRadius: 8,
+                                overflow: "hidden",
+                                border: "1px solid #e5e7eb",
+                              }}
+                            >
+                              <img
+                                src={url}
+                                alt={`post-${index}`}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  </List.Item>
+                )}
+              />
+            )}
+          </div>
+        </div>
       ),
     },
     {
