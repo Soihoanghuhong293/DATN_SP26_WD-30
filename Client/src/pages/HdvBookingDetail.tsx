@@ -23,6 +23,7 @@ import {
   RocketOutlined,
   SyncOutlined,
   CheckOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -86,6 +87,19 @@ const HdvBookingDetail = () => {
   const passengers = booking.passengers || [];
   const leaderCheckedIn = booking.leaderCheckedIn || false;
   const tourStage = booking.tour_stage || "scheduled";
+
+  const checkpointDays =
+    Array.isArray(schedule) && schedule.length > 0
+      ? schedule
+          .map((d: any, idx: number) => ({
+            day: Number(d?.day ?? idx + 1),
+            title: d?.title || `Ngày ${idx + 1}`,
+            checkpoints: Array.isArray(d?.activities)
+              ? d.activities.filter((x: any) => typeof x === "string" && x.trim().length > 0)
+              : [],
+          }))
+          .sort((a: any, b: any) => a.day - b.day)
+      : [];
 
   const STAGES = [
     { key: "scheduled", label: "Sắp khởi hành", icon: <RocketOutlined /> },
@@ -236,24 +250,52 @@ const HdvBookingDetail = () => {
       ),
     },
     {
-      key: "checkin",
+      key: "checkpoint",
       label: (
         <span>
-          <CheckCircleOutlined /> Check-in khách
+          <CheckCircleOutlined /> Checkpoint (điểm tập trung)
         </span>
       ),
       children: (
         <Card>
-          <p style={{ color: "#6b7280", marginBottom: 16 }}>
-            Gạt công tắc sang &quot;Có mặt&quot; khi khách đến điểm tập trung. Chưa gạt = Vắng mặt.
-          </p>
-          <div style={{ fontSize: 14 }}>
-            Có mặt:{" "}
-            <strong>
-              {displayList.filter((p) => p.checkedIn).length} / {displayList.length}
-            </strong>{" "}
-            khách
-          </div>
+          {checkpointDays.length === 0 ? (
+            <Empty description="Chưa có checkpoint (lịch trình chưa có hoạt động)" />
+          ) : (
+            <Tabs
+              type="card"
+              items={checkpointDays.map((d: any) => ({
+                key: String(d.day),
+                label: `NGÀY ${d.day}`,
+                children: (
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 12, color: "#111827" }}>
+                      {d.title}
+                    </div>
+                    <List
+                      dataSource={d.checkpoints}
+                      locale={{ emptyText: "Chưa có điểm tập trung cho ngày này" }}
+                      renderItem={(cp: string, idx: number) => (
+                        <List.Item
+                          key={`${d.day}-${idx}`}
+                          style={{
+                            background: "#fff",
+                            border: "1px solid #eef2f7",
+                            borderRadius: 12,
+                            padding: "12px 14px",
+                            marginBottom: 10,
+                            boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
+                          }}
+                          actions={[<RightOutlined key="go" style={{ color: "#9ca3af" }} />]}
+                        >
+                          <div style={{ fontWeight: 600, color: "#111827" }}>{cp}</div>
+                        </List.Item>
+                      )}
+                    />
+                  </div>
+                ),
+              }))}
+            />
+          )}
         </Card>
       ),
     },
