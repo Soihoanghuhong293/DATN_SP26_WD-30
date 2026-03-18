@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Radio, Button, message, Calendar, Tag, Row, Col, Typography, Spin } from 'antd';
-import { UserOutlined, PhoneOutlined, MailOutlined, CalendarOutlined, TeamOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, InputNumber, Radio, Button, message, Calendar, Tag, Row, Col, Typography, Spin, DatePicker, Select, Card } from 'antd';
+import { UserOutlined, PhoneOutlined, MailOutlined, CalendarOutlined, TeamOutlined, SmileOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -19,6 +19,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
 
+  // State cho số lượng khách chi tiết
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [infants, setInfants] = useState(0);
+
   // Fetch thông tin giá ngày lễ ngay khi mở form
   useEffect(() => {
     if (visible) {
@@ -28,8 +33,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
     }
   }, [visible]);
 
-  // Theo dõi sự thay đổi của trường Số lượng khách (groupSize) để tính tổng tiền realtime
-  const currentGroupSize = Form.useWatch('groupSize', form) || 1;
+  // Tổng số khách = tổng 3 loại
+  const currentGroupSize = adults + children + infants;
 
   const departureSchedule = tour?.departure_schedule || [];
 
@@ -143,16 +148,34 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
 
     setLoading(true);
     try {
+      // Thu thập thông tin hành khách từ form
+      const formValues = form.getFieldsValue();
+      const passengers = [
+        ...(Array.from({ length: adults }).map((_, i) => ({
+          ...formValues.passengers?.adults?.[i], type: 'Người lớn',
+          birthDate: formValues.passengers?.adults?.[i]?.birthDate ? dayjs(formValues.passengers?.adults?.[i].birthDate).format('YYYY-MM-DD') : undefined
+        }))),
+        ...(Array.from({ length: children }).map((_, i) => ({
+          ...formValues.passengers?.children?.[i], type: 'Trẻ em',
+          birthDate: formValues.passengers?.children?.[i]?.birthDate ? dayjs(formValues.passengers?.children?.[i].birthDate).format('YYYY-MM-DD') : undefined
+        }))),
+        ...(Array.from({ length: infants }).map((_, i) => ({
+          ...formValues.passengers?.infants?.[i], type: 'Em bé',
+          birthDate: formValues.passengers?.infants?.[i]?.birthDate ? dayjs(formValues.passengers?.infants?.[i].birthDate).format('YYYY-MM-DD') : undefined
+        })))
+      ].filter(p => p && p.name); // Lọc các object rỗng nếu có
+
       const payload = {
         tour_id: tour?._id || tour?.id,
         customerName: values.customerName,
         phone: values.phone,
         email: values.email,
         startDate: selectedDate, 
-        groupSize: values.groupSize,
+        groupSize: currentGroupSize,
         paymentMethod: values.paymentMethod,
         // Truyền tổng tiền đã tính toán (sau khi áp dụng giá ngày lễ) xuống Backend
-        totalPrice: calculatedPrice * values.groupSize,
+        totalPrice: calculatedPrice * currentGroupSize,
+        passengers: passengers, // Gửi kèm danh sách hành khách chi tiết
       };
 
       await axios.post('http://localhost:5000/api/v1/bookings', payload);
@@ -172,6 +195,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
     if (!visible) {
       form.resetFields();
       setSelectedDate(null);
+      setAdults(1);
+      setChildren(0);
+      setInfants(0);
     }
   }, [visible, form]);
 
@@ -259,16 +285,78 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
               <Input prefix={<MailOutlined />} placeholder="Nhập email" size="large" />
             </Form.Item>
 
-            <Form.Item
-              name="groupSize"
-              label="Số lượng khách"
-              rules={[
-                { required: true, message: 'Vui lòng nhập số lượng khách!' },
-                { type: 'number', min: 1, message: 'Số lượng khách phải ít nhất 1!' },
-              ]}
-            >
-              <InputNumber min={1} placeholder="Nhập số lượng khách" style={{ width: '100%' }} size="large" />
-            </Form.Item>
+            <div style={{ marginBottom: 24 }}>
+              <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>Hành khách</Typography.Text>
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item label="Người lớn" style={{ marginBottom: 0 }}>
+                    <InputNumber min={1} value={adults} onChange={(v) => setAdults(v || 1)} style={{ width: '100%' }} prefix={<UserOutlined />} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Trẻ em" style={{ marginBottom: 0 }}>
+                    <InputNumber min={0} value={children} onChange={(v) => setChildren(v || 0)} style={{ width: '100%' }} prefix={<TeamOutlined />} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Em bé" style={{ marginBottom: 0 }}>
+                    <InputNumber min={0} value={infants} onChange={(v) => setInfants(v || 0)} style={{ width: '100%' }} prefix={<SmileOutlined />} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Form nhập thông tin chi tiết hành khách */}
+            <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: 24, paddingRight: 4 }}>
+              {[
+                { type: 'adults', count: adults, label: 'Người lớn' },
+                { type: 'children', count: children, label: 'Trẻ em' },
+                { type: 'infants', count: infants, label: 'Em bé' }
+              ].map(group => (
+                Array.from({ length: group.count }).map((_, i) => (
+                  <Card 
+                    key={`${group.type}-${i}`} 
+                    size="small" 
+                    title={`${group.label} ${i + 1}`}
+                    style={{ marginBottom: 12, background: '#fafafa', borderColor: '#d9d9d9' }}
+                    bodyStyle={{ padding: '12px' }}
+                  >
+                    <Row gutter={12}>
+                      <Col span={10}>
+                         <Form.Item
+                            name={['passengers', group.type, i, 'name']}
+                            rules={[{ required: true, message: 'Nhập tên' }]}
+                            style={{ marginBottom: 0 }}
+                         >
+                           <Input placeholder="Họ tên" />
+                         </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                         <Form.Item
+                            name={['passengers', group.type, i, 'birthDate']}
+                            rules={[{ required: true, message: 'Ngày sinh' }]}
+                            style={{ marginBottom: 0 }}
+                         >
+                           <DatePicker placeholder="Ngày sinh" format="DD/MM/YYYY" style={{ width: '100%' }} />
+                         </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                         <Form.Item
+                            name={['passengers', group.type, i, 'gender']}
+                            initialValue="Nam"
+                            style={{ marginBottom: 0 }}
+                         >
+                           <Select>
+                             <Select.Option value="Nam">Nam</Select.Option>
+                             <Select.Option value="Nữ">Nữ</Select.Option>
+                           </Select>
+                         </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+                ))
+              ))}
+            </div>
 
             <Form.Item
               name="paymentMethod"
