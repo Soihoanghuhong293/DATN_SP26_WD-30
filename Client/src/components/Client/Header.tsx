@@ -64,19 +64,25 @@ const Header = () => {
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: '#e6f7ff',
-              borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <SendOutlined rotate={-45} style={{ fontSize: '20px', color: '#13b6ec', marginBottom: '4px' }} />
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="12" fill="url(#logo_gradient)"/>
+              <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              <defs>
+                <linearGradient id="logo_gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#13B6EC"/>
+                  <stop offset="1" stopColor="#096dd9"/>
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-            ViGo
+            <span style={{ color: '#13b6ec' }}>Vi</span>Go
           </span>
         </Link>
 
