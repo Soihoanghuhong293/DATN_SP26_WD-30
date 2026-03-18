@@ -11,6 +11,7 @@ import {
   TeamOutlined,
   ShopOutlined,
   MessageOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -33,6 +34,7 @@ const AdminSidebar = () => {
     if (pathname.includes("/admin/bookings")) keys.push("booking-management");
     if (pathname.includes("/admin/guides")) keys.push("guide-management");
     if (pathname.includes("/admin/providers")) keys.push("provider-management");
+    if (pathname.includes("/admin/holiday-pricing")) keys.push("holiday-pricing-management");
     return keys;
   };
 
@@ -150,6 +152,23 @@ const AdminSidebar = () => {
             ],
           },
 
+          {
+            key: "holiday-pricing-management",
+            icon: <CalendarOutlined />,
+            label: "Quản lý Ngày lễ",
+            children: [
+              {
+                key: "/admin/holiday-pricing",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/holiday-pricing">Danh sách Ngày lễ</Link>,
+              },
+              {
+                key: "/admin/holiday-pricing/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/holiday-pricing/create">Thêm Ngày lễ</Link>,
+              },
+            ],
+          },
           
           {
             key: "/admin/contact-messages",

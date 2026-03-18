@@ -52,6 +52,7 @@ export const getMyBookingDetail = async (req: AuthRequest, res: Response) => {
 
     // format lại thời gian cho log
     const formattedBooking: any = booking.toObject();
+    if (!formattedBooking.tour_stage) formattedBooking.tour_stage = 'scheduled';
     if (formattedBooking.logs) {
        formattedBooking.logs = formattedBooking.logs.map((log: any) => ({
          ...log,
@@ -84,9 +85,72 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
     }
 
-    const { type, passengerIndex } = req.body; 
-    let updated;
+    // Chỉ cho phép điểm danh khi tour đang diễn ra
+    const stage = b.tour_stage || 'scheduled';
+    if (stage !== 'in_progress') {
+      return res.status(400).json({
+        status: 'fail',
+        message:
+          stage === 'completed'
+            ? 'Tour đã kết thúc, không thể điểm danh.'
+            : 'Tour chưa bắt đầu, không thể điểm danh.',
+      });
+    }
 
+    const { type, passengerIndex, day, checkpointIndex } = req.body;
+
+    const hasCheckpoint =
+      (typeof day === 'number' || (typeof day === 'string' && String(day).trim() !== '')) &&
+      (typeof checkpointIndex === 'number' || (typeof checkpointIndex === 'string' && String(checkpointIndex).trim() !== ''));
+
+    // ===== New: check-in theo từng checkpoint (ngày + chặng) =====
+    if (hasCheckpoint) {
+      const dayKey = String(day);
+      const cpKey = String(checkpointIndex);
+
+      const totalPassengers = Array.isArray(b.passengers) ? b.passengers.length : 0;
+      const current = (b.checkpoint_checkins || {}) as any;
+      const dayObj = current[dayKey] || {};
+      const cpObj = dayObj[cpKey] || { leader: false, passengers: Array(totalPassengers).fill(false) };
+
+      // đồng bộ độ dài passengers nếu có thay đổi
+      const normalizedPassengers = Array.isArray(cpObj.passengers) ? cpObj.passengers.slice(0, totalPassengers) : [];
+      while (normalizedPassengers.length < totalPassengers) normalizedPassengers.push(false);
+
+      if (type === 'leader') {
+        cpObj.leader = !Boolean(cpObj.leader);
+      } else if (type === 'passenger' && typeof passengerIndex === 'number') {
+        if (passengerIndex < 0 || passengerIndex >= totalPassengers) {
+          return res.status(400).json({ status: 'fail', message: 'Chỉ mục khách không hợp lệ' });
+        }
+        normalizedPassengers[passengerIndex] = !Boolean(normalizedPassengers[passengerIndex]);
+        cpObj.passengers = normalizedPassengers;
+      } else {
+        return res.status(400).json({ status: 'fail', message: 'Thiếu type hoặc passengerIndex' });
+      }
+
+      const next = {
+        ...current,
+        [dayKey]: {
+          ...dayObj,
+          [cpKey]: {
+            leader: Boolean(cpObj.leader),
+            passengers: cpObj.passengers || normalizedPassengers,
+          },
+        },
+      };
+
+      const updated = await Booking.findByIdAndUpdate(
+        req.params.id,
+        { checkpoint_checkins: next },
+        { new: true }
+      );
+
+      return res.status(200).json({ status: 'success', data: updated });
+    }
+
+    // ===== Legacy: check-in 1 lần chung toàn tour =====
+    let updated;
     if (type === 'leader') {
       updated = await Booking.findByIdAndUpdate(
         req.params.id,
@@ -145,6 +209,27 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'tour_stage không hợp lệ' });
     }
 
+    // Chỉ cho phép chuyển trạng thái tiến tới (không được quay ngược)
+    const currentStage = b.tour_stage || 'scheduled';
+    const stageOrder: Record<string, number> = { scheduled: 0, in_progress: 1, completed: 2 };
+    const from = stageOrder[currentStage] ?? 0;
+    const to = stageOrder[tour_stage] ?? 0;
+    if (to < from) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Không thể chuyển trạng thái ngược lại.',
+      });
+    }
+    if (to === from) {
+      return res.status(200).json({ status: 'success', data: b });
+    }
+    if (to !== from + 1) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Chỉ được chuyển sang trạng thái tiếp theo.',
+      });
+    }
+
     // Ghi log tự động khi HDV đổi giai đoạn tour
     b.logs.push({
       time: new Date(),
@@ -160,6 +245,115 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
     res.status(200).json({ status: 'success', data: b });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// HDV: Thêm 1 nhật kí theo ngày cho tour
+export const addDiaryEntryForGuide = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const b = booking as any;
+    const bookingGuideId = b.guide_id?.toString?.();
+    if (bookingGuideId !== guideId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    const {
+      date,
+      day_no,
+      title,
+      content,
+      highlight,
+      images
+    } = req.body || {};
+    if (!date) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu date' });
+    }
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) {
+      return res.status(400).json({ status: 'fail', message: 'date không hợp lệ' });
+    }
+
+    const safeDayNo = typeof day_no === 'number' && day_no > 0 ? day_no : 1;
+    const safeImages = Array.isArray(images)
+      ? images
+          .filter((img: any) => img && typeof img.url === 'string' && img.url.length > 0)
+          .slice(0, 8)
+      : [];
+
+    if (!Array.isArray(b.diary_entries)) b.diary_entries = [];
+
+    // 1 ngày chỉ có 1 nhật kí: cập nhật theo day_no, xoá các bản trùng (dữ liệu cũ)
+    const existing = b.diary_entries.find((e: any) => Number(e?.day_no || 1) === Number(safeDayNo));
+    b.diary_entries = b.diary_entries.filter((e: any) => Number(e?.day_no || 1) !== Number(safeDayNo));
+
+    b.diary_entries.push({
+      ...(existing?._id ? { _id: existing._id } : {}),
+      date: d,
+      day_no: safeDayNo,
+      title: title || '',
+      content: content || '',
+      highlight: highlight || '',
+      images: safeImages,
+      created_by: existing?.created_by || (req.user?.name || 'Hướng dẫn viên'),
+      created_at: existing?.created_at || new Date(),
+      updated_at: new Date()
+    });
+
+    await b.save();
+    return res.status(200).json({ status: 'success', data: b });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// HDV: Xoá nhật kí theo ngày (day_no)
+export const deleteDiaryEntryForGuide = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const b = booking as any;
+    const bookingGuideId = b.guide_id?.toString?.();
+    if (bookingGuideId !== guideId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    const dayNo = Number(req.params.dayNo);
+    if (!dayNo || Number.isNaN(dayNo) || dayNo < 1) {
+      return res.status(400).json({ status: 'fail', message: 'dayNo không hợp lệ' });
+    }
+
+    const before = Array.isArray(b.diary_entries) ? b.diary_entries.length : 0;
+    b.diary_entries = Array.isArray(b.diary_entries)
+      ? b.diary_entries.filter((e: any) => Number(e?.day_no || 1) !== dayNo)
+      : [];
+
+    const after = b.diary_entries.length;
+    if (before === after) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy nhật kí của ngày này' });
+    }
+
+    await b.save();
+    return res.status(200).json({ status: 'success', data: b });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
   }
 };
 
@@ -242,6 +436,10 @@ export const createBooking = async (req: Request, res: Response) => {
     }
 
     const newBookingData = { ...req.body };
+    // mặc định trạng thái giai đoạn tour là "sắp khởi hành"
+    if (!newBookingData.tour_stage) {
+      newBookingData.tour_stage = 'scheduled';
+    }
 
     // tự động tạo lịch sử đầu tiên
     const initialStatus = newBookingData.status || 'confirmed';

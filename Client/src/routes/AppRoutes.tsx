@@ -23,9 +23,9 @@ import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
 import HdvDashboard from '../pages/HdvDashboard';
-import HdvPlaceholder from '../pages/HdvPlaceholder';
 import HdvTours from '../pages/HdvTours';
 import HdvBookingDetail from '../pages/HdvBookingDetail';
+import HdvSchedule from '../pages/HdvSchedule';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -37,6 +37,8 @@ import BookingEdit from '../features/bookings/BookingEdit';
 import UserList from '../features/admin/users/UserList';
 import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
+import HolidayPricingList from '../components/layout/HolidayPricingList';
+import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
 
 const AppRoutes = () => {
   return (
@@ -57,7 +59,7 @@ const AppRoutes = () => {
         <Route index element={<HdvDashboard />} />
         <Route path="tours" element={<HdvTours />} />
         <Route path="tours/:id" element={<HdvBookingDetail />} />
-        <Route path="schedule" element={<HdvPlaceholder title="Lịch làm việc" />} />
+        <Route path="schedule" element={<HdvSchedule />} />
       </Route>
 
       {/* ===== ADMIN ===== */}
@@ -93,6 +95,9 @@ const AppRoutes = () => {
           <Route path="users/create" element={<UserCreate />} />
 
         <Route path="contact-messages" element={<ContactMessageList />} />
+        <Route path="/admin/holiday-pricing" element={<HolidayPricingList />} />
+        <Route path="holiday-pricing/create" element={<HolidayPricingCreate />} />
+
       </Route>
 
       <Route

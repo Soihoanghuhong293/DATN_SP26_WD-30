@@ -149,3 +149,111 @@
 .ant-empty {
   padding: 40px 20px;
 }
+.tour-detail-page {
+  padding: 20px;
+}
+
+/* HEADER */
+.tour-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.tour-detail-header h1 {
+  margin: 0;
+}
+
+/* HERO GRID */
+.tour-hero {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* GALLERY */
+.tour-gallery-main img {
+  width: 100%;
+  height: 350px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.tour-gallery-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tour-thumb {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tour-thumb img {
+   width: 60px;   /* giảm từ 80 → 60 */
+  height: 45px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.tour-thumb.is-active img {
+  border: 2px solid #1890ff;
+}
+
+/* SIDEBAR */
+.tour-detail-sidebar {
+  position: sticky;
+  top: 20px;
+}
+
+.sidebar-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* CONTENT */
+.tour-detail-container {
+  margin-top: 30px;
+}
+
+/* QUICK INFO */
+.tour-detail-quick-info {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.info-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* SECTION */
+.detail-section {
+  margin-bottom: 20px;
+}
+
+/* SCHEDULE */
+.schedule-item {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.schedule-day {
+  font-weight: bold;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .tour-hero {
+    grid-template-columns: 1fr;
+  }
+}

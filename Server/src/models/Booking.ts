@@ -9,6 +9,7 @@ export interface IBooking extends Document {
   customer_phone: string;
   customer_email?: string;
   customer_address?: string;
+  customer_note?: string;
 
   total_price: number;
   startDate: Date;
@@ -19,7 +20,7 @@ export interface IBooking extends Document {
   service_detail?: string;
   notes?: string;
 
-  status: "pending" | "confirmed" | "paid" | "cancelled";
+  status: "pending" | "confirmed" | "paid" | "cancelled" | "deposit" | "refunded";
 
   tour_stage?: "scheduled" | "in_progress" | "completed";
 
@@ -39,6 +40,17 @@ export interface IBooking extends Document {
     old: string;
     new: string;
     note?: string;
+  }>;
+
+  diary_entries?: Array<{
+    date: Date;
+    day_no?: number;
+    title?: string;
+    content?: string;
+    highlight?: string;
+    images?: Array<{ name?: string; url: string }>;
+    created_by?: string;
+    created_at?: Date;
   }>;
 
   created_at: Date;
@@ -69,6 +81,7 @@ const BookingSchema: Schema = new Schema(
 
     customer_email: { type: String },
     customer_address: { type: String },
+    customer_note: { type: String, default: "" },
 
     total_price: {
       type: Number,
@@ -94,7 +107,7 @@ const BookingSchema: Schema = new Schema(
 
     status: {
       type: String,
-      enum: ["pending", "confirmed", "paid", "cancelled"],
+      enum: ["pending", "confirmed", "paid", "cancelled","refunded","deposit"],
       default: "confirmed",
     },
 
@@ -124,6 +137,24 @@ const BookingSchema: Schema = new Schema(
       },
     ],
 
+    diary_entries: [
+      {
+        date: { type: Date, required: true },
+        day_no: { type: Number, default: 1 },
+        title: { type: String, default: "" },
+        content: { type: String, default: "" },
+        highlight: { type: String, default: "" },
+        images: [
+          {
+            name: { type: String, default: "" },
+            url: { type: String, required: true },
+          },
+        ],
+        created_by: { type: String, default: "" },
+        created_at: { type: Date, default: Date.now },
+      },
+    ],
+
     paymentMethod: {
       type: String,
       default: "offline",
@@ -134,5 +165,39 @@ const BookingSchema: Schema = new Schema(
     strict: false,
   }
 );
+
+// validate chuyển trạng thái
+const validTransitions: Record<string, string[]> = {
+  pending: ["confirmed", "deposit", "paid", "cancelled"], // pending có thể sang các trạng thái này
+  confirmed: ["deposit", "paid", "cancelled"],
+  deposit: ["paid", "cancelled"],
+  paid: ["cancelled"], //  thanh toán thì chỉ có thể huỷ hoặc kết thúc
+  cancelled: ["refunded"], // huỷ thì chỉ được phép sang hoàn tiền
+  refunded: [], // k thể thay đổi
+};
+
+BookingSchema.pre("findOneAndUpdate", async function () {
+  const update = this.getUpdate() as any;
+
+  const newStatus = update.$set?.status || update.status;
+
+  if (newStatus) {
+    const docToUpdate = await this.model.findOne(this.getQuery());
+
+    if (docToUpdate) {
+      const oldStatus = docToUpdate.status;
+
+      if (oldStatus && oldStatus !== newStatus) {
+        const allowed = validTransitions[oldStatus] || [];
+
+        if (!allowed.includes(newStatus)) {
+          throw new Error(
+            `Không thể đổi trạng thái từ '${oldStatus}' sang '${newStatus}'`
+          );
+        }
+      }
+    }
+  }
+});
 
 export default mongoose.model<IBooking>("Booking", BookingSchema);

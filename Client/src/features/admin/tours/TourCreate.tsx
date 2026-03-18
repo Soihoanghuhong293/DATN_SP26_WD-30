@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -6,7 +6,7 @@ import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
   Space, Typography, message, Select, Divider, Spin, 
-  DatePicker
+  DatePicker, Upload
 } from 'antd';
 import { 
   MinusCircleOutlined, PlusOutlined, 
@@ -27,6 +27,7 @@ const TourCreate = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [imageFileList, setImageFileList] = useState<any[]>([]);
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -78,17 +79,27 @@ const TourCreate = () => {
     const finalValues = { ...values };
     finalValues.suppliers = Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []);
 
-    if (finalValues.seasonalPrices?.length > 0) {
-      finalValues.seasonalPrices = finalValues.seasonalPrices.map((season: any) => ({
-        title: season.title,
-        startDate: season.dateRange?.[0]?.format('YYYY-MM-DD'),
-        endDate: season.dateRange?.[1]?.format('YYYY-MM-DD'),
-        prices: season.prices || []
-      }));
+    const imageUrls = imageFileList
+      .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
+      .map((f) => f.url || f.response?.data?.url)
+      .filter(Boolean);
+    if (imageUrls.length === 0) {
+      message.error('Vui lòng upload ít nhất 1 ảnh!');
+      return;
+    }
+    finalValues.images = imageUrls;
+
+    if (finalValues.departure_schedule) {
+      finalValues.departure_schedule = finalValues.departure_schedule.map((item: any) => ({
+        ...item,
+        date: item.date ? item.date.format('YYYY-MM-DD') : null
+      })).filter((item: any) => item.date);
     }
 
     mutation.mutate(finalValues);
   };
+
+  const uploadEndpoint = useMemo(() => 'http://localhost:5000/api/v1/uploads/images', []);
 
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen font-sans">
@@ -196,71 +207,32 @@ const TourCreate = () => {
               </Card>
 
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
-                <div className="text-lg font-semibold text-gray-800 mb-4">Cấu hình giá Mùa cao điểm / Lễ Tết</div>
-                <Form.List name="seasonalPrices">
-                  {(seasonFields, { add: addSeason, remove: removeSeason }) => (
-                    <div className="space-y-6">
-                      {seasonFields.map(({ key: seasonKey, name: seasonName, ...seasonRestField }) => (
-                        <div key={seasonKey} className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm relative">
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="font-medium text-gray-800">Cấu hình dịp đặc biệt</span>
-                            <Button danger size="small" type="text" onClick={() => removeSeason(seasonName)}>Xóa</Button>
-                          </div>
-                          <Row gutter={16}>
-                            <Col span={12}>
-                              <Form.Item {...seasonRestField} name={[seasonName, 'title']} rules={[{ required: true }]} label="Tên dịp">
-                                <Input placeholder="VD: Lễ 30/4, Tết Âm Lịch..." className="rounded-lg" />
-                              </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                              <Form.Item {...seasonRestField} name={[seasonName, 'dateRange']} rules={[{ required: true }]} label="Thời gian áp dụng">
-                                <DatePicker.RangePicker format="DD/MM/YYYY" className="w-full rounded-lg" />
-                              </Form.Item>
-                            </Col>
-                          </Row>
-
-                          <Divider className="my-2" />
-                          <div className="text-sm text-gray-500 mb-3 font-medium">Bảng giá áp dụng</div>
-                          
-                          <Form.List name={[seasonName, 'prices']}>
-                            {(priceFields, { add: addPrice, remove: removePrice }) => (
-                              <div className="space-y-2">
-                                {priceFields.map(({ key: priceKey, name: priceName, ...priceRestField }, index) => {
-                                  const isDefault = index < 2;
-                                  return (
-                                    <Row gutter={12} key={priceKey} className="items-center">
-                                      <Col span={10}>
-                                        <Form.Item {...priceRestField} name={[priceName, 'name']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                                          <Input readOnly={isDefault} bordered={!isDefault} className={`rounded-lg ${isDefault ? 'bg-transparent text-gray-600 font-medium px-1 cursor-default' : ''}`} placeholder="Phân loại" />
-                                        </Form.Item>
-                                      </Col>
-                                      <Col span={isDefault ? 14 : 12}>
-                                        <Form.Item {...priceRestField} name={[priceName, 'price']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                                          <InputNumber 
-                                            className="w-full rounded-lg" placeholder="Nhập mức giá" 
-                                            formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
-                                            parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
-                                          />
-                                        </Form.Item>
-                                      </Col>
-                                      {!isDefault && (
-                                        <Col span={2} className="text-right">
-                                          <MinusCircleOutlined onClick={() => removePrice(priceName)} className="text-gray-400 hover:text-red-500 cursor-pointer" />
-                                        </Col>
-                                      )}
-                                    </Row>
-                                  );
-                                })}
-                                
-
-                              </div>
-                            )}
-                          </Form.List>
-                        </div>
+                <div className="text-lg font-semibold text-gray-800 mb-4">Lịch khởi hành & Số chỗ</div>
+                <Form.List name="departure_schedule">
+                  {(fields, { add, remove }) => (
+                    <div className="space-y-4">
+                      {fields.map(({ key, name, ...restField }) => (
+                        <Space key={key} align="baseline" className="w-full bg-gray-50 p-3 rounded-lg">
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'date']}
+                            rules={[{ required: true, message: 'Chọn ngày!' }]}
+                            className="flex-1 mb-0"
+                          >
+                            <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" className="w-full" />
+                          </Form.Item>
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'slots']}
+                            rules={[{ required: true, message: 'Nhập số chỗ!' }]}
+                            className="mb-0"
+                          >
+                            <InputNumber min={1} placeholder="Số chỗ" />
+                          </Form.Item>
+                          <MinusCircleOutlined onClick={() => remove(name)} className="text-gray-400 hover:text-red-500" />
+                        </Space>
                       ))}
-                      <Button type="dashed" onClick={() => addSeason({ prices: DEFAULT_PRICE_CATEGORIES })} block icon={<PlusOutlined />} className="h-10 rounded-xl text-purple-600 border-purple-200 hover:border-purple-400">
-                        Thêm thời điểm đặc biệt
-                      </Button>
+                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày khởi hành</Button>
                     </div>
                   )}
                 </Form.List>
@@ -338,8 +310,59 @@ const TourCreate = () => {
 
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Media & Bổ sung</div>
-                <Form.Item name="images" label={<span className="font-medium text-gray-600">Link Hình ảnh </span>}>
-                   <Select mode="tags" placeholder="Nhập link..." open={false} className="rounded-lg" />
+                <Form.Item label={<span className="font-medium text-gray-600">Hình ảnh</span>}>
+                  <Upload
+                    multiple
+                    listType="picture-card"
+                    fileList={imageFileList}
+                    accept="image/*"
+                    beforeUpload={(file) => {
+                      const isImage = file.type?.startsWith('image/');
+                      if (!isImage) {
+                        message.error('Chỉ hỗ trợ file ảnh.');
+                        return Upload.LIST_IGNORE;
+                      }
+                      const isLt10M = file.size / 1024 / 1024 < 10;
+                      if (!isLt10M) {
+                        message.error('Ảnh phải nhỏ hơn 10MB.');
+                        return Upload.LIST_IGNORE;
+                      }
+                      return true;
+                    }}
+                    customRequest={async (options: any) => {
+                      const { file, onSuccess, onError, onProgress } = options;
+                      const fd = new FormData();
+                      fd.append('image', file);
+                      try {
+                        const res = await axios.post(uploadEndpoint, fd, {
+                          headers: { 'Content-Type': 'multipart/form-data' },
+                          onUploadProgress: (evt) => {
+                            if (!evt.total) return;
+                            onProgress?.({ percent: Math.round((evt.loaded / evt.total) * 100) });
+                          },
+                        });
+                        const url = res.data?.data?.url;
+                        onSuccess?.({ ...res.data, url }, file);
+                      } catch (e) {
+                        onError?.(e);
+                      }
+                    }}
+                    onChange={({ fileList }) => {
+                      const normalized = fileList.map((f: any) => {
+                        const url = f.url || f.response?.data?.url || f.response?.url;
+                        return url ? { ...f, url } : f;
+                      });
+                      setImageFileList(normalized);
+                    }}
+                    onRemove={(file) => {
+                      const next = imageFileList.filter((f) => f.uid !== (file as any).uid);
+                      setImageFileList(next);
+                      return true;
+                    }}
+                  >
+                    {imageFileList.length >= 8 ? null : <div>+ Tải ảnh</div>}
+                  </Upload>
+                  <div className="text-xs text-gray-500 mt-2">Tối đa 8 ảnh, mỗi ảnh &lt; 10MB.</div>
                 </Form.Item>
                 <Form.Item name="policies" label={<span className="font-medium text-gray-600">Chính sách </span>} style={{marginBottom: 0}}>
                    <Select mode="tags" placeholder="Ví dụ: Xe đưa đón..." open={false} className="rounded-lg" />
