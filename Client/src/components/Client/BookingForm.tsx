@@ -221,6 +221,10 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
             <Calendar
               fullscreen={false}
               value={calendarValue}
+              disabledDate={(current) => {
+                // Disable dates before today
+                return current && current < dayjs().startOf('day');
+              }}
               onSelect={(date, info) => {
                 // FIX: chỉ xử lý khi click vào ô ngày, bỏ qua chuyển tháng/năm
                 const source = (info as any)?.source;
@@ -249,23 +253,26 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
                     }}
                     style={{
                       height: '100%',
-                      padding: '4px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       borderRadius: 4,
-                      border: isSelected ? '2px solid #1890ff' : '1px solid transparent',
+                      border: isSelected ? '1px solid #1890ff' : '1px solid transparent',
                       backgroundColor: isSelected
                         ? '#e6f7ff'
                         : isAvailable
                           ? '#f6ffed'
                           : (!hasSchedule && !isPast)
                             ? '#f0f5ff'  // màu nhạt cho ngày tương lai khi không có lịch
-                            : 'transparent',
-                      opacity: isPast ? 0.4 : 1,
-                      cursor: isClickable ? 'pointer' : 'default',
+                            : '#fafafa',
+                      opacity: isPast ? 0.5 : 1,
+                      cursor: isClickable ? 'pointer' : 'not-allowed',
+                      pointerEvents: isClickable ? 'auto' : 'none', // Chặn click nếu là ngày quá khứ
+                      color: isPast ? '#bfbfbf' : 'inherit',
+                      padding: '4px',
                     }}
                   >
+                    <div style={{ textAlign: 'right', fontWeight: 500 }}>{current.date()}</div>
                     {schedule && (
                       <div style={{ textAlign: 'center', width: '100%' }}>
                         <div style={{ fontSize: 10, color: '#fa8c16', fontWeight: 'bold' }}>
@@ -448,7 +455,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
               >
                 <Radio.Group>
                   <Radio value="full">Thanh toán toàn bộ</Radio>
-                  <Radio value="deposit">Đặt cọc trước</Radio>
+                  <Radio value="deposit">Đặt cọc trước (30%)</Radio>
                   <Radio value="later">Thanh toán sau</Radio>
                 </Radio.Group>
               </Form.Item>

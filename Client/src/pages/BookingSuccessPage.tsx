@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Card, Button, Typography, Descriptions, Divider, Spin, message, Result, Tag, Space, ConfigProvider } from 'antd';
+import { Card, Button, Typography, Descriptions, Divider, Spin, message, Result, Tag, Space, ConfigProvider, Modal, Radio } from 'antd';
 import { CalendarOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -12,6 +12,8 @@ const BookingSuccessPage = () => {
   const navigate = useNavigate();
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [paymentGateway, setPaymentGateway] = useState('momo');
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -34,20 +36,25 @@ const BookingSuccessPage = () => {
   const isDeposit = booking.paymentMethod === 'deposit';
   const paymentAmount = isDeposit ? Math.round(totalPrice * 0.3) : totalPrice;
 
-  const handlePayment = async () => {
-    try {
-      message.loading('Đang khởi tạo thanh toán MoMo...', 1);
-      const res = await axios.post(`http://localhost:5000/api/v1/bookings/${id}/payments/momo`, {
-        amount: paymentAmount,
-        orderInfo: `Thanh toán ${isDeposit ? 'cọc' : 'toàn bộ'} tour ${booking.tour_id?.name}`
-      });
-      if (res.data?.payUrl) {
-        window.location.href = res.data.payUrl;
-      } else {
-        message.error('Không nhận được link thanh toán từ MoMo');
+  const handleConfirmPayment = async () => {
+    setIsModalOpen(false);
+    if (paymentGateway === 'momo') {
+      try {
+        message.loading('Đang khởi tạo thanh toán MoMo...', 1);
+        const res = await axios.post(`http://localhost:5000/api/v1/bookings/${id}/payments/momo`, {
+          amount: paymentAmount,
+          orderInfo: `Thanh toán ${isDeposit ? 'cọc' : 'toàn bộ'} tour ${booking.tour_id?.name}`
+        });
+        if (res.data?.payUrl) {
+          window.location.href = res.data.payUrl;
+        } else {
+          message.error('Không nhận được link thanh toán từ MoMo');
+        }
+      } catch (error) {
+        message.error('Lỗi khởi tạo thanh toán. Vui lòng thử lại sau.');
       }
-    } catch (error) {
-      message.error('Lỗi khởi tạo thanh toán. Vui lòng thử lại sau.');
+    } else {
+      message.info('Cổng thanh toán này đang bảo trì, vui lòng chọn MoMo.');
     }
   };
 
@@ -95,9 +102,38 @@ const BookingSuccessPage = () => {
              
              <Space size="middle">
                <Button size="large" onClick={() => navigate('/')}>Về trang chủ</Button>
-               <Button type="primary" size="large" onClick={handlePayment} style={{ height: 48, padding: '0 40px', fontSize: 16, fontWeight: 600 }}>THANH TOÁN NGAY</Button>
+               <Button type="primary" size="large" onClick={() => setIsModalOpen(true)} style={{ height: 48, padding: '0 40px', fontSize: 16, fontWeight: 600 }}>THANH TOÁN NGAY</Button>
              </Space>
           </div>
+
+          <Modal
+            title="Chọn phương thức thanh toán"
+            open={isModalOpen}
+            onOk={handleConfirmPayment}
+            onCancel={() => setIsModalOpen(false)}
+            okText="Tiếp tục"
+            cancelText="Đóng"
+          >
+            <div style={{ marginBottom: 16 }}>
+              <Text>Số tiền cần thanh toán: </Text>
+              <Text type="danger" strong style={{ fontSize: 18 }}>{paymentAmount.toLocaleString()} ₫</Text>
+            </div>
+            
+            <Radio.Group onChange={(e) => setPaymentGateway(e.target.value)} value={paymentGateway} style={{ width: '100%' }}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Radio value="momo" style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12, width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', fontWeight: 500 }}>
+                     <span style={{ color: '#a50064', marginRight: 8, fontWeight: 'bold' }}>MoMo</span> Ví điện tử MoMo
+                  </div>
+                </Radio>
+                <Radio value="vnpay" disabled style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, width: '100%', background: '#fafafa' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#999' }}>
+                     <span>VNPAY (Đang bảo trì)</span>
+                  </div>
+                </Radio>
+              </Space>
+            </Radio.Group>
+          </Modal>
         </Card>
       </div>
     </ConfigProvider>
