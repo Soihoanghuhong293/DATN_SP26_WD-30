@@ -42,6 +42,17 @@ export interface IBooking extends Document {
     note?: string;
   }>;
 
+  diary_entries?: Array<{
+    date: Date;
+    day_no?: number;
+    title?: string;
+    content?: string;
+    highlight?: string;
+    images?: Array<{ name?: string; url: string }>;
+    created_by?: string;
+    created_at?: Date;
+  }>;
+
   created_at: Date;
   updated_at: Date;
 }
@@ -123,6 +134,24 @@ const BookingSchema: Schema = new Schema(
         old: String,
         new: String,
         note: String,
+      },
+    ],
+
+    diary_entries: [
+      {
+        date: { type: Date, required: true },
+        day_no: { type: Number, default: 1 },
+        title: { type: String, default: "" },
+        content: { type: String, default: "" },
+        highlight: { type: String, default: "" },
+        images: [
+          {
+            name: { type: String, default: "" },
+            url: { type: String, required: true },
+          },
+        ],
+        created_by: { type: String, default: "" },
+        created_at: { type: Date, default: Date.now },
       },
     ],
 

@@ -9,6 +9,7 @@ router.get('/guide/me', protect, restrictToGuide, bookingController.getMyBooking
 router.get('/guide/:id', protect, restrictToGuide, bookingController.getMyBookingDetail);
 router.patch('/guide/:id/checkin', protect, restrictToGuide, bookingController.checkInPassenger);
 router.patch('/guide/:id/stage', protect, restrictToGuide, bookingController.updateTourStage);
+router.patch('/guide/:id/diary', protect, restrictToGuide, bookingController.addDiaryEntryForGuide);
 
 router
   .route('/')
