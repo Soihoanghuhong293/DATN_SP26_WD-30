@@ -43,7 +43,8 @@ const BookingSuccessPage = () => {
         message.loading('Đang khởi tạo thanh toán MoMo...', 1);
         const res = await axios.post(`http://localhost:5000/api/v1/bookings/${id}/payments/momo`, {
           amount: paymentAmount,
-          orderInfo: `Thanh toán ${isDeposit ? 'cọc' : 'toàn bộ'} tour ${booking.tour_id?.name}`
+          orderInfo: `Thanh toán ${isDeposit ? 'cọc' : 'toàn bộ'} tour ${booking.tour_id?.name}`,
+          pay_type: isDeposit ? 'deposit' : 'full'
         });
         if (res.data?.payUrl) {
           window.location.href = res.data.payUrl;
