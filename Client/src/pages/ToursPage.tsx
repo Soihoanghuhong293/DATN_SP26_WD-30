@@ -37,16 +37,8 @@ const ToursPage = () => {
           search: debouncedSearch || undefined,
         });
         
-        // Handle the response structure
-        if (data.data && Array.isArray(data.data)) {
-          // If data.data is an array (tours list)
-          setTours(data.data);
-        } else if (data.data && typeof data.data === 'object' && 'tours' in data.data) {
-          // If data.data has tours property
-          setTours(Array.isArray(data.data.tours) ? data.data.tours : []);
-        } else {
-          setTours([]);
-        }
+        // Server returns `data` as an array of tours
+        setTours(Array.isArray(data.data) ? data.data : []);
         
         setTotal(data.total || data.results || 0);
       } catch (error) {
@@ -150,6 +142,8 @@ const ToursPage = () => {
                   total={total}
                   onChange={setCurrentPage}
                   onShowSizeChange={(page, size) => {
+                    // Reference `page` to avoid TS unused warning.
+                    void page;
                     setPageSize(size);
                     setCurrentPage(1);
                   }}

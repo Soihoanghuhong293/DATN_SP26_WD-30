@@ -59,5 +59,6 @@ export interface ToursListResponse {
   total?: number;
   page?: number;
   limit?: number;
-  data: { tours: ITour[] };
+  // Server currently returns `data` as an array of tours.
+  data: ITour[];
 }
