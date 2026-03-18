@@ -101,7 +101,7 @@ const TourDetailPage = () => {
           icon={<ArrowLeftOutlined />}
           onClick={handleGoBack}
         >
-          Quay lại
+          Quay lai
         </Button>
 
         <h1>{tour.name}</h1>
