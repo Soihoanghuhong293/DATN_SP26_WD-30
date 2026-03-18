@@ -300,6 +300,7 @@ const HdvBookingDetail = () => {
                 label="Loại bài viết"
                 name="type"
                 initialValue="activity"
+                rules={[{ required: true, message: "Chọn loại bài viết" }]}
               >
                 <Select>
                   <Select.Option value="activity">Hoạt động tour</Select.Option>
@@ -311,12 +312,14 @@ const HdvBookingDetail = () => {
               <Form.Item
                 label="Tiêu đề"
                 name="title"
+                rules={[{ required: true, message: "Nhập tiêu đề bài viết" }]}
               >
                 <Input placeholder="Ví dụ: Check-in tại điểm tham quan đầu tiên" />
               </Form.Item>
               <Form.Item
                 label="Nội dung"
                 name="content"
+                rules={[{ required: true, message: "Nhập nội dung bài viết" }]}
               >
                 <Input.TextArea
                   rows={4}
@@ -326,9 +329,9 @@ const HdvBookingDetail = () => {
               <Form.Item
                 label="Link ảnh (tùy chọn)"
                 name="imageUrls"
-                extra="Nhập nhiều link, ngăn cách nhau bằng dấu phẩy"
+                extra="Nhập nhiều link, ngăn cách nhau bằng dấu phẩy (,)"
               >
-                <Input placeholder="https://..., https://..." />
+                <Input.TextArea rows={2} placeholder="https://example.com/image1.jpg, https://example.com/image2.png" />
               </Form.Item>
               <Button
                 type="primary"
@@ -399,33 +402,10 @@ const HdvBookingDetail = () => {
                         {post.content}
                       </div>
                       {post.images && post.images.length > 0 && (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 8,
-                          }}
-                        >
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, }}>
                           {post.images.map((url: string, index: number) => (
-                            <div
-                              key={index}
-                              style={{
-                                width: 100,
-                                height: 80,
-                                borderRadius: 8,
-                                overflow: "hidden",
-                                border: "1px solid #e5e7eb",
-                              }}
-                            >
-                              <img
-                                src={url}
-                                alt={`post-${index}`}
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                }}
-                              />
+                            <div key={index} style={{ width: 100, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                              <img src={url} alt={`post-${index}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                             </div>
                           ))}
                         </div>
