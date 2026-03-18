@@ -192,6 +192,7 @@ const UserList = () => {
         pagination={{ pageSize: 10 }}
         className="shadow-sm bg-white rounded-lg overflow-hidden"
       />
+      .
     </div>
   );
 };
