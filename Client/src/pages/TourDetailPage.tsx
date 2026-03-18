@@ -69,7 +69,7 @@ const TourDetailPage = () => {
   if (loading) {
     return (
       <div className="tour-detail-loading">
-        <Spin size="large" tip="Đang tải thông tin tour..." />
+        <Spin size="large" tip="Đang tải thông tin tour..." fullscreen />
       </div>
     );
   }

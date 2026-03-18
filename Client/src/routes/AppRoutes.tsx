@@ -39,6 +39,7 @@ import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
 import HolidayPricingList from '../components/layout/HolidayPricingList';
 import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
+import BookingSuccessPage from '../pages/BookingSuccessPage';
 
 const AppRoutes = () => {
   return (
@@ -52,6 +53,7 @@ const AppRoutes = () => {
         <Route path="register" element={<RegisterPage />} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
+        <Route path="booking/success/:id" element={<BookingSuccessPage />} />
       </Route>
 
       {/* ===== HDV (Hướng dẫn viên) ===== */}
