@@ -103,79 +103,88 @@ const TourDetailPage = () => {
 
   return (
     <div className="tour-detail-page">
-
-      {/* BACK BUTTON */}
-
+      {/* HEADER */}
       <div className="tour-detail-header">
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={handleGoBack}
-        >
-          Quay lai
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleGoBack}>
+          Quay lại
         </Button>
 
         <h1>{tour.name}</h1>
 
         <Tag color={tour.status === "active" ? "green" : "orange"}>
-  {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
-</Tag>
+          {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
+        </Tag>
       </div>
 
-
-      {/* HERO IMAGE */}
-
+      {/* HERO + SIDEBAR */}
       {tourImages.length > 0 && (
         <div className="tour-hero">
+          {/* LEFT: GALLERY */}
           <div className="tour-gallery">
-            <div className="tour-gallery-thumbs" aria-label="Tour image thumbnails">
+            <div className="tour-gallery-thumbs">
               {tourImages.map((src, idx) => (
                 <button
                   key={`${src}-${idx}`}
-                  type="button"
-                  className={`tour-thumb ${idx === activeImageIndex ? "is-active" : ""}`}
+                  className={`tour-thumb ${
+                    idx === activeImageIndex ? "is-active" : ""
+                  }`}
                   onClick={() => setActiveImageIndex(idx)}
                 >
-                  <img
-                    src={src}
-                    alt={`${tour.name} thumbnail ${idx + 1}`}
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.src =
-                        "https://via.placeholder.com/200x120?text=Image";
-                    }}
-                  />
+                  <img src={src} alt="thumb" />
                 </button>
               ))}
             </div>
 
-            <div className="tour-gallery-main" aria-label="Selected tour image">
+            <div className="tour-gallery-main">
               <img
-                src={tourImages[Math.min(activeImageIndex, tourImages.length - 1)]}
-                alt={`${tour.name} - ${activeImageIndex + 1}`}
-                onError={(e) => {
-                  e.currentTarget.src =
-                    "https://via.placeholder.com/1200x500?text=Tour+Image";
-                }}
+                src={
+                  tourImages[
+                    Math.min(activeImageIndex, tourImages.length - 1)
+                  ]
+                }
+                alt="main"
               />
+            </div>
+          </div>
+
+          {/* RIGHT: SIDEBAR */}
+         {/* RIGHT: SIDEBAR */}
+          <div className="tour-detail-sidebar">
+            <div className="sidebar-card">
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>GIÁ TOUR</h3>
+              <h1>{tour.price?.toLocaleString()}đ</h1>
+
+              <Button
+                type="primary"
+                size="large"
+                block
+                onClick={() => setIsBookingModalVisible(true)}
+              >
+                Đặt tour ngay
+              </Button>
+
+              <Button block style={{ marginTop: 10 }}>
+                Liên hệ tư vấn
+              </Button>
+
+              {/* MÔ TẢ TOUR ĐƯỢC CHUYỂN LÊN ĐÂY */}
+              <Divider />
+              <div className="tour-description-sidebar">
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>MÔ TẢ</h3>
+                <p style={{ color: '#4b5563', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
+                  {tour.description}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-
-      {/* MAIN LAYOUT */}
-
+      {/* CONTENT */}
       <div className="tour-detail-container">
-
-        {/* LEFT CONTENT */}
-
         <div>
-
           {/* QUICK INFO */}
-
           <div className="tour-detail-quick-info">
-
             <div className="info-card">
               <CalendarOutlined />
               <div>
@@ -199,136 +208,34 @@ const TourDetailPage = () => {
                 <b>{tour.suppliers?.length || 0}</b>
               </div>
             </div>
-
           </div>
 
-
-          {/* DESCRIPTION */}
-
-          <section className="detail-section">
-            <h2>Mô tả tour</h2>
-            <p>{tour.description}</p>
-          </section>
-
+        
           <Divider />
 
-
-          {/* SCHEDULE */}
-
-          {tour.schedule && tour.schedule.length > 0 && (
-            <>
-              <section className="detail-section">
-
-                <h2>Lịch trình</h2>
-
-                {tour.schedule.map((item, index) => (
-                  <div key={index} className="schedule-item">
-
-                    <div className="schedule-day">
-                      Ngày {item.day}
-                    </div>
-
-                    <div className="schedule-content">
-
-                      <h3>{item.title}</h3>
-
-                      <ul>
-                        {item.activities?.map((act, i) => (
-                          <li key={i}>
-                            <CheckCircleOutlined />
-                            {act}
-                          </li>
-                        ))}
-                      </ul>
-
-                    </div>
-                  </div>
-                ))}
-
-              </section>
-            </>
-          )}
-
-
-          {/* PRICING */}
-
-          {tour.prices && tour.prices.length > 0 && (
-            <>
-              <section className="detail-section">
-
-                <h2>Bảng giá</h2>
-
-                {tour.prices.map((tier, index) => (
-                  <div key={index} className="price-row">
-
-                    <span>{tier.title}</span>
-
-                    <span>
-                      {tier.amount?.toLocaleString()}đ
-                    </span>
-
-                  </div>
-                ))}
-
-              </section>
-
-              <Divider />
-            </>
-          )}
-
-
-          {/* POLICIES */}
-
-          {tour.policies && tour.policies.length > 0 && (
+          {tour.schedule?.length > 0 && (
             <section className="detail-section">
+              <h2>Lịch trình</h2>
 
-              <h2>Chính sách</h2>
+              {tour.schedule.map((item, index) => (
+                <div key={index} className="schedule-item">
+                  <div className="schedule-day">Ngày {item.day}</div>
 
-              <ul>
-                {tour.policies.map((policy, index) => (
-                  <li key={index}>
-                    <CheckCircleOutlined />
-                    {policy}
-                  </li>
-                ))}
-              </ul>
-
+                  <div className="schedule-content">
+                    <h3>{item.title}</h3>
+                    <ul>
+                      {item.activities?.map((act, i) => (
+                        <li key={i}>
+                          <CheckCircleOutlined /> {act}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
             </section>
           )}
-
         </div>
-
-
-        {/* SIDEBAR */}
-
-        <div className="tour-detail-sidebar">
-
-          <div className="sidebar-card">
-
-            <p>Giá tour từ</p>
-
-            <h2>{tour.price?.toLocaleString()}đ</h2>
-
-            <Button
-              type="primary"
-              size="large"
-              block
-              onClick={() => setIsBookingModalVisible(true)}
-            >
-              Đặt tour ngay
-            </Button>
-
-            <Button
-              block
-              style={{ marginTop: 10 }}
-            >
-              Liên hệ tư vấn
-            </Button>
-
-          </div>
-
-        </div>
-
       </div>
 
       <BookingForm
@@ -336,7 +243,6 @@ const TourDetailPage = () => {
         onClose={() => setIsBookingModalVisible(false)}
         tour={tour}
       />
-
     </div>
   );
 };
