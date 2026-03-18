@@ -38,12 +38,63 @@
   padding:0 20px;
   }
   
-  .tour-hero img{
-  width:100%;
-  height:460px;
-  object-fit:cover;
-  border-radius:18px;
-  box-shadow:0 12px 35px rgba(0,0,0,0.18);
+  .tour-gallery{
+    display:grid;
+    grid-template-columns:96px 1fr;
+    gap:18px;
+    align-items:stretch;
+  }
+
+  .tour-gallery-thumbs{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    max-height:460px;
+    overflow:auto;
+    padding-right:4px;
+  }
+
+  .tour-thumb{
+    border:none;
+    padding:0;
+    background:transparent;
+    cursor:pointer;
+    border-radius:12px;
+    outline:none;
+  }
+
+  .tour-thumb img{
+    width:96px;
+    height:72px;
+    object-fit:cover;
+    border-radius:12px;
+    border:2px solid rgba(17,24,39,0.12);
+    transition:all .18s ease;
+    display:block;
+  }
+
+  .tour-thumb:hover img{
+    transform:translateY(-1px);
+    border-color:rgba(22,119,255,0.55);
+  }
+
+  .tour-thumb.is-active img{
+    border-color:#1677ff;
+    box-shadow:0 10px 24px rgba(22,119,255,0.18);
+  }
+
+  .tour-gallery-main{
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 12px 35px rgba(0,0,0,0.18);
+    background:#fff;
+  }
+
+  .tour-gallery-main img{
+    width:100%;
+    height:460px;
+    object-fit:cover;
+    display:block;
   }
   
   /* ===== MAIN LAYOUT ===== */
@@ -316,8 +367,22 @@
   
   @media(max-width:768px){
   
-  .tour-hero img{
-  height:320px;
+  .tour-gallery{
+    grid-template-columns:72px 1fr;
+    gap:12px;
+  }
+
+  .tour-gallery-thumbs{
+    max-height:320px;
+  }
+
+  .tour-thumb img{
+    width:72px;
+    height:56px;
+  }
+
+  .tour-gallery-main img{
+    height:320px;
   }
   
   .tour-detail-quick-info{
@@ -328,8 +393,22 @@
   
   @media(max-width:480px){
   
-  .tour-hero img{
-  height:220px;
+  .tour-gallery{
+    grid-template-columns:1fr;
+  }
+  .tour-gallery-thumbs{
+    flex-direction:row;
+    max-height:none;
+    overflow:auto;
+    padding-right:0;
+    padding-bottom:4px;
+  }
+  .tour-thumb img{
+    width:84px;
+    height:62px;
+  }
+  .tour-gallery-main img{
+    height:220px;
   }
   
   .detail-section{
