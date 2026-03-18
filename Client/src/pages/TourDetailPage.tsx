@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import "../components/styles/tourDetailU.css";
 import {
   Spin,
   Empty,
@@ -117,8 +118,8 @@ const TourDetailPage = () => {
         <h1>{tour.name}</h1>
 
         <Tag color={tour.status === "active" ? "green" : "orange"}>
-          {tour.status}
-        </Tag>
+  {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
+</Tag>
       </div>
 
 
