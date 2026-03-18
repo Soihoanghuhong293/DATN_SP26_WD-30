@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Spin,
@@ -28,6 +28,7 @@ const TourDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchTourDetail = async () => {
@@ -60,6 +61,15 @@ const TourDetailPage = () => {
     };
 
     fetchTourDetail();
+  }, [id]);
+
+  const tourImages = useMemo(() => {
+    const imgs = (tour?.images || []).filter(Boolean);
+    return Array.isArray(imgs) ? imgs : [];
+  }, [tour]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
   }, [id]);
 
   const handleGoBack = () => {
@@ -114,16 +124,41 @@ const TourDetailPage = () => {
 
       {/* HERO IMAGE */}
 
-      {tour.images && tour.images.length > 0 && (
+      {tourImages.length > 0 && (
         <div className="tour-hero">
-          <img
-            src={tour.images[0]}
-            alt={tour.name}
-            onError={(e) => {
-              e.currentTarget.src =
-                "https://via.placeholder.com/1200x500?text=Tour+Image";
-            }}
-          />
+          <div className="tour-gallery">
+            <div className="tour-gallery-thumbs" aria-label="Tour image thumbnails">
+              {tourImages.map((src, idx) => (
+                <button
+                  key={`${src}-${idx}`}
+                  type="button"
+                  className={`tour-thumb ${idx === activeImageIndex ? "is-active" : ""}`}
+                  onClick={() => setActiveImageIndex(idx)}
+                >
+                  <img
+                    src={src}
+                    alt={`${tour.name} thumbnail ${idx + 1}`}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src =
+                        "https://via.placeholder.com/200x120?text=Image";
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div className="tour-gallery-main" aria-label="Selected tour image">
+              <img
+                src={tourImages[Math.min(activeImageIndex, tourImages.length - 1)]}
+                alt={`${tour.name} - ${activeImageIndex + 1}`}
+                onError={(e) => {
+                  e.currentTarget.src =
+                    "https://via.placeholder.com/1200x500?text=Tour+Image";
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 

@@ -20,6 +20,8 @@ import chatRouter from './routes/chat.routes.js';
 import contactMessageRouter from './routes/contactMessage.routes.js';
 
 import holidayPricingRoutes from './routes/holidayPricing.routes';
+import uploadRoutes from './routes/upload.routes.js';
+import path from 'path';
 
 dotenv.config();
 
@@ -33,6 +35,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+
+// Static files (uploaded images)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Test root
 app.get('/', (req: Request, res: Response) => {
@@ -51,6 +56,7 @@ app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);
 
 app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
+app.use('/api/v1/uploads', uploadRoutes);
 // Handle 404https://gemini.google.com/gems/view
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

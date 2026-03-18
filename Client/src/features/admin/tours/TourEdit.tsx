@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
-  Space, Typography, message, Select, Divider, Spin, DatePicker
+  Space, Typography, message, Select, Divider, Spin, DatePicker, Upload
 } from 'antd';
 import { 
   MinusCircleOutlined, PlusOutlined, 
@@ -22,6 +22,7 @@ const TourEdit = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [imageFileList, setImageFileList] = useState<any[]>([]);
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -60,8 +61,20 @@ const TourEdit = () => {
         })) || []
       };
       form.setFieldsValue(formattedData);
+
+      const existingImages: string[] = Array.isArray(tour.images) ? tour.images : [];
+      setImageFileList(
+        existingImages.map((url, idx) => ({
+          uid: `existing-${idx}`,
+          name: `image-${idx + 1}`,
+          status: 'done',
+          url,
+        }))
+      );
     }
   }, [tour, form]);
+
+  const uploadEndpoint = useMemo(() => 'http://localhost:5000/api/v1/uploads/images', []);
 
   const mutation = useMutation({
     mutationFn: async (values: any) => {
@@ -88,6 +101,15 @@ const TourEdit = () => {
         date: item.date ? item.date.format('YYYY-MM-DD') : null
       })).filter((item: any) => item.date) || []
     };
+    const imageUrls = imageFileList
+      .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
+      .map((f) => f.url || f.response?.data?.url)
+      .filter(Boolean);
+    if (imageUrls.length === 0) {
+      message.error('Vui lòng upload ít nhất 1 ảnh!');
+      return;
+    }
+    payload.images = imageUrls;
     mutation.mutate(payload);
   };
 
@@ -219,8 +241,59 @@ const TourEdit = () => {
             </Card>
 
             <Card title="Hình ảnh & Khác" className="mb-6 shadow-sm">
-              <Form.Item name="images" label="Link Hình ảnh">
-                 <Select mode="tags" placeholder="https://domain.com/anh1.jpg" open={false} />
+              <Form.Item label="Hình ảnh">
+                <Upload
+                  multiple
+                  listType="picture-card"
+                  fileList={imageFileList}
+                  accept="image/*"
+                  beforeUpload={(file) => {
+                    const isImage = file.type?.startsWith('image/');
+                    if (!isImage) {
+                      message.error('Chỉ hỗ trợ file ảnh.');
+                      return Upload.LIST_IGNORE;
+                    }
+                    const isLt10M = file.size / 1024 / 1024 < 10;
+                    if (!isLt10M) {
+                      message.error('Ảnh phải nhỏ hơn 10MB.');
+                      return Upload.LIST_IGNORE;
+                    }
+                    return true;
+                  }}
+                  customRequest={async (options: any) => {
+                    const { file, onSuccess, onError, onProgress } = options;
+                    const fd = new FormData();
+                    fd.append('image', file);
+                    try {
+                      const res = await axios.post(uploadEndpoint, fd, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                        onUploadProgress: (evt) => {
+                          if (!evt.total) return;
+                          onProgress?.({ percent: Math.round((evt.loaded / evt.total) * 100) });
+                        },
+                      });
+                      const url = res.data?.data?.url;
+                      onSuccess?.({ ...res.data, url }, file);
+                    } catch (e) {
+                      onError?.(e);
+                    }
+                  }}
+                  onChange={({ fileList }) => {
+                    const normalized = fileList.map((f: any) => {
+                      const url = f.url || f.response?.data?.url || f.response?.url;
+                      return url ? { ...f, url } : f;
+                    });
+                    setImageFileList(normalized);
+                  }}
+                  onRemove={(file) => {
+                    const next = imageFileList.filter((f) => f.uid !== (file as any).uid);
+                    setImageFileList(next);
+                    return true;
+                  }}
+                >
+                  {imageFileList.length >= 8 ? null : <div>+ Tải ảnh</div>}
+                </Upload>
+                <div className="text-xs text-gray-500 mt-2">Tối đa 8 ảnh, mỗi ảnh &lt; 10MB.</div>
               </Form.Item>
               <Form.Item name="policies" label="Chính sách">
                  <Select mode="tags" placeholder="Vé máy bay khứ hồi..." open={false} />
