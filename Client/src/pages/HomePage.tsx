@@ -17,10 +17,10 @@ const HomePage = () => {
             muted
             loop
             className="hero-video"
-            poster="https://via.placeholder.com/1920x600"
+            poster="https://images.pexels.com/photos/2325446/pexels-photo-2325446.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
           >
             <source
-              src="https://videos.pexels.com/video-files/6283039/6283039-sd_640_360_30fps.mp4"
+              src="https://videos.pexels.com/video-files/3254013/3254013-sd_640_360_30fps.mp4"
               type="video/mp4"
             />
           </video>
