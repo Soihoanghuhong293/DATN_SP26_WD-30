@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteCategory, getCategories } from '../../../services/api';
 import type { ICategory } from '../../../types/tour.types';
+import AdminPageHeader from '../../../components/admin/AdminPageHeader';
+import AdminListCard from '../../../components/admin/AdminListCard';
 
 const { Title, Text } = Typography;
 
@@ -118,42 +120,20 @@ const CategoryList = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Danh sách Danh mục Tour
-          </Title>
-        </div>
-       
-      </div>
-
-      <div style={{ marginTop: 16, marginBottom: 16 }}>
-        <Space wrap>
-          <Input.Search
-            allowClear
-            placeholder="Tìm theo tên hoặc mô tả..."
-            style={{ width: 320 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={() => {}}
-          />
-          <Select
-            allowClear
-            placeholder="Trạng thái"
-            style={{ width: 180 }}
-            value={status}
-            onChange={(v) => setStatus(v)}
-            options={[
-              { value: 'active', label: 'Hoạt động' },
-              { value: 'inactive', label: 'Không hoạt động' },
-            ]}
-          />
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['categories'] })}>
-            Tải lại
-          </Button>
-          
-        </Space>
-      </div>
+      <AdminPageHeader
+        title="Danh mục Tour"
+        subtitle="Quản lý danh mục hiển thị trên hệ thống."
+        extra={
+          <Space wrap>
+            <Button type="primary" onClick={() => navigate('/admin/categories/create')}>
+              Thêm danh mục
+            </Button>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['categories'] })}>
+              Tải lại
+            </Button>
+          </Space>
+        }
+      />
 
       {isError ? (
         <div style={{ background: '#fff', padding: 16, border: '1px solid #eee' }}>
@@ -167,17 +147,42 @@ const CategoryList = () => {
           </div>
         </div>
       ) : (
-        <Table<ICategory>
-          loading={isLoading}
-          rowKey={(r) => r.id || r._id || Math.random().toString(16)}
-          dataSource={categories}
-          columns={columns}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: false,
-          }}
-          style={{ background: '#fff', borderRadius: 8 }}
-        />
+        <AdminListCard
+          toolbar={
+            <Space wrap>
+              <Input.Search
+                allowClear
+                placeholder="Tìm theo tên hoặc mô tả..."
+                style={{ width: 320 }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onSearch={() => {}}
+              />
+              <Select
+                allowClear
+                placeholder="Trạng thái"
+                style={{ width: 180 }}
+                value={status}
+                onChange={(v) => setStatus(v)}
+                options={[
+                  { value: 'active', label: 'Hoạt động' },
+                  { value: 'inactive', label: 'Không hoạt động' },
+                ]}
+              />
+            </Space>
+          }
+        >
+          <Table<ICategory>
+            loading={isLoading}
+            rowKey={(r) => r.id || r._id || Math.random().toString(16)}
+            dataSource={categories}
+            columns={columns}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+            }}
+          />
+        </AdminListCard>
       )}
     </div>
   );

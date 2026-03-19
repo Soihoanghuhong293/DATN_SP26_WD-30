@@ -33,7 +33,7 @@ const HomePage = () => {
           <div className="hero-actions">
             <Link to="/tours">
               <Button type="primary" size="large" icon={<SearchOutlined />} className="hero-btn primary-btn">
-                Tìm Tours
+                Tìm tour
               </Button>
             </Link>
             <Link to="/guides">
@@ -50,7 +50,7 @@ const HomePage = () => {
         <div className="stats-container">
           <div className="stat-item">
             <div className="stat-number">500+</div>
-            <div className="stat-label">Tours Hấp Dẫn</div>
+            <div className="stat-label">Tour hấp dẫn</div>
           </div>
           <div className="stat-item">
             <div className="stat-number">10k+</div>
@@ -75,11 +75,11 @@ const HomePage = () => {
         <div className="cta-content">
           <h2 className="cta-title">Sẵn Sàng Bắt Đầu Cuộc Phiêu Lưu?</h2>
           <p className="cta-subtitle">
-            Duyệt qua hàng trăm tours tuyệt vời và tìm những chuyến đi hoàn hảo cho bạn
+            Duyệt qua hàng trăm tour tuyệt vời và tìm chuyến đi hoàn hảo cho bạn
           </p>
           <Link to="/tours">
             <Button type="primary" size="large" className="cta-btn">
-              Khám Phá Tours Ngay
+              Khám phá tour ngay
             </Button>
           </Link>
         </div>

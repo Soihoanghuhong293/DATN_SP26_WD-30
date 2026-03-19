@@ -42,7 +42,7 @@ const TourDetailPage = () => {
   useEffect(() => {
     const fetchTourDetail = async () => {
       if (!id) {
-        setError("Tour ID not found");
+        setError("Không tìm thấy ID tour");
         setLoading(false);
         return;
       }
@@ -58,11 +58,11 @@ const TourDetailPage = () => {
             setTour(data.data as ITour);
           }
         } else {
-          setError("Could not load tour details");
+          setError("Không thể tải chi tiết tour");
         }
       } catch (err) {
         console.error(err);
-        setError("Failed to load tour details");
+        setError("Tải chi tiết tour thất bại");
         message.error("Lỗi khi tải thông tin tour");
       } finally {
         setLoading(false);
@@ -463,7 +463,7 @@ const TourDetailPage = () => {
                       className="schedule-cal__nav"
                       disabled={!canPrev}
                       onClick={() => canPrev && setActiveMonth(monthKeys[idx - 1])}
-                      aria-label="Prev month"
+                      aria-label="Tháng trước"
                     >
                       <LeftOutlined />
                     </button>
@@ -473,7 +473,7 @@ const TourDetailPage = () => {
                       className="schedule-cal__nav"
                       disabled={!canNext}
                       onClick={() => canNext && setActiveMonth(monthKeys[idx + 1])}
-                      aria-label="Next month"
+                      aria-label="Tháng sau"
                     >
                       <RightOutlined />
                     </button>

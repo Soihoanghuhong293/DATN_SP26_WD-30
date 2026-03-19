@@ -69,7 +69,7 @@ const ToursPage = () => {
   return (
     <div className="tours-page">
       <div className="tours-page-header">
-        <h1 className="tours-page-title">Khám Phá Tours</h1>
+        <h1 className="tours-page-title">Khám Phá Tour</h1>
         <p className="tours-page-subtitle">Tìm kiếm những chuyến du lịch tuyệt vời nhất</p>
       </div>
 
@@ -99,7 +99,7 @@ const ToursPage = () => {
                 { label: 'Tất cả', value: '' },
                 { label: 'Đang hoạt động', value: 'active' },
                 { label: 'Nháp', value: 'draft' },
-                { label: 'Inactive', value: 'inactive' },
+                { label: 'Tạm ẩn', value: 'inactive' },
               ]}
             />
           </div>
@@ -111,9 +111,9 @@ const ToursPage = () => {
               onChange={setPageSize}
               className="filter-select"
               options={[
-                { label: '6 tours', value: 6 },
-                { label: '12 tours', value: 12 },
-                { label: '24 tours', value: 24 },
+                { label: '6 tour', value: 6 },
+                { label: '12 tour', value: 12 },
+                { label: '24 tour', value: 24 },
               ]}
             />
           </div>
@@ -131,7 +131,7 @@ const ToursPage = () => {
       <Spin spinning={loading} tip="Đang tải..." size="large">
         {tours.length === 0 && !loading ? (
           <Empty
-            description="Không có tours nào"
+            description="Không có tour nào"
             style={{ marginTop: '50px' }}
           />
         ) : (
@@ -154,7 +154,7 @@ const ToursPage = () => {
                     setCurrentPage(1);
                   }}
                   showSizeChanger
-                  showTotal={(total) => `Tổng cộng ${total} tours`}
+                  showTotal={(total) => `Tổng cộng ${total} tour`}
                   className="tours-pagination"
                 />
               </div>

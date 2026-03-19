@@ -43,7 +43,7 @@ const FeaturedTours = () => {
       <div className="featured-tours-container">
         <div className="featured-tours-header">
           <div>
-            <h2 className="featured-tours-title">Tours Nổi Bật</h2>
+            <h2 className="featured-tours-title">Tour Nổi Bật</h2>
             <p className="featured-tours-subtitle">
               Những chuyến du lịch được yêu thích và được bình chọn cao nhất
             </p>
@@ -55,7 +55,7 @@ const FeaturedTours = () => {
 
         <Spin spinning={loading} tip="Đang tải..." size="large">
           {tours.length === 0 && !loading ? (
-            <Empty description="Chưa có tours nào" style={{ marginTop: '40px' }} />
+            <Empty description="Chưa có tour nào" style={{ marginTop: '40px' }} />
           ) : (
             <div className="featured-tours-grid">
               {tours.map((tour) => (

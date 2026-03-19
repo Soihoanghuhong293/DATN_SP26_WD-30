@@ -108,7 +108,7 @@ const BookingPage: React.FC = () => {
   useEffect(() => {
     const fetchTourDetail = async () => {
       if (!id) {
-        setTourError("Tour ID not found");
+        setTourError("Không tìm thấy ID tour");
         setLoadingTour(false);
         return;
       }
@@ -119,11 +119,11 @@ const BookingPage: React.FC = () => {
           if ("tour" in data.data) setTour((data.data as any).tour as ITour);
           else setTour(data.data as ITour);
         } else {
-          setTourError("Could not load tour details");
+          setTourError("Không thể tải chi tiết tour");
         }
       } catch (err) {
         console.error(err);
-        setTourError("Failed to load tour details");
+        setTourError("Tải chi tiết tour thất bại");
       } finally {
         setLoadingTour(false);
       }
