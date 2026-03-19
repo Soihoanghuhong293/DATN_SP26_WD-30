@@ -32,6 +32,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
   const currentGroupSize = Form.useWatch('groupSize', form) || 1;
 
   const departureSchedule = tour?.departure_schedule || [];
+  const hasDepartureSchedule = Array.isArray(departureSchedule) && departureSchedule.length > 0;
 
   // Hàm tính hiển thị giá trực tiếp trên lịch
   const getPriceForDate = (dateStr: string) => {
@@ -89,43 +90,38 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
   };
 
   const dateCellRender = (value: Dayjs) => {
+    // Chỉ hiển thị trạng thái slot (không hiển thị giá trong ô lịch)
+    if (!hasDepartureSchedule) return null;
     const dateStr = value.format('YYYY-MM-DD');
     const schedule = departureSchedule.find((s: any) => getNormalizedDate(s.date) === dateStr);
-    
     if (!schedule) return null;
 
-    // Dùng hàm tính toán để lấy mức giá mới nhất thay vì dùng giá gốc
-    const displayPrice = getPriceForDate(dateStr);
-    const isAvailable = schedule.slots > 0;
-    const isSelected = selectedDate === dateStr;
-
+    const slots = typeof schedule?.slots === 'number' ? schedule.slots : 0;
     return (
-      <div 
-        className={`p-1 text-center h-full rounded cursor-pointer transition-all ${isAvailable ? 'hover:bg-blue-50' : 'bg-gray-100 cursor-not-allowed opacity-60'} ${isSelected ? 'bg-blue-100 border border-blue-400' : ''}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (isAvailable) {
-            handleDateSelect(dateStr);
-          }
-        }}
-        style={{ 
-          minHeight: '60px', 
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-          backgroundColor: isSelected ? '#e6f7ff' : isAvailable ? '#f0fdf4' : '#f5f5f5',
-          border: isSelected ? '2px solid #1890ff' : '1px solid transparent'
-        }}
-      >
-        <div style={{ fontWeight: 'bold', color: isAvailable ? '#f97316' : '#9ca3af', fontSize: '12px' }}>
-          {displayPrice.toLocaleString('vi-VN')}đ
-        </div>
-        <div style={{ marginTop: '2px' }}>
-          {isAvailable 
-            ? <Tag color="green" style={{ margin: 0, fontSize: '10px', padding: '0 4px', lineHeight: '16px' }}>Còn {schedule.slots}</Tag> 
-            : <Tag color="red" style={{ margin: 0, fontSize: '10px', padding: '0 4px', lineHeight: '16px' }}>Hết</Tag>
-          }
-        </div>
+      <div style={{ marginTop: 2, textAlign: 'center' }}>
+        {slots > 0 ? (
+          <Tag color="green" style={{ margin: 0, fontSize: '10px', padding: '0 4px', lineHeight: '16px' }}>
+            Còn {slots}
+          </Tag>
+        ) : (
+          <Tag color="red" style={{ margin: 0, fontSize: '10px', padding: '0 4px', lineHeight: '16px' }}>
+            Hết
+          </Tag>
+        )}
       </div>
     );
+  };
+
+  const canSelectDate = (dateStr: string) => {
+    // Nếu tour có lịch khởi hành, chỉ cho chọn các ngày có schedule và còn slot
+    if (hasDepartureSchedule) {
+      const schedule = departureSchedule.find((s: any) => getNormalizedDate(s.date) === dateStr);
+      if (!schedule) return false;
+      const slots = typeof schedule?.slots === 'number' ? schedule.slots : 0;
+      return slots > 0;
+    }
+    // Nếu không có lịch khởi hành, cho chọn mọi ngày hợp lệ (>= hôm nay)
+    return true;
   };
 
   const handleSubmit = async (values: any) => {
@@ -204,6 +200,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
               fullscreen={false}
               dateCellRender={dateCellRender} 
               disabledDate={(current) => current && current < dayjs().startOf('day')}
+              onSelect={(value) => {
+                const dateStr = value.format('YYYY-MM-DD');
+                if (!canSelectDate(dateStr)) {
+                  message.warning('Ngày này không khả dụng. Vui lòng chọn ngày còn chỗ.');
+                  return;
+                }
+                handleDateSelect(dateStr);
+              }}
             />
           </div>
           {selectedDate && (
