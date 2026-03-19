@@ -21,6 +21,7 @@ import {
   ClockCircleOutlined,
   UsergroupAddOutlined,
 } from "@ant-design/icons";
+import axios from "axios";
 import dayjs from "dayjs";
 import { getTour } from "../services/api";
 import { ITour } from "../types/tour.types";
@@ -38,11 +39,12 @@ const TourDetailPage = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
+  const [holidayRules, setHolidayRules] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchTourDetail = async () => {
       if (!id) {
-        setError("Không tìm thấy ID tour");
+        setError("Tour ID not found");
         setLoading(false);
         return;
       }
@@ -58,11 +60,11 @@ const TourDetailPage = () => {
             setTour(data.data as ITour);
           }
         } else {
-          setError("Không thể tải chi tiết tour");
+          setError("Could not load tour details");
         }
       } catch (err) {
         console.error(err);
-        setError("Tải chi tiết tour thất bại");
+        setError("Failed to load tour details");
         message.error("Lỗi khi tải thông tin tour");
       } finally {
         setLoading(false);
@@ -71,6 +73,18 @@ const TourDetailPage = () => {
 
     fetchTourDetail();
   }, [id]);
+
+  useEffect(() => {
+    const fetchHolidayRules = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/v1/holiday-pricings");
+        setHolidayRules(res.data?.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải giá ngày lễ:", err);
+      }
+    };
+    fetchHolidayRules();
+  }, []);
 
   const tourImages = useMemo(() => {
     const imgs = (tour?.images || []).filter(Boolean);
@@ -155,6 +169,33 @@ const TourDetailPage = () => {
     if (!selectedDepartureDate) return null;
     const v = scheduleMap.get(selectedDepartureDate);
     return typeof v?.slots === "number" ? v.slots : null;
+  };
+
+  const getPriceForDate = (dateStr: string) => {
+    const basePrice = (tour as any)?.price || 0;
+    if (!dateStr) return basePrice;
+    const targetTime = new Date(`${dateStr}T12:00:00Z`).getTime();
+
+    const applicableRules = holidayRules.filter((rule: any) => {
+      const tourId = (tour as any)?._id || (tour as any)?.id;
+      const isForTour = !rule.tour_id || rule.tour_id?._id === tourId || rule.tour_id === tourId;
+      if (!isForTour) return false;
+
+      let end = new Date(rule.end_date).getTime();
+      const endHr = new Date(rule.end_date).getUTCHours();
+      if (endHr === 17 || endHr === 0) end += 24 * 60 * 60 * 1000 - 1;
+
+      const start = new Date(rule.start_date).getTime();
+      return targetTime >= start && targetTime <= end;
+    });
+
+    if (applicableRules.length > 0) {
+      applicableRules.sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
+      const rule = applicableRules[0];
+      if (rule.fixed_price) return rule.fixed_price;
+      return basePrice * (rule.price_multiplier || 1);
+    }
+    return basePrice;
   };
 
   const formatPriceK = (price: number) => {
@@ -268,7 +309,7 @@ const TourDetailPage = () => {
               <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>GIÁ TOUR</h3>
               <div style={{ marginBottom: 10 }}>
                 <span style={{ fontSize: 36, fontWeight: 900, color: "#d90429", lineHeight: 1 }}>
-                  {tour.price?.toLocaleString()}đ
+                  {getPriceForDate(selectedDepartureDate || defaultDepartureDate || "").toLocaleString()}đ
                 </span>
                 <span style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginLeft: 6 }}>/ khách</span>
               </div>
@@ -463,7 +504,7 @@ const TourDetailPage = () => {
                       className="schedule-cal__nav"
                       disabled={!canPrev}
                       onClick={() => canPrev && setActiveMonth(monthKeys[idx - 1])}
-                      aria-label="Tháng trước"
+                      aria-label="Prev month"
                     >
                       <LeftOutlined />
                     </button>
@@ -473,7 +514,7 @@ const TourDetailPage = () => {
                       className="schedule-cal__nav"
                       disabled={!canNext}
                       onClick={() => canNext && setActiveMonth(monthKeys[idx + 1])}
-                      aria-label="Tháng sau"
+                      aria-label="Next month"
                     >
                       <RightOutlined />
                     </button>
@@ -513,7 +554,7 @@ const TourDetailPage = () => {
                           }}
                         >
                           <div className="schedule-cell__day">{inMonth ? date.date() : ""}</div>
-                          {showPrice ? <div className="schedule-cell__price">{formatPriceK(Number((tour as any)?.price || 0))}</div> : <div />}
+                          {showPrice ? <div className="schedule-cell__price">{formatPriceK(getPriceForDate(dateStr))}</div> : <div />}
                         </div>
                       );
                     })}

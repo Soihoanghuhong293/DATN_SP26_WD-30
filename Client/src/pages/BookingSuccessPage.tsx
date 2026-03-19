@@ -7,6 +7,26 @@ import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
+const getPaymentStatusInfo = (booking: any) => {
+  const paymentStatus = booking?.payment_status
+    || (booking?.status === 'paid' ? 'paid'
+      : booking?.status === 'deposit' ? 'deposit'
+      : booking?.status === 'refunded' ? 'refunded'
+      : 'unpaid');
+
+  if (paymentStatus === 'paid') return { color: 'green', label: 'Đã thanh toán đủ' };
+  if (paymentStatus === 'deposit') return { color: 'orange', label: 'Đã đặt cọc' };
+  if (paymentStatus === 'refunded') return { color: 'default', label: 'Đã hoàn tiền' };
+  return { color: 'blue', label: 'Chưa thanh toán' };
+};
+
+const getBookingStatusInfo = (booking: any) => {
+  const status = ['pending', 'confirmed', 'cancelled'].includes(booking?.status) ? booking.status : 'confirmed';
+  if (status === 'pending') return { color: 'gold', label: 'Chờ xử lý' };
+  if (status === 'cancelled') return { color: 'red', label: 'Đã hủy' };
+  return { color: 'green', label: 'Đã xác nhận' };
+};
+
 const BookingSuccessPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -35,28 +55,20 @@ const BookingSuccessPage = () => {
   const totalPrice = booking.total_price || booking.totalPrice || 0;
   const isDeposit = booking.paymentMethod === 'deposit';
   const paymentAmount = isDeposit ? Math.round(totalPrice * 0.3) : totalPrice;
+  const paymentStatusInfo = getPaymentStatusInfo(booking);
+  const bookingStatusInfo = getBookingStatusInfo(booking);
 
-  const handleConfirmPayment = async () => {
+  const handleGoToPaymentPage = () => {
     setIsModalOpen(false);
-    if (paymentGateway === 'momo') {
-      try {
-        message.loading('Đang khởi tạo thanh toán MoMo...', 1);
-        const res = await axios.post(`http://localhost:5000/api/v1/bookings/${id}/payments/momo`, {
-          amount: paymentAmount,
-          orderInfo: `Thanh toán ${isDeposit ? 'cọc' : 'toàn bộ'} tour ${booking.tour_id?.name}`,
-          pay_type: isDeposit ? 'deposit' : 'full'
-        });
-        if (res.data?.payUrl) {
-          window.location.href = res.data.payUrl;
-        } else {
-          message.error('Không nhận được link thanh toán từ MoMo');
-        }
-      } catch (error) {
-        message.error('Lỗi khởi tạo thanh toán. Vui lòng thử lại sau.');
-      }
-    } else {
-      message.info('Cổng thanh toán này đang bảo trì, vui lòng chọn MoMo.');
+    if (paymentGateway !== 'momo') {
+      message.info('Hiện tại chỉ hỗ trợ mô phỏng thanh toán qua MoMo.');
+      return;
     }
+    if (!id) {
+      message.error('Thiếu mã booking để chuyển trang thanh toán.');
+      return;
+    }
+    navigate(`/booking/payment/${id}`);
   };
 
   return (
@@ -88,6 +100,16 @@ const BookingSuccessPage = () => {
             <Descriptions.Item label="Tổng giá trị tour">
                 <Text>{totalPrice.toLocaleString()} ₫</Text>
             </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái đơn">
+                <Tag color={bookingStatusInfo.color}>
+                   {bookingStatusInfo.label}
+                </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Trạng thái thanh toán">
+                <Tag color={paymentStatusInfo.color}>
+                   {paymentStatusInfo.label}
+                </Tag>
+            </Descriptions.Item>
             <Descriptions.Item label="Phương thức">
                 <Tag color={isDeposit ? 'orange' : 'blue'}>
                    {isDeposit ? 'Đặt cọc trước (30%)' : 'Thanh toán toàn bộ (100%)'}
@@ -110,7 +132,7 @@ const BookingSuccessPage = () => {
           <Modal
             title="Chọn phương thức thanh toán"
             open={isModalOpen}
-            onOk={handleConfirmPayment}
+            onOk={handleGoToPaymentPage}
             onCancel={() => setIsModalOpen(false)}
             okText="Tiếp tục"
             cancelText="Đóng"

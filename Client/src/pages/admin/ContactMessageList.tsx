@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import {
@@ -7,6 +7,7 @@ import {
   Button,
   Typography,
   Select,
+  Input,
   Modal,
   Popconfirm,
   message,
@@ -20,6 +21,7 @@ import {
   EyeOutlined,
   PhoneOutlined,
   UserOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
@@ -41,6 +43,7 @@ interface IContactMessage {
 const ContactMessageList = () => {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchText, setSearchText] = useState<string>('');
   const [selectedMsg, setSelectedMsg] = useState<IContactMessage | null>(null);
 
   const { data: messages = [], isLoading } = useQuery({
@@ -73,6 +76,18 @@ const ContactMessageList = () => {
       setSelectedMsg(null);
     },
   });
+
+  const filteredMessages = useMemo(() => {
+    if (!searchText) return messages;
+    const lower = searchText.toLowerCase();
+    return messages.filter((m: IContactMessage) => {
+      return (
+        (m.name || '').toLowerCase().includes(lower) ||
+        (m.phone || '').toLowerCase().includes(lower) ||
+        (m.content || '').toLowerCase().includes(lower)
+      );
+    });
+  }, [messages, searchText]);
 
   const columns = [
     {
@@ -175,8 +190,20 @@ const ContactMessageList = () => {
           </span>
         }
         subtitle="Tin nhắn từ form chat khi hệ thống offline."
-        extra={
+        extra={null}
+      />
+
+      <AdminListCard
+        toolbar={
           <Space wrap>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+              placeholder="Tìm theo tên, SĐT hoặc nội dung..."
+              allowClear
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 360 }}
+            />
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
@@ -189,17 +216,15 @@ const ContactMessageList = () => {
             />
           </Space>
         }
-      />
-
-      <AdminListCard>
+      >
         <Table
           columns={columns}
-          dataSource={messages}
+          dataSource={filteredMessages}
           rowKey="_id"
           loading={isLoading}
           pagination={{
             pageSize: 10,
-            showSizeChanger: true,
+            showSizeChanger: false,
             showTotal: (t) => `Tổng ${t} tin nhắn`,
           }}
         />

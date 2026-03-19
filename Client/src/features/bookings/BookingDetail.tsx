@@ -272,11 +272,23 @@ const BookingDetail = () => {
     switch (status) {
       case 'confirmed': return <Tag color="success" bordered={false}>Đã xác nhận</Tag>;
       case 'pending': return <Tag color="warning" bordered={false}>Chờ duyệt</Tag>;
-      case 'paid': return <Tag color="processing" bordered={false}>Đã thanh toán</Tag>;
       case 'cancelled': return <Tag color="error" bordered={false}>Đã hủy</Tag>;
-      case 'deposit': return <Tag color="purple" bordered={false}>Đã cọc</Tag>;
-      case 'refunded': return <Tag color="default" bordered={false}>Hoàn tiền</Tag>;
       default: return <Tag bordered={false}>{status || 'Chưa rõ'}</Tag>;
+    }
+  };
+
+  const renderPaymentStatus = (paymentStatus?: string, legacyStatus?: string) => {
+    const resolved = paymentStatus
+      || (legacyStatus === 'paid' ? 'paid'
+        : legacyStatus === 'deposit' ? 'deposit'
+        : legacyStatus === 'refunded' ? 'refunded'
+        : 'unpaid');
+
+    switch (resolved) {
+      case 'paid': return <Tag color="green">Đã thanh toán đủ</Tag>;
+      case 'deposit': return <Tag color="purple">Đã đặt cọc</Tag>;
+      case 'refunded': return <Tag color="default">Đã hoàn tiền</Tag>;
+      default: return <Tag color="warning">Chưa thanh toán</Tag>;
     }
   };
 
@@ -398,11 +410,7 @@ const BookingDetail = () => {
                       {booking.total_price?.toLocaleString() || 0} ₫
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    {booking.status === 'paid' && <Tag color="green">Đã thanh toán đủ</Tag>}
-                    {booking.status === 'deposit' && <Tag color="purple">Đã đặt cọc</Tag>}
-                    {booking.status === 'refunded' && <Tag color="default">Đã hoàn tiền</Tag>}
-                    {['pending', 'confirmed'].includes(booking.status) && <Tag color="warning">Chưa thanh toán</Tag>}
-                    {booking.status === 'cancelled' && <Tag color="error">Đã hủy</Tag>}
+                    {renderPaymentStatus(booking.payment_status, booking.status)}
                   </div>
               </div>
               

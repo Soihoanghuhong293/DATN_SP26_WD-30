@@ -10,7 +10,11 @@ export default function AdminListCard({ toolbar, children }: AdminListCardProps)
   return (
     <Card
       styles={{ body: { padding: 16 } }}
-      style={{ borderRadius: 10, borderColor: '#eef2f7' }}
+      style={{
+        borderRadius: 10,
+        border: '1px solid #eef2f7',
+        boxShadow: 'none',
+      }}
     >
       {toolbar ? <div style={{ marginBottom: 12 }}>{toolbar}</div> : null}
       {children}

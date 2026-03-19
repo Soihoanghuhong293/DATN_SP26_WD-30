@@ -87,6 +87,7 @@ const BookingPage: React.FC = () => {
 
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [loadingHolidayRules, setLoadingHolidayRules] = useState(false);
+  const [bookedSlotsByDate, setBookedSlotsByDate] = useState<Record<string, number>>({});
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calculatedAdultPrice, setCalculatedAdultPrice] = useState<number>(0);
@@ -156,6 +157,40 @@ const BookingPage: React.FC = () => {
     fetchHolidayRules();
   }, []);
 
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      if (!tour) return;
+      try {
+        const tourId = (tour as any)?._id || (tour as any)?.id;
+        if (!tourId) return;
+
+        const res = await axios.get("http://localhost:5000/api/v1/bookings");
+        const bookings = Array.isArray(res.data?.data) ? res.data.data : [];
+
+        const grouped: Record<string, number> = {};
+        bookings.forEach((b: any) => {
+          if (!b) return;
+          const bookingTourId = b?.tour_id?._id || b?.tour_id;
+          if (String(bookingTourId) !== String(tourId)) return;
+          if (b?.status === "cancelled") return;
+
+          const dateStr = normalizeDate(String(b?.startDate || ""));
+          if (!dateStr) return;
+
+          const size = Number(b?.groupSize || 0);
+          grouped[dateStr] = (grouped[dateStr] || 0) + (Number.isFinite(size) ? size : 0);
+        });
+
+        setBookedSlotsByDate(grouped);
+      } catch (error) {
+        console.error("Lỗi khi tải số chỗ đã đặt:", error);
+        setBookedSlotsByDate({});
+      }
+    };
+
+    fetchBookedSlots();
+  }, [tour]);
+
   const departureSchedule = useMemo(() => (tour as any)?.departure_schedule || [], [tour]);
 
   const selectableDepartureDates = useMemo(() => {
@@ -164,10 +199,13 @@ const BookingPage: React.FC = () => {
     for (const s of arr) {
       const dateStr = normalizeDate(String((s as any)?.date || ""));
       if (!dateStr) continue;
-      map.set(dateStr, Number((s as any)?.slots ?? 0));
+      const baseSlots = Number((s as any)?.slots ?? 0);
+      const bookedSlots = Number(bookedSlotsByDate[dateStr] || 0);
+      const remainingSlots = Math.max(0, baseSlots - bookedSlots);
+      map.set(dateStr, remainingSlots);
     }
     return map;
-  }, [departureSchedule]);
+  }, [departureSchedule, bookedSlotsByDate]);
 
   const availableSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate) return null;
@@ -314,7 +352,8 @@ const BookingPage: React.FC = () => {
     const dateStr = value.format("YYYY-MM-DD");
     const schedule = departureSchedule.find((s: any) => normalizeDate(s.date) === dateStr);
     const hasSchedule = !!schedule;
-    const isAvailable = hasSchedule && (schedule?.slots ?? 0) > 0;
+    const remainingSlots = selectableDepartureDates.get(dateStr);
+    const isAvailable = hasSchedule && typeof remainingSlots === "number" && remainingSlots > 0;
     const isSelected = selectedDate === dateStr;
     const displayPrice = hasSchedule ? getPriceForDate(dateStr) : 0;
 
@@ -339,7 +378,9 @@ const BookingPage: React.FC = () => {
           <>
             <div className="departure-cell__price">{Number(displayPrice || 0).toLocaleString("vi-VN")}đ</div>
             <div className={isAvailable ? "departure-cell__slots" : "departure-cell__slots departure-cell__slots--empty"}>
-              {isAvailable ? `Còn ${schedule.slots}` : "Hết"}
+              {isAvailable
+                ? `Còn ${typeof remainingSlots === "number" ? remainingSlots : schedule?.slots ?? 0}`
+                : "Hết"}
             </div>
           </>
         ) : (
@@ -402,14 +443,35 @@ const BookingPage: React.FC = () => {
         totalPrice: totals.total,
       };
 
-      await axios.post("http://localhost:5000/api/v1/bookings", payload);
+      const res = await axios.post("http://localhost:5000/api/v1/bookings", payload);
+      const created = (res.data && (res.data.data || res.data)) || null;
+      const bookingId = created?._id || created?.id;
+
       message.success("Đặt tour thành công!");
-      navigate(`/tours/${(tour as any)?.id || id}`);
+
+      if (bookingId) {
+        // Điều hướng sang trang thanh toán/hoàn tất để giả lập thanh toán
+        navigate(`/booking/success/${bookingId}`);
+      } else {
+        // Fallback: quay lại trang chi tiết tour nếu không lấy được id
+        navigate(`/tours/${(tour as any)?.id || id}`);
+      }
     } catch (error: any) {
       console.error("Lỗi đặt tour:", error);
       message.error(error?.response?.data?.message || "Lỗi khi đặt tour!");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleManualSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      await onSubmit(values);
+    } catch (err: any) {
+      const fields = err?.errorFields || [];
+      console.warn("Manual booking submit failed:", fields);
+      message.error("Vui lòng kiểm tra lại các trường bắt buộc trong form.");
     }
   };
 
@@ -479,6 +541,10 @@ const BookingPage: React.FC = () => {
         form={form}
         layout="vertical"
         onFinish={onSubmit}
+        onFinishFailed={({ errorFields }) => {
+          console.warn('Booking form validation failed:', errorFields);
+          message.error("Vui lòng kiểm tra lại các trường được đánh dấu đỏ trong form.");
+        }}
         onValuesChange={(changed) => {
           if ("adults" in changed) syncAdultPassengers(Number((changed as any).adults || 0));
           if ("children" in changed) syncChildPassengers(Number((changed as any).children || 0));
@@ -931,7 +997,7 @@ const BookingPage: React.FC = () => {
 
             <Button
               type="primary"
-              htmlType="submit"
+              onClick={handleManualSubmit}
               block
               size="large"
               loading={submitting}

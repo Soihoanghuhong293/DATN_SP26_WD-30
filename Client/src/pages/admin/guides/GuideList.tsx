@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Popconfirm, message, Input, Select, Modal } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { getGuides, deleteGuide } from '../../../services/api';
 import type { IGuide, GuideGroupType, HealthStatus } from '../../../types/guide.types';
@@ -205,12 +205,14 @@ const GuideList = () => {
 
       <AdminListCard
         toolbar={
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <Space wrap>
             <Input
-              placeholder="Tìm kiếm theo tên, số điện thoại..."
+              prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+              placeholder="Tìm theo tên hoặc SĐT..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               allowClear
+              style={{ width: 320 }}
             />
             <Select
               placeholder="Lọc theo loại HDV"
@@ -223,6 +225,7 @@ const GuideList = () => {
                 { label: 'Chuyên tuyến', value: 'specialized_line' },
                 { label: 'Chuyên khách đoàn', value: 'group_specialist' },
               ]}
+              style={{ width: 230 }}
             />
             <Select
               placeholder="Lọc theo tình trạng sức khoẻ"
@@ -235,8 +238,9 @@ const GuideList = () => {
                 { label: 'Nghỉ phép', value: 'on_leave' },
                 { label: 'Đã nghỉ hưu', value: 'retired' },
               ]}
+              style={{ width: 240 }}
             />
-          </div>
+          </Space>
         }
       >
         <Table

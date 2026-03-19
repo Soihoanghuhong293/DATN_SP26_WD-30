@@ -64,9 +64,67 @@ const BookingCreate = () => {
   });
   const providers = Array.isArray(providersData) ? providersData : [];
 
+  // lấy booking
+  const { data: allBookings } = useQuery({
+    queryKey: ['bookings'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/bookings', getAuthHeader());
+      return res.data?.data || res.data?.results || [];
+    }
+  });
 
-  // Tách users thành Khách hàng và HDV
+  // users ->Khách hàng và HDV
   const customers = useMemo(() => usersData?.filter((u: any) => u.role === 'user') || [], [usersData]);
+
+  // chọn tour ra các số ngày khởi hành
+  const watchedTourId = Form.useWatch('tour_id', form);
+  
+  const selectedTourForDates = useMemo(() => {
+    return tours?.find((t: any) => t._id === watchedTourId);
+  }, [tours, watchedTourId]);
+
+  // tính số chỗ
+  const bookedSlotsByDate = useMemo(() => {
+    if (!watchedTourId || !allBookings) return {};
+    const grouped: Record<string, number> = {};
+    allBookings.forEach((b: any) => {
+      const bTourId = b?.tour_id?._id || b?.tour_id;
+      if (String(bTourId) !== String(watchedTourId)) return;
+      if (b?.status === 'cancelled') return;
+
+      const dateStr = b.startDate ? (b.startDate.includes('T') ? b.startDate.split('T')[0] : dayjs(b.startDate).format('YYYY-MM-DD')) : '';
+      if (!dateStr) return;
+
+      const size = Number(b?.groupSize || 0);
+      grouped[dateStr] = (grouped[dateStr] || 0) + size;
+    });
+    return grouped;
+  }, [watchedTourId, allBookings]);
+
+  const availableDepartureDates = useMemo(() => {
+    if (!selectedTourForDates || !Array.isArray(selectedTourForDates.departure_schedule)) return [];
+    return selectedTourForDates.departure_schedule.map((s: any) => {
+      const dateStr = s.date.includes('T') ? s.date.split('T')[0] : dayjs(s.date).format('YYYY-MM-DD');
+      
+      const baseSlots = Number(s.slots ?? 0);
+      const booked = bookedSlotsByDate[dateStr] || 0;
+      const remaining = Math.max(0, baseSlots - booked);
+
+      return {
+        label: `${dayjs(dateStr).format('DD/MM/YYYY')} (Còn ${remaining} chỗ)`,
+        value: dateStr,
+        slots: remaining
+      };
+    });
+  }, [selectedTourForDates, bookedSlotsByDate]);
+
+  const watchedStartDate = Form.useWatch('startDate', form);
+  const availableSlotsForSelectedDate = useMemo(() => {
+    if (!watchedStartDate) return null;
+    const dateStr = dayjs(watchedStartDate).format('YYYY-MM-DD');
+    const dateInfo = availableDepartureDates.find(d => d.value === dateStr);
+    return dateInfo ? dateInfo.slots : null;
+  }, [watchedStartDate, availableDepartureDates]);
 
   // submit Form
  const mutation = useMutation({
@@ -76,7 +134,7 @@ const BookingCreate = () => {
 
       const payload: any = { ...restValues };
       
-      payload.startDate = values.startDate ? values.startDate.format('YYYY-MM-DD') : undefined;
+      payload.startDate = values.startDate ? dayjs(values.startDate).format('YYYY-MM-DD') : undefined;
       payload.endDate = values.endDate ? values.endDate.format('YYYY-MM-DD') : undefined;
 
       if (!payload.user_id) delete payload.user_id;
@@ -98,8 +156,14 @@ const BookingCreate = () => {
     const selectedTour = tours?.find((t: any) => t._id === allValues.tour_id);
     const fieldsToUpdate: any = {};
 
-    // nếu đổi ngày xuất phát tính lại ngyaf về
-    if ((changedValues.tour_id || changedValues.startDate) && allValues.tour_id && selectedTour) {
+    // Nếu đổi tour, reset lại ngày khởi hành
+    if (changedValues.tour_id) {
+      fieldsToUpdate.startDate = null;
+      fieldsToUpdate.endDate = null;
+    }
+
+    // Nếu đổi ngày xuất phát tính lại ngày về
+    if (changedValues.startDate && allValues.tour_id && selectedTour) {
       if (allValues.startDate) {
         const duration = selectedTour.duration_days || 1;
         const newEndDate = dayjs(allValues.startDate).add(duration - 1, 'day');
@@ -182,18 +246,48 @@ const BookingCreate = () => {
       setCurrentPrices(activePriceList);
       setActiveHolidayName(holidayName);
 
+      const dateStr = dayjs(allValues.startDate).format('YYYY-MM-DD');
+      const dateInfo = availableDepartureDates.find((d: any) => d.value === dateStr);
+      const maxSlots = dateInfo ? dateInfo.slots : null;
+
       let totalMoney = 0;
       let totalPeople = 0;
       const isTourOrDateChanged = !!changedValues.tour_id || !!changedValues.startDate;
 
+      // Bước 1: Tính tổng số người tạm thời
       activePriceList.forEach((item: any) => {
         let qty = allValues[`qty_${item.name}`];
         if (isTourOrDateChanged || qty === undefined || qty === null) {
           qty = item.name === 'Người lớn' ? 1 : 0;
           fieldsToUpdate[`qty_${item.name}`] = qty;
+        } else {
+          qty = Number(qty);
         }
-        totalMoney += qty * item.price;
         totalPeople += qty;
+      });
+
+      // Bước 2: Cắt giảm tự động nếu vượt quá số chỗ cho phép
+      if (maxSlots !== null && totalPeople > maxSlots && !isTourOrDateChanged) {
+        const changedKey = Object.keys(changedValues).find(k => k.startsWith('qty_'));
+        if (changedKey) {
+          const excess = totalPeople - maxSlots;
+          const currentVal = Number(allValues[changedKey]);
+          const allowedVal = Math.max(0, currentVal - excess);
+          
+          fieldsToUpdate[changedKey] = allowedVal;
+          allValues[changedKey] = allowedVal; // Cập nhật lại cho vòng lặp tính tiền
+          message.destroy(); // Xóa tin nhắn cũ tránh spam
+          message.warning(`Giới hạn! Chỉ còn trống ${maxSlots} chỗ cho ngày này.`);
+          totalPeople = maxSlots;
+        }
+      }
+
+      // Bước 3: Tính lại tổng tiền chính xác sau khi đã chuẩn hóa số lượng
+      activePriceList.forEach((item: any) => {
+        let qty = fieldsToUpdate[`qty_${item.name}`] !== undefined 
+          ? fieldsToUpdate[`qty_${item.name}`] 
+          : Number(allValues[`qty_${item.name}`] || 0);
+        totalMoney += qty * item.price;
       });
 
       setCalculatedPrice(totalMoney);
@@ -208,6 +302,11 @@ const BookingCreate = () => {
 
   const onFinish = (values: any) => {
     if (values.groupSize === 0) return message.error('Vui lòng nhập số lượng khách!');
+    
+    if (availableSlotsForSelectedDate !== null && values.groupSize > availableSlotsForSelectedDate) {
+      return message.error(`Số lượng khách (${values.groupSize}) vượt quá số chỗ còn lại (${availableSlotsForSelectedDate})! Vui lòng giảm số khách hoặc chọn ngày khác.`);
+    }
+
     mutation.mutate(values);
   };
 
@@ -245,7 +344,17 @@ const BookingCreate = () => {
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item name="startDate" label="Ngày khởi hành" rules={[{ required: true, message: 'Chọn ngày đi!' }]}>
-                    <DatePicker format="DD/MM/YYYY" className="w-full" size="large" />
+                    <Select 
+                      placeholder="-- Chọn ngày khởi hành --" 
+                      size="large"
+                      disabled={!watchedTourId}
+                    >
+                      {availableDepartureDates.map((d: any) => (
+                        <Option key={d.value} value={d.value} disabled={d.slots <= 0}>
+                          {d.label}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                 </Col>
                 <Col span={12}>
@@ -328,6 +437,11 @@ const BookingCreate = () => {
                 <div className="mb-4">
                   <div className="font-bold text-gray-700 mb-3">
                     Số lượng hành khách 
+                    {availableSlotsForSelectedDate !== null && (
+                       <span className="text-blue-600 font-normal ml-2">
+                         (Còn {availableSlotsForSelectedDate} chỗ)
+                       </span>
+                    )}
                     {activeHolidayName && <div className="text-orange-500 font-normal text-xs mt-1">(Đang áp dụng: {activeHolidayName})</div>}
                   </div>
                   

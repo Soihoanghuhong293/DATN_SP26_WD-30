@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // 👈 IMPORT THÊM NÀY
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Tooltip, Radio } from 'antd';
-import { DeleteOutlined, LockOutlined, UnlockOutlined, CrownOutlined, UserOutlined, PlusOutlined, IdcardOutlined, FilterOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Tooltip, Radio, Input } from 'antd';
+import { DeleteOutlined, LockOutlined, UnlockOutlined, CrownOutlined, UserOutlined, PlusOutlined, IdcardOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import AdminPageHeader from '../../../components/admin/AdminPageHeader';
 import AdminListCard from '../../../components/admin/AdminListCard';
@@ -26,6 +26,7 @@ const UserList = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate(); // 👈 KHAI BÁO CHUYỂN TRANG
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchText, setSearchText] = useState<string>('');
 
   const getAuthHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
@@ -71,6 +72,10 @@ const UserList = () => {
     if (roleFilter === 'all') return true;
     if (roleFilter === 'guide') return user.role === 'guide' || user.role === 'hdv';
     return user.role === roleFilter;
+  }).filter((user: IUser) => {
+    if (!searchText) return true;
+    const lower = searchText.toLowerCase();
+    return (user.name || '').toLowerCase().includes(lower) || (user.email || '').toLowerCase().includes(lower);
   });
 
   const columns = [
@@ -175,8 +180,15 @@ const UserList = () => {
       <AdminListCard
         toolbar={
           <Space wrap>
-            <FilterOutlined style={{ color: '#9ca3af' }} />
-            <Text strong>Lọc theo đối tượng:</Text>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+              placeholder="Tìm theo tên hoặc email..."
+              allowClear
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 320 }}
+            />
+            <Text strong>Lọc:</Text>
             <Radio.Group
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}

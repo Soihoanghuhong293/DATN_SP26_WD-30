@@ -22,4 +22,7 @@ router
   .put(bookingController.updateBooking) // <-- Đã đổi updateBookingStatus thành updateBooking
   .delete(bookingController.deleteBooking);
 
+// Giả lập thanh toán MoMo (sandbox/dev) cho một đơn booking cụ thể
+router.post('/:id/payments/momo', bookingController.initMomoPaymentMock);
+
 export default router;
