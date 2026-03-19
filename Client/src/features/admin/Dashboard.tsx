@@ -180,64 +180,88 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-wrap justify-between items-center mb-6">
-        <div>
-          <Title level={3} className="m-0">
-            Tổng quan hệ thống
-          </Title>
-          <Text type="secondary">Theo dõi doanh thu, booking, khách hàng và tour</Text>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-6 py-5">
+      <Card
+        bordered={false}
+        className="mb-5 shadow-sm rounded-2xl bg-gradient-to-r from-sky-500/90 via-sky-400 to-cyan-400 text-white"
+      >
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full mb-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              <span className="text-xs font-medium tracking-wide uppercase">
+                Khu vực quản trị
+              </span>
+            </div>
+
+            <Title level={3} style={{ color: "#ffffff", marginBottom: 4 }}>
+              Tổng quan hệ thống
+            </Title>
+            <Text style={{ color: "rgba(255,255,255,0.85)" }}>
+              Theo dõi doanh thu, booking, khách hàng và tour theo ngày / tháng / năm
+            </Text>
+          </div>
+
+          <div className="flex flex-wrap gap-3 items-center bg-white/10 px-3 py-2 rounded-xl backdrop-blur">
+            <Radio.Group
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button value="date">Ngày</Radio.Button>
+              <Radio.Button value="month">Tháng</Radio.Button>
+              <Radio.Button value="year">Năm</Radio.Button>
+            </Radio.Group>
+
+            {mode === "date" && (
+              <DatePicker
+                value={selectedDate}
+                onChange={(value) => setSelectedDate(value)}
+                allowClear={false}
+                format="DD/MM/YYYY"
+              />
+            )}
+
+            {mode === "month" && (
+              <DatePicker
+                picker="month"
+                value={selectedDate}
+                onChange={(value) => setSelectedDate(value)}
+                allowClear={false}
+                format="MM/YYYY"
+              />
+            )}
+
+            {mode === "year" && (
+              <DatePicker
+                picker="year"
+                value={selectedDate}
+                onChange={(value) => setSelectedDate(value)}
+                allowClear={false}
+                format="YYYY"
+              />
+            )}
+          </div>
         </div>
-
-        <div className="flex flex-wrap gap-3 items-center">
-          <Radio.Group
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            buttonStyle="solid"
-          >
-            <Radio.Button value="date">Ngày</Radio.Button>
-            <Radio.Button value="month">Tháng</Radio.Button>
-            <Radio.Button value="year">Năm</Radio.Button>
-          </Radio.Group>
-
-          {mode === "date" && (
-            <DatePicker
-              value={selectedDate}
-              onChange={(value) => setSelectedDate(value)}
-              allowClear={false}
-              format="DD/MM/YYYY"
-            />
-          )}
-
-          {mode === "month" && (
-            <DatePicker
-              picker="month"
-              value={selectedDate}
-              onChange={(value) => setSelectedDate(value)}
-              allowClear={false}
-              format="MM/YYYY"
-            />
-          )}
-
-          {mode === "year" && (
-            <DatePicker
-              picker="year"
-              value={selectedDate}
-              onChange={(value) => setSelectedDate(value)}
-              allowClear={false}
-              format="YYYY"
-            />
-          )}
-        </div>
-      </div>
-
-      <Card className="mb-4" bordered={false}>
-        <Text type="secondary">Dữ liệu hiển thị theo {rangeLabel.toLowerCase()}</Text>
       </Card>
 
-      <Row gutter={[24, 24]}>
+      <Card
+        className="mb-5 shadow-sm rounded-2xl border-slate-100"
+        bodyStyle={{ padding: 16 }}
+      >
+        <div className="flex justify-between items-center gap-3 flex-wrap">
+          <Text type="secondary">
+            Dữ liệu đang hiển thị theo <b>{rangeLabel.toLowerCase()}</b>
+          </Text>
+          <Text type="secondary" className="text-xs">
+            Nguồn dữ liệu: đơn đặt tour (`/bookings`)
+          </Text>
+        </div>
+      </Card>
+
+      <Row gutter={[20, 20]}>
         <Col xs={24} md={12} lg={6}>
-          <Card bordered={false} className="shadow-sm rounded-xl">
+          <Card bordered={false} className="shadow-md rounded-2xl border-0 bg-white hover:shadow-lg transition-shadow duration-200">
             <div className="flex justify-between items-center">
               <div>
                 <Text type="secondary">Doanh thu</Text>
@@ -256,7 +280,7 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} md={12} lg={6}>
-          <Card bordered={false} className="shadow-sm rounded-xl">
+          <Card bordered={false} className="shadow-md rounded-2xl border-0 bg-white hover:shadow-lg transition-shadow duration-200">
             <div className="flex justify-between items-center">
               <div>
                 <Text type="secondary">Số booking</Text>
@@ -273,7 +297,7 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} md={12} lg={6}>
-          <Card bordered={false} className="shadow-sm rounded-xl">
+          <Card bordered={false} className="shadow-md rounded-2xl border-0 bg-white hover:shadow-lg transition-shadow duration-200">
             <div className="flex justify-between items-center">
               <div>
                 <Text type="secondary">Số khách hàng</Text>
@@ -290,7 +314,7 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} md={12} lg={6}>
-          <Card bordered={false} className="shadow-sm rounded-xl">
+          <Card bordered={false} className="shadow-md rounded-2xl border-0 bg-white hover:shadow-lg transition-shadow duration-200">
             <div className="flex justify-between items-center">
               <div>
                 <Text type="secondary">Số khách (passengers)</Text>
@@ -307,12 +331,12 @@ const Dashboard: React.FC = () => {
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]} className="mt-6">
+      <Row gutter={[20, 20]} className="mt-4">
         <Col xs={24} lg={12}>
           <Card
             title="Tình trạng booking"
             bordered={false}
-            className="shadow-sm rounded-xl"
+            className="shadow-md rounded-2xl bg-white border-0"
           >
             {isLoading ? (
               <Skeleton active />
@@ -336,7 +360,7 @@ const Dashboard: React.FC = () => {
                   return (
                     <div
                       key={status}
-                      className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg"
+                      className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl"
                     >
                       <div className="flex items-center gap-2">
                         <Tag color={info.color} bordered={false}>
@@ -357,7 +381,7 @@ const Dashboard: React.FC = () => {
           <Card
             title="Tour phổ biến"
             bordered={false}
-            className="shadow-sm rounded-xl"
+            className="shadow-md rounded-2xl bg-white border-0"
           >
             {isLoading ? (
               <Skeleton active />
