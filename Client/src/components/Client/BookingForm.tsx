@@ -141,22 +141,29 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
       }
     }
 
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return message.error('Vui lòng đăng nhập trước khi đặt tour!');
+    }
+
     setLoading(true);
     try {
       const payload = {
         tour_id: tour?._id || tour?.id,
-        customerName: values.customerName,
-        phone: values.phone,
-        email: values.email,
+        customer_name: values.customerName,
+        customer_phone: values.phone,
+        customer_email: values.email,
         startDate: selectedDate, 
         groupSize: values.groupSize,
         paymentMethod: values.paymentMethod,
         customer_note: values.customer_note,
         // Truyền tổng tiền đã tính toán (sau khi áp dụng giá ngày lễ) xuống Backend
-        totalPrice: calculatedPrice * values.groupSize,
+        total_price: calculatedPrice * values.groupSize,
       };
 
-      await axios.post('http://localhost:5000/api/v1/bookings', payload);
+      await axios.post('http://localhost:5000/api/v1/bookings', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       message.success('Đặt tour thành công!');
       form.resetFields();
       setSelectedDate(null);
