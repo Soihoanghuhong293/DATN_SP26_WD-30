@@ -4,14 +4,17 @@ import Tour from '../models/Tour';
 // 1. GET ALL: Lấy danh sách Tour
 export const getAllTours = async (req: Request, res: Response) => {
   try {
-    // Supports: page, limit, status, search, category_id
-    // Example: GET /api/v1/tours?page=1&limit=12&status=active&search=hanoi
+    // Supports: page, limit, status, search, category_id, minPrice, maxPrice, departureDate
+    // Example: GET /api/v1/tours?page=1&limit=12&status=active&search=hanoi&minPrice=1000000&maxPrice=5000000
     const {
       page = '1',
       limit = '12',
       status,
       search,
       category_id,
+      minPrice,
+      maxPrice,
+      departureDate,
     } = req.query as Record<string, string | undefined>;
 
     const pageNum = Math.max(1, Number(page) || 1);
@@ -30,6 +33,24 @@ export const getAllTours = async (req: Request, res: Response) => {
     }
     if (category_id && category_id.trim() !== '') {
       filter.category_id = category_id;
+    }
+
+    if (minPrice || maxPrice) {
+      const priceFilter: Record<string, any> = {};
+      if (minPrice && !Number.isNaN(Number(minPrice))) {
+        priceFilter.$gte = Number(minPrice);
+      }
+      if (maxPrice && !Number.isNaN(Number(maxPrice))) {
+        priceFilter.$lte = Number(maxPrice);
+      }
+      if (Object.keys(priceFilter).length > 0) {
+        filter.price = priceFilter;
+      }
+    }
+
+    if (departureDate && departureDate.trim() !== '') {
+      // departure_schedule.date đang lưu dạng string "YYYY-MM-DD"
+      filter['departure_schedule.date'] = departureDate.trim();
     }
 
     if (search && search.trim() !== '') {

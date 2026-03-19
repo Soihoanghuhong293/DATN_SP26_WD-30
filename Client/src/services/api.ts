@@ -21,6 +21,9 @@ export type GetToursParams = {
   status?: string;
   category_id?: string;
   search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  departureDate?: string;
 };
 
 export async function getTours(params: GetToursParams = {}) {
