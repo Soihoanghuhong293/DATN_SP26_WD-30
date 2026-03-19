@@ -77,6 +77,8 @@ const TourDetailPage = () => {
     navigate("/tours");
   };
 
+  const durationDays = tour?.duration_days ?? tour?.duration_;
+
   if (loading) {
     return (
       <div className="tour-detail-loading">
@@ -189,7 +191,7 @@ const TourDetailPage = () => {
               <CalendarOutlined />
               <div>
                 <p>Thời gian</p>
-                <b>{tour.duration_ ? `${tour.duration_} ngày` : "Chưa cập nhật"}</b>
+                <b>{durationDays ? `${durationDays} ngày` : "Chưa cập nhật"}</b>
               </div>
             </div>
 

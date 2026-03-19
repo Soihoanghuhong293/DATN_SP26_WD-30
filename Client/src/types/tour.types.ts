@@ -28,7 +28,8 @@ export interface ITour {
   status: TourStatus;
   created_at: string;
   update_at: string;
-  duration_: number;
+  duration_?: number;
+  duration_days?: number;
 
   // Optional / backward-compatible
   name?: string;

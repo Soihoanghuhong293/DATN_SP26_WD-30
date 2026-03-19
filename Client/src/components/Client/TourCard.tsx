@@ -20,6 +20,8 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
     e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
   };
 
+  const durationDays = tour.duration_days ?? tour.duration_;
+
   return (
     <Link to={`/tours/${tour.id}`} className="tour-card-link">
       <div className="tour-card">
@@ -43,7 +45,7 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
            <div className="tour-card-meta">
              <span className="tour-meta-code">Mã tour: {tour.id?.slice(-6).toUpperCase()}</span>
              <span className="tour-meta-separator">•</span>
-             <span className="tour-meta-duration">{tour.duration_} ngày</span>
+             <span className="tour-meta-duration">{durationDays ?? '-'} ngày</span>
            </div>
 
           <p className="tour-card-description">
@@ -55,7 +57,7 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
           <div className="tour-card-info">
             <div className="info-item">
               <CalendarOutlined className="info-icon" />
-              <span>{tour.duration_} ngày</span>
+              <span>{durationDays ?? '-'} ngày</span>
             </div>
             <div className="info-item">
               <EnvironmentOutlined className="info-icon" />
