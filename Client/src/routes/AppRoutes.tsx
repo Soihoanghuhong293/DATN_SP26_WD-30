@@ -30,6 +30,8 @@ import HdvSchedule from '../pages/HdvSchedule';
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
+import MyBookingsPage from '../pages/MyBookingsPage';
+import MyBookingDetailPage from '../pages/MyBookingDetailPage';
 import BookingCreate from '../features/bookings/BookingCreate';
 
 import BookingList from '../features/bookings/BookingList';
@@ -52,6 +54,8 @@ const AppRoutes = () => {
         <Route path="register" element={<RegisterPage />} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
+        <Route path="my-bookings" element={<MyBookingsPage />} />
+        <Route path="my-bookings/:id" element={<MyBookingDetailPage />} />
       </Route>
 
       {/* ===== HDV (Hướng dẫn viên) ===== */}

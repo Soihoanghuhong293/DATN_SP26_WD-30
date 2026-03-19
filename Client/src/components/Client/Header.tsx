@@ -11,6 +11,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLogin, setIsLogin] = useState(false); 
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -22,7 +23,9 @@ const Header = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const userRole = localStorage.getItem("role");
     setIsLogin(!!token);
+    setRole(userRole);
   }, []);
 
   const handleLogout = () => {
@@ -39,6 +42,10 @@ const Header = () => {
     { key: '/guides', label: <Link to="/guides">Guides</Link> },
     { key: '/blog', label: <Link to="/blog">Blog</Link> },
   ];
+
+  if (isLogin && role === 'user') {
+    items.push({ key: '/my-bookings', label: <Link to="/my-bookings">Đơn của tôi</Link> });
+  }
 
   return (
     <>
