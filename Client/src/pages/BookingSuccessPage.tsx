@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Card, Button, Typography, Descriptions, Divider, Spin, message, Result, Tag, Space, ConfigProvider, Modal, Radio } from 'antd';
-import { CalendarOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Card, Button, Typography, Descriptions, Divider, Spin, message, Result, Tag, Space, ConfigProvider, Modal, Radio, List, Image, Empty } from 'antd';
+import { CalendarOutlined, CheckCircleOutlined, PictureOutlined, NotificationOutlined, FlagOutlined, FormOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
@@ -11,6 +11,7 @@ const BookingSuccessPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState<any>(null);
+  const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paymentGateway, setPaymentGateway] = useState('momo');
@@ -20,6 +21,17 @@ const BookingSuccessPage = () => {
       try {
         const res = await axios.get(`http://localhost:5000/api/v1/bookings/${id}`);
         setBooking(res.data.data || res.data);
+
+        // Fetch posts
+        try {
+           const postsRes = await axios.get(`http://localhost:5000/api/v1/bookings/${id}/posts`, {
+             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+           });
+           setPosts(postsRes.data?.data || []);
+        } catch (err) {
+           console.log("Không thể tải bài viết hoặc chưa đăng nhập");
+        }
+
       } catch (error) {
         message.error('Không tìm thấy thông tin đơn hàng');
       } finally {
@@ -56,6 +68,24 @@ const BookingSuccessPage = () => {
       }
     } else {
       message.info('Cổng thanh toán này đang bảo trì, vui lòng chọn MoMo.');
+    }
+  };
+
+  const getPostIcon = (type: string) => {
+    switch(type) {
+      case 'photo': return <PictureOutlined style={{ color: '#722ed1' }} />;
+      case 'update': return <NotificationOutlined style={{ color: '#1890ff' }} />;
+      case 'note': return <FormOutlined style={{ color: '#faad14' }} />;
+      default: return <FlagOutlined style={{ color: '#52c41a' }} />;
+    }
+  };
+
+  const getPostTypeLabel = (type: string) => {
+    switch(type) {
+      case 'photo': return 'Hình ảnh';
+      case 'update': return 'Cập nhật';
+      case 'note': return 'Ghi chú';
+      default: return 'Hoạt động';
     }
   };
 
@@ -105,6 +135,70 @@ const BookingSuccessPage = () => {
                <Button size="large" onClick={() => navigate('/')}>Về trang chủ</Button>
                <Button type="primary" size="large" onClick={() => setIsModalOpen(true)} style={{ height: 48, padding: '0 40px', fontSize: 16, fontWeight: 600 }}>THANH TOÁN NGAY</Button>
              </Space>
+          </div>
+
+          {/* Phần Nhật ký chuyến đi */}
+          <Divider orientation="left" style={{ borderColor: '#d9d9d9', marginTop: 40 }}><FlagOutlined /> Nhật ký chuyến đi</Divider>
+          
+          <div style={{ background: '#fff', padding: '0 12px' }}>
+            {posts.length > 0 ? (
+              <List
+                itemLayout="vertical"
+                size="large"
+                dataSource={posts}
+                renderItem={(item) => (
+                  <List.Item
+                    key={item._id}
+                    style={{ padding: '20px 0', borderBottom: '1px solid #f0f0f0' }}
+                  >
+                    <div style={{ display: 'flex', marginBottom: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Space>
+                         <div style={{ fontSize: 18 }}>{getPostIcon(item.type)}</div>
+                         <Text strong style={{ fontSize: 16 }}>{item.title}</Text>
+                         <Tag color={item.type === 'photo' ? 'purple' : item.type === 'update' ? 'blue' : item.type === 'note' ? 'gold' : 'green'}>
+                            {getPostTypeLabel(item.type)}
+                         </Tag>
+                      </Space>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {dayjs(item.created_at).format('HH:mm DD/MM/YYYY')} - bởi {item.author_id?.name || 'HDV'}
+                      </Text>
+                    </div>
+                    
+                    <div style={{ marginLeft: 26, marginBottom: 12, whiteSpace: 'pre-wrap', color: '#4b5563' }}>
+                       {item.content}
+                    </div>
+
+                    {item.images && item.images.length > 0 && (
+                      <div style={{ marginLeft: 26 }}>
+                        <Image.PreviewGroup>
+                          <Space size="small" wrap>
+                            {item.images.map((img: string, idx: number) => (
+                              <div key={idx} style={{ 
+                                width: 100, height: 100, overflow: 'hidden', 
+                                borderRadius: 8, border: '1px solid #eee', cursor: 'pointer' 
+                              }}>
+                                <Image 
+                                  src={img} 
+                                  width={100}
+                                  height={100}
+                                  style={{ objectFit: 'cover' }}
+                                  alt="post-img"
+                                />
+                              </div>
+                            ))}
+                          </Space>
+                        </Image.PreviewGroup>
+                      </div>
+                    )}
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty 
+                description="Chưa có bài viết cập nhật nào từ Hướng dẫn viên" 
+                image={Empty.PRESENTED_IMAGE_SIMPLE} 
+              />
+            )}
           </div>
 
           <Modal
