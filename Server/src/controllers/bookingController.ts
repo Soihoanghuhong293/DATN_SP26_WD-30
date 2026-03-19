@@ -3,6 +3,13 @@ import Booking from '../models/Booking';
 import Tour from '../models/Tour';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
+const normalizeUserBookingStatus = (status?: string) => {
+  if (!status) return undefined;
+  const s = status.toLowerCase();
+  if (s === 'canceled') return 'cancelled';
+  return s;
+};
+
 // Lấy danh sách booking của HDV đang đăng nhập 
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
@@ -23,6 +30,81 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// User: lấy danh sách booking của chính mình
+export const getMyBookingsForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const normalizedStatus = normalizeUserBookingStatus(req.query.status as string | undefined);
+    const filter: any = { user_id: userId };
+    if (normalizedStatus) {
+      filter.status = normalizedStatus;
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate({ path: 'tour_id', select: 'name images duration_days price' })
+      .sort({ created_at: -1 });
+
+    return res.status(200).json({
+      status: 'success',
+      results: bookings.length,
+      data: bookings
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// User: lấy chi tiết booking của chính mình
+export const getMyBookingDetailForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const booking = await Booking.findById(req.params.id)
+      .populate({ path: 'tour_id', select: 'name images duration_days price schedule' })
+      .populate({ path: 'guide_id', select: 'name email phone' })
+      .populate({ path: 'user_id', select: 'name email phone' });
+
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const bookingUserId = (booking as any).user_id?._id?.toString?.() ?? (booking as any).user_id?.toString?.();
+    if (bookingUserId !== userId.toString()) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền xem đơn này' });
+    }
+
+    const formattedBooking: any = booking.toObject();
+    if (formattedBooking.logs) {
+      formattedBooking.logs = formattedBooking.logs
+        .map((log: any) => ({
+          ...log,
+          time: log.time ? new Date(log.time).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : ''
+        }))
+        .reverse();
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: formattedBooking
+    });
+  } catch (error: any) {
+    return res.status(500).json({
       status: 'error',
       message: error.message
     });
@@ -435,7 +517,27 @@ export const createBooking = async (req: Request, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
     }
 
-    const newBookingData = { ...req.body };
+    const newBookingData: any = { ...req.body };
+
+    // Nếu có user đăng nhập (admin / user), và chưa set user_id thì tự gắn
+    const currentUser: any = (req as any).user;
+    if (!newBookingData.user_id && currentUser && currentUser._id && currentUser.role === 'user') {
+      newBookingData.user_id = currentUser._id;
+    }
+
+    // Chuẩn hóa tên field từ client (BookingForm) nếu dùng camelCase
+    if (newBookingData.customerName && !newBookingData.customer_name) {
+      newBookingData.customer_name = newBookingData.customerName;
+    }
+    if (newBookingData.phone && !newBookingData.customer_phone) {
+      newBookingData.customer_phone = newBookingData.phone;
+    }
+    if (newBookingData.email && !newBookingData.customer_email) {
+      newBookingData.customer_email = newBookingData.email;
+    }
+    if (newBookingData.totalPrice && !newBookingData.total_price) {
+      newBookingData.total_price = newBookingData.totalPrice;
+    }
     // mặc định trạng thái giai đoạn tour là "sắp khởi hành"
     if (!newBookingData.tour_stage) {
       newBookingData.tour_stage = 'scheduled';
