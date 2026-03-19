@@ -5,6 +5,8 @@ import axios from 'axios';
 import { Table, Button, Space, Tag, Popconfirm, message, Typography, Select, Tooltip, Radio } from 'antd';
 import { DeleteOutlined, LockOutlined, UnlockOutlined, CrownOutlined, UserOutlined, PlusOutlined, IdcardOutlined, FilterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import AdminPageHeader from '../../../components/admin/AdminPageHeader';
+import AdminListCard from '../../../components/admin/AdminListCard';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -15,7 +17,7 @@ interface IUser {
   _id: string;
   name: string; // 👈 THÊM NAME VÀO ĐÂY
   email: string;
-  role: 'user' | 'admin' | 'guide' | 'hdv'; 
+  role: 'user' | 'admin' | 'guide' | 'hdv';
   status: 'active' | 'inactive';
   createdAt: string;
 }
@@ -67,6 +69,7 @@ const UserList = () => {
 
   const filteredUsers = users.filter((user: IUser) => {
     if (roleFilter === 'all') return true;
+    if (roleFilter === 'guide') return user.role === 'guide' || user.role === 'hdv';
     return user.role === roleFilter;
   });
 
@@ -92,14 +95,14 @@ const UserList = () => {
       title: 'Phân quyền',
       key: 'role',
       render: (_: any, record: IUser) => {
+        const uiRole = record.role === 'hdv' ? 'guide' : record.role;
         let textColor = 'text-blue-600';
-        if (record.role === 'admin') textColor = 'text-red-600 font-bold';
-        if (record.role === 'guide') textColor = 'text-green-600 font-medium';
-        if (record.role === 'hdv') textColor = 'text-emerald-600 font-medium';
+        if (uiRole === 'admin') textColor = 'text-red-600 font-bold';
+        if (uiRole === 'guide') textColor = 'text-green-600 font-medium';
 
         return (
           <Select
-            value={record.role}
+            value={uiRole}
             onChange={(newRole) => updateRoleMutation.mutate({ id: record._id, role: newRole })}
             style={{ width: 160 }}
             className={textColor}
@@ -107,7 +110,6 @@ const UserList = () => {
           >
             <Option value="admin"><Space><CrownOutlined className="text-red-500" /> Quản trị viên</Space></Option>
             <Option value="guide"><Space><IdcardOutlined className="text-green-500" /> Hướng dẫn viên</Space></Option>
-            <Option value="hdv"><Space><IdcardOutlined className="text-emerald-500" /> HDV</Space></Option>
             <Option value="user"><Space><UserOutlined className="text-blue-500" /> Khách hàng</Space></Option>
           </Select>
         );
@@ -156,44 +158,47 @@ const UserList = () => {
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
-        <div>
-          <Title level={3} className="m-0 text-gray-800">Quản lý Tài Khoản</Title>
-        </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          size="large"
-          className="bg-blue-600 shadow-md"
-          onClick={() => navigate('/admin/users/create')} /* 👈 ĐỔI THÀNH NÚT CHUYỂN TRANG */
-        >
-          Thêm Tài Khoản
-        </Button>
-      </div>
-
-      <div className="mb-4 bg-white p-3 rounded-lg shadow-sm flex items-center">
-        <Space>
-          <FilterOutlined className="text-gray-400 text-lg mr-2" />
-          <Text strong>Lọc theo đối tượng: </Text>
-          <Radio.Group value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} buttonStyle="solid">
-            <Radio.Button value="all">Tất cả ({users.length})</Radio.Button>
-            <Radio.Button value="admin">Quản trị viên</Radio.Button>
-            <Radio.Button value="guide">Hướng dẫn viên</Radio.Button>
-            <Radio.Button value="hdv">HDV</Radio.Button>
-            <Radio.Button value="user">Khách hàng</Radio.Button>
-          </Radio.Group>
-        </Space>
-      </div>
-
-      <Table 
-        columns={columns} 
-        dataSource={filteredUsers} 
-        rowKey="_id" 
-        loading={isLoading}
-        pagination={{ pageSize: 10 }}
-        className="shadow-sm bg-white rounded-lg overflow-hidden"
+    <div>
+      <AdminPageHeader
+        title="Tài khoản"
+        subtitle="Quản lý tài khoản và phân quyền."
+        extra={
+          <Space wrap>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/users/create')}>
+              Thêm tài khoản
+            </Button>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['users'] })}>Tải lại</Button>
+          </Space>
+        }
       />
+
+      <AdminListCard
+        toolbar={
+          <Space wrap>
+            <FilterOutlined style={{ color: '#9ca3af' }} />
+            <Text strong>Lọc theo đối tượng:</Text>
+            <Radio.Group
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button value="all">Tất cả ({users.length})</Radio.Button>
+              <Radio.Button value="admin">Quản trị viên</Radio.Button>
+              <Radio.Button value="guide">Hướng dẫn viên</Radio.Button>
+              <Radio.Button value="user">Khách hàng</Radio.Button>
+            </Radio.Group>
+          </Space>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredUsers}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{ pageSize: 10, showSizeChanger: false }}
+          scroll={{ x: 1100 }}
+        />
+      </AdminListCard>
     </div>
   );
 };

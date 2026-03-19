@@ -17,10 +17,10 @@ const HomePage = () => {
             muted
             loop
             className="hero-video"
-            poster="https://via.placeholder.com/1920x600"
+            poster="https://images.pexels.com/photos/2325446/pexels-photo-2325446.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
           >
             <source
-              src="https://videos.pexels.com/video-files/6283039/6283039-sd_640_360_30fps.mp4"
+              src="https://videos.pexels.com/video-files/3254013/3254013-sd_640_360_30fps.mp4"
               type="video/mp4"
             />
           </video>
@@ -33,7 +33,7 @@ const HomePage = () => {
           <div className="hero-actions">
             <Link to="/tours">
               <Button type="primary" size="large" icon={<SearchOutlined />} className="hero-btn primary-btn">
-                Tìm Tours
+                Tìm tour
               </Button>
             </Link>
             <Link to="/guides">
@@ -50,7 +50,7 @@ const HomePage = () => {
         <div className="stats-container">
           <div className="stat-item">
             <div className="stat-number">500+</div>
-            <div className="stat-label">Tours Hấp Dẫn</div>
+            <div className="stat-label">Tour hấp dẫn</div>
           </div>
           <div className="stat-item">
             <div className="stat-number">10k+</div>
@@ -75,11 +75,11 @@ const HomePage = () => {
         <div className="cta-content">
           <h2 className="cta-title">Sẵn Sàng Bắt Đầu Cuộc Phiêu Lưu?</h2>
           <p className="cta-subtitle">
-            Duyệt qua hàng trăm tours tuyệt vời và tìm những chuyến đi hoàn hảo cho bạn
+            Duyệt qua hàng trăm tour tuyệt vời và tìm chuyến đi hoàn hảo cho bạn
           </p>
           <Link to="/tours">
             <Button type="primary" size="large" className="cta-btn">
-              Khám Phá Tours Ngay
+              Khám phá tour ngay
             </Button>
           </Link>
         </div>

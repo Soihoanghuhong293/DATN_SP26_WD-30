@@ -11,7 +11,6 @@ import {
   Popconfirm,
   message,
   Space,
-  Card,
   Descriptions,
 } from 'antd';
 import {
@@ -23,6 +22,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import AdminListCard from '../../components/admin/AdminListCard';
 
 const { Title, Text } = Typography;
 
@@ -166,37 +167,43 @@ const ContactMessageList = () => {
 
   return (
     <div>
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <MessageOutlined style={{ fontSize: 28, color: '#6366f1' }} />
-            <div>
-              <Title level={4} style={{ margin: 0 }}>
-                Tin nhắn offline
-              </Title>
-              <Text type="secondary">Tin nhắn từ form chat khi hệ thống offline</Text>
-            </div>
-          </div>
-          <Select
-            value={statusFilter}
-            onChange={setStatusFilter}
-            style={{ width: 160 }}
-            options={[
-              { value: 'all', label: 'Tất cả' },
-              { value: 'unread', label: 'Chưa đọc' },
-              { value: 'read', label: 'Đã đọc' },
-            ]}
-          />
-        </div>
-      </Card>
-
-      <Table
-        columns={columns}
-        dataSource={messages}
-        rowKey="_id"
-        loading={isLoading}
-        pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (t) => `Tổng ${t} tin nhắn` }}
+      <AdminPageHeader
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <MessageOutlined style={{ color: '#6366f1' }} />
+            Tin nhắn offline
+          </span>
+        }
+        subtitle="Tin nhắn từ form chat khi hệ thống offline."
+        extra={
+          <Space wrap>
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: 180 }}
+              options={[
+                { value: 'all', label: 'Tất cả' },
+                { value: 'unread', label: 'Chưa đọc' },
+                { value: 'read', label: 'Đã đọc' },
+              ]}
+            />
+          </Space>
+        }
       />
+
+      <AdminListCard>
+        <Table
+          columns={columns}
+          dataSource={messages}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (t) => `Tổng ${t} tin nhắn`,
+          }}
+        />
+      </AdminListCard>
 
       <Modal
         title="Chi tiết tin nhắn"

@@ -10,7 +10,7 @@ interface TourCardProps {
 
 const TourCard: React.FC<TourCardProps> = ({ tour }) => {
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
+    e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Kh%C3%B4ng+%E1%BA%A3nh';
   };
 
   return (
@@ -18,7 +18,7 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
       <div className="tour-card">
         <div className="tour-card-image-container">
           <img
-            src={tour.images?.[0] || 'https://via.placeholder.com/300x200?text=Tour+Image'}
+            src={tour.images?.[0] || 'https://via.placeholder.com/300x200?text=%E1%BA%A2nh+tour'}
             alt={tour.name || 'Tour'}
             className="tour-card-image"
             onError={handleImageError}

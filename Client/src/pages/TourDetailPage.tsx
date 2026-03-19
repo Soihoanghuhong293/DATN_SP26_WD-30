@@ -8,6 +8,7 @@ import {
   Tag,
   Divider,
   message,
+  Modal,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -15,11 +16,17 @@ import {
   DollarOutlined,
   CheckCircleOutlined,
   TeamOutlined,
+  LeftOutlined,
+  RightOutlined,
+  ClockCircleOutlined,
+  UsergroupAddOutlined,
 } from "@ant-design/icons";
+import dayjs from "dayjs";
 import { getTour } from "../services/api";
 import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
-import BookingForm from "../components/Client/BookingForm";
+import "./styles/DepartureCalendar.css";
+import "./styles/SchedulePicker.css";
 
 const TourDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,13 +35,14 @@ const TourDetailPage = () => {
   const [tour, setTour] = useState<ITour | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTourDetail = async () => {
       if (!id) {
-        setError("Tour ID not found");
+        setError("Không tìm thấy ID tour");
         setLoading(false);
         return;
       }
@@ -50,11 +58,11 @@ const TourDetailPage = () => {
             setTour(data.data as ITour);
           }
         } else {
-          setError("Could not load tour details");
+          setError("Không thể tải chi tiết tour");
         }
       } catch (err) {
         console.error(err);
-        setError("Failed to load tour details");
+        setError("Tải chi tiết tour thất bại");
         message.error("Lỗi khi tải thông tin tour");
       } finally {
         setLoading(false);
@@ -69,6 +77,112 @@ const TourDetailPage = () => {
     return Array.isArray(imgs) ? imgs : [];
   }, [tour]);
 
+  const departureSchedule = useMemo(() => (tour as any)?.departure_schedule || [], [tour]);
+
+  const normalizedSchedule = useMemo(() => {
+    const arr = Array.isArray(departureSchedule) ? departureSchedule : [];
+    return arr
+      .map((s: any) => {
+        const raw = s?.date ? String(s.date).trim() : "";
+        let date = "";
+        if (raw) {
+          if (raw.includes("T")) {
+            date = raw.split("T")[0];
+          } else {
+            const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (slash) {
+              const dd = slash[1].padStart(2, "0");
+              const mm = slash[2].padStart(2, "0");
+              const yyyy = slash[3];
+              date = `${yyyy}-${mm}-${dd}`;
+            } else {
+              const parsed = dayjs(raw);
+              date = parsed.isValid() ? parsed.format("YYYY-MM-DD") : "";
+            }
+          }
+        }
+        return { ...s, _date: date };
+      })
+      .filter((s: any) => !!s._date);
+  }, [departureSchedule]);
+
+  const isSelectableDepartureDate = useMemo(() => {
+    const map = new Map<string, { slots: number }>();
+    for (const s of normalizedSchedule) {
+      const slots = Number((s as any)?.slots ?? 0);
+      map.set((s as any)._date, { slots });
+    }
+    return (dateStr: string) => {
+      const v = map.get(dateStr);
+      return !!v && v.slots > 0;
+    };
+  }, [normalizedSchedule]);
+
+  const defaultDepartureDate = useMemo(() => {
+    const today = dayjs().startOf("day");
+    const available = normalizedSchedule
+      .filter((s: any) => (s?.slots ?? 0) > 0)
+      .map((s: any) => s._date)
+      .filter((d: string) => dayjs(d).isSame(today) || dayjs(d).isAfter(today))
+      .sort((a: string, b: string) => dayjs(a).valueOf() - dayjs(b).valueOf());
+    return available[0] || null;
+  }, [normalizedSchedule]);
+
+  useEffect(() => {
+    setSelectedDepartureDate((prev) => prev || defaultDepartureDate);
+  }, [defaultDepartureDate]);
+
+  const monthKeys = useMemo(() => {
+    const start = dayjs().startOf("month");
+    return Array.from({ length: 12 }).map((_, i) => start.add(i, "month").format("YYYY-MM"));
+  }, []);
+
+  const [activeMonth, setActiveMonth] = useState<string>(() => dayjs().format("YYYY-MM"));
+
+  useEffect(() => {
+    if (selectedDepartureDate) setActiveMonth(selectedDepartureDate.slice(0, 7));
+  }, [selectedDepartureDate]);
+
+  const scheduleMap = useMemo(() => {
+    const map = new Map<string, { slots: number }>();
+    for (const s of normalizedSchedule) {
+      map.set((s as any)._date, { slots: Number((s as any)?.slots ?? 0) });
+    }
+    return map;
+  }, [normalizedSchedule]);
+
+  const getSlotsForSelectedDate = () => {
+    if (!selectedDepartureDate) return null;
+    const v = scheduleMap.get(selectedDepartureDate);
+    return typeof v?.slots === "number" ? v.slots : null;
+  };
+
+  const formatPriceK = (price: number) => {
+    if (!price) return "";
+    const k = Math.round(price / 1000);
+    return `${k.toLocaleString("vi-VN")}K`;
+  };
+
+  const buildMonthGrid = (month: string) => {
+    const start = dayjs(month + "-01");
+    const startDow = (start.day() + 6) % 7; // 0=Mon ... 6=Sun
+    const daysInMonth = start.daysInMonth();
+    const cells: Array<{ date: dayjs.Dayjs; inMonth: boolean }> = [];
+
+    const firstCell = start.subtract(startDow, "day");
+    for (let i = 0; i < 42; i++) {
+      const d = firstCell.add(i, "day");
+      cells.push({ date: d, inMonth: d.month() === start.month() });
+    }
+    return { start, cells, daysInMonth };
+  };
+
+  const handleBookNow = () => {
+    const date = selectedDepartureDate || defaultDepartureDate;
+    const basePath = `/order/booking/${(tour as any)?.id || (tour as any)?._id || id}`;
+    navigate(date ? `${basePath}?date=${encodeURIComponent(date)}` : basePath);
+  };
+
   useEffect(() => {
     setActiveImageIndex(0);
   }, [id]);
@@ -80,7 +194,7 @@ const TourDetailPage = () => {
   if (loading) {
     return (
       <div className="tour-detail-loading">
-        <Spin size="large" tip="Đang tải thông tin tour..." />
+        <Spin size="large" tip="Đang tải thông tin tour..." fullscreen />
       </div>
     );
   }
@@ -152,16 +266,72 @@ const TourDetailPage = () => {
           <div className="tour-detail-sidebar">
             <div className="sidebar-card">
               <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>GIÁ TOUR</h3>
-              <h1>{tour.price?.toLocaleString()}đ</h1>
+              <div style={{ marginBottom: 10 }}>
+                <span style={{ fontSize: 36, fontWeight: 900, color: "#d90429", lineHeight: 1 }}>
+                  {tour.price?.toLocaleString()}đ
+                </span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginLeft: 6 }}>/ khách</span>
+              </div>
 
-              <Button
-                type="primary"
-                size="large"
-                block
-                onClick={() => setIsBookingModalVisible(true)}
-              >
-                Đặt tour ngay
-              </Button>
+              <div style={{ margin: "10px 0 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <CalendarOutlined style={{ color: "#6b7280" }} />
+                  <span style={{ color: "#111827" }}>
+                    <b>Ngày khởi hành:</b>{" "}
+                    <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
+                      {selectedDepartureDate ? dayjs(selectedDepartureDate).format("DD-MM-YYYY") : "Chưa chọn"}
+                    </span>
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <ClockCircleOutlined style={{ color: "#6b7280" }} />
+                  <span style={{ color: "#111827" }}>
+                    <b>Thời gian:</b>{" "}
+                    <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
+                      {(() => {
+                        const days =
+                          (tour as any)?.duration_days ??
+                          (tour as any)?.durationDays ??
+                          (tour as any)?.duration_ ??
+                          null;
+                        if (!days || Number(days) <= 0) return "Chưa cập nhật";
+                        const d = Number(days);
+                        return `${d}N${Math.max(0, d - 1)}Đ`;
+                      })()}
+                    </span>
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <UsergroupAddOutlined style={{ color: "#6b7280" }} />
+                  <span style={{ color: "#111827" }}>
+                    <b>Số chỗ còn:</b>{" "}
+                    <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
+                      {getSlotsForSelectedDate() ?? "—"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <Button block onClick={() => setScheduleModalOpen(true)}>
+                  Ngày khác
+                </Button>
+                <Button
+                  type="primary"
+                  block
+                  onClick={handleBookNow}
+                  style={{
+                    background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                    borderColor: "#dc2626",
+                    fontWeight: 800,
+                    boxShadow: "0 8px 18px rgba(220, 38, 38, 0.35)",
+                  }}
+                >
+                  Đặt ngay
+                </Button>
+              </div>
 
               <Button block style={{ marginTop: 10 }}>
                 Liên hệ tư vấn
@@ -189,7 +359,17 @@ const TourDetailPage = () => {
               <CalendarOutlined />
               <div>
                 <p>Thời gian</p>
-                <b>{tour.duration_ ? `${tour.duration_} ngày` : "Chưa cập nhật"}</b>
+                <b>
+                  {(() => {
+                    const days =
+                      (tour as any)?.duration_days ??
+                      (tour as any)?.durationDays ??
+                      (tour as any)?.duration_ ??
+                      null;
+                    if (!days || Number(days) <= 0) return "Chưa cập nhật";
+                    return `${Number(days)} ngày`;
+                  })()}
+                </b>
               </div>
             </div>
 
@@ -197,7 +377,7 @@ const TourDetailPage = () => {
               <DollarOutlined />
               <div>
                 <p>Giá từ</p>
-                <b>{tour.price?.toLocaleString()}đ</b>
+                <b style={{ color: "#d90429" }}>{tour.price?.toLocaleString()}đ / khách</b>
               </div>
             </div>
 
@@ -238,11 +418,123 @@ const TourDetailPage = () => {
         </div>
       </div>
 
-      <BookingForm
-        visible={isBookingModalVisible}
-        onClose={() => setIsBookingModalVisible(false)}
-        tour={tour}
-      />
+      <Modal
+        title="Lịch khởi hành"
+        open={scheduleModalOpen}
+        onCancel={() => setScheduleModalOpen(false)}
+        onOk={() => setScheduleModalOpen(false)}
+        okText="Xong"
+        cancelText="Đóng"
+        width={820}
+      >
+        <div className="schedule-picker">
+          <div className="schedule-months">
+            <div className="schedule-months__title">Chọn tháng</div>
+            <div className="schedule-months__list">
+              {monthKeys.map((m) => {
+                const label = `${Number(m.slice(5, 7))}/${m.slice(0, 4)}`;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`schedule-month-btn ${activeMonth === m ? "is-active" : ""}`}
+                    onClick={() => setActiveMonth(m)}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="schedule-cal">
+            {(() => {
+              const { start, cells } = buildMonthGrid(activeMonth);
+              const title = `THÁNG ${start.format("M/YYYY")}`;
+              const idx = monthKeys.indexOf(activeMonth);
+              const canPrev = idx > 0;
+              const canNext = idx >= 0 && idx < monthKeys.length - 1;
+
+              return (
+                <>
+                  <div className="schedule-cal__header">
+                    <button
+                      type="button"
+                      className="schedule-cal__nav"
+                      disabled={!canPrev}
+                      onClick={() => canPrev && setActiveMonth(monthKeys[idx - 1])}
+                      aria-label="Tháng trước"
+                    >
+                      <LeftOutlined />
+                    </button>
+                    <div className="schedule-cal__title">{title}</div>
+                    <button
+                      type="button"
+                      className="schedule-cal__nav"
+                      disabled={!canNext}
+                      onClick={() => canNext && setActiveMonth(monthKeys[idx + 1])}
+                      aria-label="Tháng sau"
+                    >
+                      <RightOutlined />
+                    </button>
+                  </div>
+
+                  <div className="schedule-dow">
+                    <div>T2</div>
+                    <div>T3</div>
+                    <div>T4</div>
+                    <div>T5</div>
+                    <div>T6</div>
+                    <div style={{ color: "#dc2626" }}>T7</div>
+                    <div style={{ color: "#dc2626" }}>CN</div>
+                  </div>
+
+                  <div className="schedule-grid">
+                    {cells.map(({ date, inMonth }, i) => {
+                      const dateStr = date.format("YYYY-MM-DD");
+                      const s = scheduleMap.get(dateStr);
+                      const selectable = inMonth && !!s && s.slots > 0;
+                      const selected = selectedDepartureDate === dateStr;
+                      const showPrice = inMonth && !!s;
+
+                      return (
+                        <div
+                          key={`${dateStr}-${i}`}
+                          className={[
+                            "schedule-cell",
+                            !inMonth ? "is-muted" : "",
+                            selectable ? "is-selectable" : "",
+                            selected ? "is-selected" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => {
+                            if (selectable) setSelectedDepartureDate(dateStr);
+                          }}
+                        >
+                          <div className="schedule-cell__day">{inMonth ? date.date() : ""}</div>
+                          {showPrice ? <div className="schedule-cell__price">{formatPriceK(Number((tour as any)?.price || 0))}</div> : <div />}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="schedule-note">Quý khách vui lòng chọn ngày phù hợp</div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, color: "#4b5563" }}>
+          {selectedDepartureDate ? (
+            <>Bạn đang chọn: <b>{dayjs(selectedDepartureDate).format("DD/MM/YYYY")}</b></>
+          ) : (
+            <>Vui lòng chọn một ngày có lịch khởi hành (còn chỗ).</>
+          )}
+        </div>
+      </Modal>
+
     </div>
   );
 };

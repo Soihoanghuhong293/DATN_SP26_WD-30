@@ -34,9 +34,9 @@ const Header = () => {
   };
 
   const items = [
-    { key: '/', label: <Link to="/">Destinations</Link> },
-    { key: '/tours', label: <Link to="/tours">Tours</Link> },
-    { key: '/guides', label: <Link to="/guides">Guides</Link> },
+    { key: '/', label: <Link to="/">Điểm đến</Link> },
+    { key: '/tours', label: <Link to="/tours">Tour</Link> },
+    { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
     { key: '/blog', label: <Link to="/blog">Blog</Link> },
   ];
 
@@ -103,7 +103,7 @@ const Header = () => {
             <>
               <Link to="/login">
                 <Button type="text" style={{ fontWeight: '600', color: '#595959' }}>
-                  Log In
+                  Đăng nhập
                 </Button>
               </Link>
               <Link to="/register">
@@ -118,7 +118,7 @@ const Header = () => {
                     boxShadow: '0 4px 14px rgba(19, 182, 236, 0.4)',
                   }}
                 >
-                  Sign Up
+                  Đăng ký
                 </Button>
               </Link>
             </>
@@ -129,7 +129,7 @@ const Header = () => {
               onClick={handleLogout}
               style={{ fontWeight: 'bold', borderRadius: '8px' }}
             >
-              Logout
+              Đăng xuất
             </Button>
           )}
         </div>
@@ -162,15 +162,15 @@ const Header = () => {
           {!isLogin ? (
             <>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button block size="large" style={{ fontWeight: '600' }}>Log In</Button>
+                <Button block size="large" style={{ fontWeight: '600' }}>Đăng nhập</Button>
               </Link>
               <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                <Button block type="primary" size="large" style={{ backgroundColor: '#13b6ec', fontWeight: 'bold' }}>Sign Up</Button>
+                <Button block type="primary" size="large" style={{ backgroundColor: '#13b6ec', fontWeight: 'bold' }}>Đăng ký</Button>
               </Link>
             </>
           ) : (
              <Button block danger size="large" onClick={handleLogout} style={{ fontWeight: 'bold' }}>
-               Logout
+               Đăng xuất
              </Button>
           )}
         </div>

@@ -2,15 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
-  Table, Button, Space, Avatar, Tag, Popconfirm, message, 
-  Typography, Input, Breadcrumb, Tooltip, ConfigProvider, theme 
+  Table, Button, Space, Popconfirm, message, 
+  Typography, Input, Tooltip
 } from 'antd';
 import { 
   DeleteOutlined, EditOutlined, PlusOutlined, 
-  SearchOutlined, EyeOutlined, HomeOutlined 
+  SearchOutlined, EyeOutlined
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
+import AdminPageHeader from '../../../components/admin/AdminPageHeader';
+import AdminListCard from '../../../components/admin/AdminListCard';
 
 const { Title, Text } = Typography;
 
@@ -29,8 +31,6 @@ const TourList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = useState('');
-  
-  const { token } = theme.useToken();
 
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours'],
@@ -52,7 +52,7 @@ const TourList = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => axios.delete(`http://localhost:5000/api/v1/tours/${id}`),
     onSuccess: () => {
-      message.success('Moved to trash successfully');
+      message.success('Đã chuyển tour vào thùng rác');
       queryClient.invalidateQueries({ queryKey: ['tours'] });
     },
   });
@@ -72,7 +72,7 @@ const TourList = () => {
                 border: '1px solid #e5e7eb', flexShrink: 0 
             }}>
                 <img 
-                    src={imgLink || 'https://placehold.co/100x100?text=No+Img'} 
+                    src={imgLink || 'https://placehold.co/100x100?text=Kh%C3%B4ng+%E1%BA%A3nh'} 
                     alt={record.name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -111,7 +111,7 @@ const TourList = () => {
             fontWeight: 600, 
             color: '#4b5563' 
         }}>
-            {days} Days
+            {days} ngày
         </span>
       ),
     },
@@ -129,7 +129,7 @@ const TourList = () => {
                 boxShadow: isActive ? '0 0 0 2px rgba(16, 185, 129, 0.2)' : 'none'
             }} />
             <Text style={{ fontSize: 13, color: isActive ? '#065f46' : '#92400e' }}>
-                {isActive ? 'Active' : 'Draft'}
+              {isActive ? 'Đang hoạt động' : 'Bản nháp'}
             </Text>
           </div>
         );
@@ -142,7 +142,7 @@ const TourList = () => {
       align: 'right',
       render: (_, record) => (
         <Space size={4}>
-          <Tooltip title="View Details">
+          <Tooltip title="Xem chi tiết">
             <Link to={`/admin/tours/${record._id}`}>
                 <Button 
                   type="text" 
@@ -152,7 +152,7 @@ const TourList = () => {
             </Link>
           </Tooltip>
 
-          <Tooltip title="Edit">
+          <Tooltip title="Chỉnh sửa">
             <Button 
               type="text" 
               icon={<EditOutlined style={{ color: '#6b7280' }} />} 
@@ -161,14 +161,14 @@ const TourList = () => {
           </Tooltip>
           
           <Popconfirm
-            title="Delete this tour?"
-            description="This action cannot be undone."
+            title="Xoá tour này?"
+            description="Thao tác này không thể hoàn tác."
             onConfirm={() => deleteMutation.mutate(record._id)}
-            okText="Delete"
-            cancelText="Cancel"
+            okText="Xoá"
+            cancelText="Huỷ"
             okButtonProps={{ danger: true }}
           >
-            <Tooltip title="Delete">
+            <Tooltip title="Xoá">
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
@@ -178,95 +178,47 @@ const TourList = () => {
   ];
 
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          colorPrimary: '#0f172a', // Màu Slate-900 (SaaS Dark)
-          borderRadius: 6,         // Bo góc vừa phải (Modern)
-        },
-        components: {
-          Table: {
-            headerBg: '#f9fafb',   // Header màu xám rất nhạt
-            headerColor: '#6b7280', // Text header màu xám trung tính
-            headerSplitColor: 'transparent', // Bỏ vạch ngăn cách header
-            rowHoverBg: '#f8fafc',
-            borderColor: '#e5e7eb', // Border màu xám nhạt tinh tế
-          },
-          Button: {
-             fontWeight: 500,
-          }
+    <div>
+      <AdminPageHeader
+        title="Tour"
+        subtitle="Quản lý danh sách tour."
+        extra={
+          <Space wrap>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/tours/create')}>
+              Thêm tour
+            </Button>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['tours'] })}>
+              Tải lại
+            </Button>
+          </Space>
         }
-      }}
-    >
-      <div style={{ padding: '32px 40px', backgroundColor: '#fff', minHeight: '100vh' }}>
-        
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb 
-            items={[
-                { href: '/admin', title: <HomeOutlined /> },
-                { title: 'Tours Management' },
-            ]}
-            style={{ marginBottom: 16 }}
+      />
+
+      <AdminListCard
+        toolbar={
+          <Input
+            prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+            placeholder="Tìm theo tên tour hoặc giá..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ maxWidth: 360 }}
+            allowClear
+          />
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredData}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{
+            pageSize: 8,
+            showSizeChanger: false,
+          }}
+          scroll={{ x: 1100 }}
         />
-
-        {/* Page Header */}
-        <div style={{ 
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-            marginBottom: 32 
-        }}>
-          <div>
-            <Title level={2} style={{ margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>Tours</Title>
-            <Text type="secondary">Manage your travel packages and inventory.</Text>
-          </div>
-          
-          <div style={{ display: 'flex', gap: 12 }}>
-           
-            
-          </div>
-        </div>
-
-        {/* Search Bar & Filters Area */}
-        <div style={{ marginBottom: 20 }}>
-            <Input 
-                prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
-                placeholder="Filter by tour name..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ 
-                    maxWidth: 320, 
-                    height: 40,
-                    backgroundColor: '#fff',
-                    borderColor: '#e5e7eb'
-                }}
-            />
-        </div>
-
-        {/* Main Table Container */}
-        <div style={{ 
-            border: '1px solid #e5e7eb', 
-            borderRadius: 8, 
-            overflow: 'hidden' 
-        }}>
-            <Table 
-                columns={columns} 
-                dataSource={filteredData} 
-                rowKey="_id"
-                loading={isLoading}
-                pagination={{ 
-                    pageSize: 8, 
-                    position: ['bottomRight'],
-                    showSizeChanger: false,
-                    itemRender: (_, type, originalElement) => {
-                        if (type === 'prev') return <Button type="text" size="small">Previous</Button>;
-                        if (type === 'next') return <Button type="text" size="small">Next</Button>;
-                        return originalElement;
-                    }
-                }}
-            />
-        </div>
-      </div>
-    </ConfigProvider>
+      </AdminListCard>
+    </div>
   );
 };
 
