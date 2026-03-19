@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Spin, Empty, Pagination, Select, Input, Button, DatePicker } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
-import { SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import { getTours } from '../services/api';
 import { ITour } from '../types/tour.types';
 import TourCard from '../components/Client/TourCard';
@@ -89,18 +89,56 @@ const ToursPage = () => {
 
   return (
     <div className="tours-page">
-      <div className="tours-page-header">
-        <h1 className="tours-page-title">Khám Phá Tours</h1>
-        <p className="tours-page-subtitle">Tìm kiếm những chuyến du lịch tuyệt vời nhất</p>
-      </div>
+      <div className="tours-page-header-accent" />
 
-      <div className="tours-layout">
-        <div className="tours-sidebar">
-          <div className="tours-sidebar-card">
-            <h3 className="sidebar-title">Bộ lọc tìm kiếm</h3>
+      <div className="tours-content">
+        <div className="tours-filter-bar">
+          <div className="tours-filter-row">
+            <div className="filter-group">
+              <label className="filter-label">Tìm kiếm</label>
+              <Input
+                placeholder="Nhập tên tour, địa điểm..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+                className="filter-input"
+              />
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Trạng thái</label>
+              <Select
+                value={statusFilter}
+                onChange={setStatusFilter}
+                className="filter-select"
+                options={[
+                  { label: 'Tất cả', value: '' },
+                  { label: 'Đang hoạt động', value: 'active' },
+                  { label: 'Nháp', value: 'draft' },
+                  { label: 'Inactive', value: 'inactive' },
+                ]}
+              />
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Số lượng</label>
+              <Select
+                value={pageSize}
+                onChange={setPageSize}
+                className="filter-select"
+                options={[
+                  { label: '6 tour', value: 6 },
+                  { label: '12 tour', value: 12 },
+                  { label: '24 tour', value: 24 },
+                ]}
+              />
+            </div>
+            <Button type="link" className="filter-reset-btn" onClick={handleResetFilters}>
+              Đặt lại
+            </Button>
+          </div>
 
-            <div className="sidebar-section">
-              <div className="sidebar-section-label">Ngân sách</div>
+          <div className="tours-filter-row tours-filter-row-extra">
+            <div className="filter-group filter-group-budget">
+              <label className="filter-label">Ngân sách</label>
               <div className="budget-buttons">
                 <button
                   className={`budget-btn ${budgetFilter === 'under-5' ? 'active' : ''}`}
@@ -128,97 +166,25 @@ const ToursPage = () => {
                 </button>
               </div>
             </div>
-
-            <div className="sidebar-section">
-              <div className="sidebar-section-label">Ngày đi</div>
+            <div className="filter-group filter-group-date">
+              <label className="filter-label">Ngày đi</label>
               <DatePicker
-                style={{ width: '100%' }}
+                style={{ width: '100%', minWidth: 160 }}
                 placeholder="Chọn ngày khởi hành"
                 value={departureDate ? dayjs(departureDate) : null}
                 onChange={(date: Dayjs | null) => {
-                  if (!date) {
-                    setDepartureDate('');
-                    return;
-                  }
-                  setDepartureDate(date.format('YYYY-MM-DD'));
+                  if (!date) setDepartureDate('');
+                  else setDepartureDate(date.format('YYYY-MM-DD'));
                 }}
               />
             </div>
-
-            <Button
-              type="primary"
-              className="sidebar-apply-btn"
-              onClick={handleApplyFilters}
-            >
+            <Button type="primary" className="filter-apply-btn" onClick={handleApplyFilters}>
               Áp dụng
-            </Button>
-
-            <Button
-              type="text"
-              className="sidebar-reset-link"
-              onClick={handleResetFilters}
-            >
-              Xóa tất cả
             </Button>
           </div>
         </div>
 
         <div className="tours-main">
-          <div className="tours-filter-section">
-            <div className="tours-filter-container">
-              <div className="filter-group">
-                <label className="filter-label">
-                  <SearchOutlined /> Tìm kiếm
-                </label>
-                <Input
-                  placeholder="Nhập tên tour, địa điểm..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="filter-input"
-                />
-              </div>
-
-              <div className="filter-group">
-                <label className="filter-label">
-                  <FilterOutlined /> Trạng thái
-                </label>
-                <Select
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  className="filter-select"
-                  options={[
-                    { label: 'Tất cả', value: '' },
-                    { label: 'Đang hoạt động', value: 'active' },
-                    { label: 'Nháp', value: 'draft' },
-                    { label: 'Inactive', value: 'inactive' },
-                  ]}
-                />
-              </div>
-
-              <div className="filter-group">
-                <label className="filter-label">Số lượng</label>
-                <Select
-                  value={pageSize}
-                  onChange={setPageSize}
-                  className="filter-select"
-                  options={[
-                    { label: '6 tours', value: 6 },
-                    { label: '12 tours', value: 12 },
-                    { label: '24 tours', value: 24 },
-                  ]}
-                />
-              </div>
-
-              <Button
-                type="text"
-                className="filter-reset-btn"
-                onClick={handleResetFilters}
-              >
-                Đặt lại
-              </Button>
-            </div>
-          </div>
-
           <Spin spinning={loading} tip="Đang tải..." size="large">
             {tours.length === 0 && !loading ? (
               <Empty
