@@ -9,6 +9,13 @@ interface TourCardProps {
 }
 
 const TourCard: React.FC<TourCardProps> = ({ tour }) => {
+  const statusLabelMap: Record<string, string> = {
+    active: 'ACTIVE',
+    draft: 'DRAFT',
+    inactive: 'INACTIVE',
+    hidden: 'HIDDEN',
+  };
+
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
   };
@@ -24,15 +31,25 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
             onError={handleImageError}
           />
           <div className="tour-card-badge">
-            <span className={`badge badge-${tour.status}`}>{tour.status}</span>
+            <span className={`badge badge-${tour.status}`}>
+              {statusLabelMap[tour.status] ?? tour.status}
+            </span>
           </div>
         </div>
 
         <div className="tour-card-content">
           <h3 className="tour-card-title">{tour.name}</h3>
 
+           <div className="tour-card-meta">
+             <span className="tour-meta-code">Mã tour: {tour.id?.slice(-6).toUpperCase()}</span>
+             <span className="tour-meta-separator">•</span>
+             <span className="tour-meta-duration">{tour.duration_} ngày</span>
+           </div>
+
           <p className="tour-card-description">
-            {tour.description?.substring(0, 100)}...
+            {tour.description?.length > 140
+              ? `${tour.description.substring(0, 140)}...`
+              : tour.description}
           </p>
 
           <div className="tour-card-info">
