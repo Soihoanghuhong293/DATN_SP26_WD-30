@@ -1,0 +1,149 @@
+.schedule-picker {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 16px;
+}
+
+.schedule-months {
+  border-right: 1px solid #f0f0f0;
+  padding-right: 12px;
+}
+
+.schedule-months__title {
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+}
+
+.schedule-months__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-month-btn {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: left;
+}
+
+.schedule-month-btn.is-active {
+  background: #1677ff;
+  border-color: #1677ff;
+  color: #fff;
+}
+
+.schedule-month-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.schedule-cal {
+  padding-left: 4px;
+}
+
+.schedule-cal__header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.schedule-cal__nav {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.schedule-cal__nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.schedule-cal__title {
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.schedule-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 800;
+  color: #111827;
+  text-align: center;
+}
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+.schedule-cell {
+  height: 78px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.schedule-cell.is-muted {
+  background: #fafafa;
+  color: #cbd5e1;
+}
+
+.schedule-cell.is-selectable {
+  cursor: pointer;
+}
+
+.schedule-cell.is-selectable:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.10);
+}
+
+.schedule-cell.is-selected {
+  background: #fff7ed;
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.18);
+}
+
+.schedule-cell__day {
+  font-weight: 900;
+  font-size: 16px;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.schedule-cell__price {
+  font-weight: 900;
+  font-size: 13px;
+  color: #dc2626;
+  line-height: 1;
+}
+
+.schedule-note {
+  margin-top: 12px;
+  color: #ef4444;
+  font-style: italic;
+  font-weight: 600;
+}
+
