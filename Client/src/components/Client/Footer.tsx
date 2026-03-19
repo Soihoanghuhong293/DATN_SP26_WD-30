@@ -23,19 +23,25 @@ const Footer = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  backgroundColor: '#e6f7ff',
-                  borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <SendOutlined rotate={-45} style={{ fontSize: '18px', color: '#13b6ec', marginBottom: '4px' }} />
+                <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="40" height="40" rx="10" fill="url(#logo_gradient_footer)"/>
+                  <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+                  <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  <defs>
+                    <linearGradient id="logo_gradient_footer" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#13B6EC"/>
+                      <stop offset="1" stopColor="#096dd9"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
               <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-                Traveler
+                <span style={{ color: '#13b6ec' }}>Vi</span>Go
               </span>
             </div>
             <Text type="secondary" style={{ fontSize: '15px', lineHeight: '1.8', display: 'block', marginBottom: '24px' }}>
@@ -51,7 +57,7 @@ const Footer = () => {
           </Col>
 
           <Col xs={12} md={5}>
-            <Title level={5} style={{ marginBottom: '24px', fontSize: '16px' }}>Về Traveler</Title>
+            <Title level={5} style={{ marginBottom: '24px', fontSize: '16px' }}>Về ViGo</Title>
             <Space direction="vertical" size="middle">
               <Link to="/about" className="footer-link">Giới thiệu</Link>
               <Link to="/careers" className="footer-link">Tuyển dụng</Link>
@@ -105,7 +111,7 @@ const Footer = () => {
           }}
         >
           <Text type="secondary" style={{ fontSize: '14px' }}>
-            © 2023 Traveler Inc. Bảo lưu mọi quyền.
+            © {new Date().getFullYear()} ViGo Travel. Bảo lưu mọi quyền.
           </Text>
           <Space split={<span style={{ color: '#d9d9d9' }}>|</span>}>
             <Link to="/privacy" className="footer-link-small">Quyền riêng tư</Link>
