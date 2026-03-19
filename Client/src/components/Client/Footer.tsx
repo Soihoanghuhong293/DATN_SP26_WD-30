@@ -1,4 +1,3 @@
-import React from 'react';
 import { Layout, Row, Col, Typography, Input, Button, Space } from 'antd';
 import { 
   SendOutlined, 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button, Input, Select, Space, Table, Tag, Typography, Popconfirm, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteCategory, getCategories } from '../../../services/api';
 import type { ICategory } from '../../../types/tour.types';

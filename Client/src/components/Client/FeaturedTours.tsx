@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Spin, Empty } from 'antd';
 import { ArrowRightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -20,7 +20,12 @@ const FeaturedTours = () => {
           limit: 6,
           status: 'active',
         });
-        setTours(data.data || []);
+        const toursList = Array.isArray(data.data)
+          ? data.data
+          : (data.data && typeof data.data === 'object' && 'tours' in data.data)
+            ? (Array.isArray((data.data as any).tours) ? (data.data as any).tours : [])
+            : [];
+        setTours(toursList);
       } catch (error) {
         console.error('Error fetching featured tours:', error);
         setTours([]);

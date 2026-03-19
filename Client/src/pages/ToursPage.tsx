@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Spin, Empty, Pagination, Select, Input, Button } from 'antd';
 import { SearchOutlined, FilterOutlined } from '@ant-design/icons';
 import { getTours } from '../services/api';
@@ -149,7 +149,7 @@ const ToursPage = () => {
                   pageSize={pageSize}
                   total={total}
                   onChange={setCurrentPage}
-                  onShowSizeChange={(page, size) => {
+                  onShowSizeChange={(_page, size) => {
                     setPageSize(size);
                     setCurrentPage(1);
                   }}

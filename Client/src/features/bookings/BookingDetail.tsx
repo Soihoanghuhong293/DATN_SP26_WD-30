@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -8,7 +8,7 @@ import {
   Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload
 } from 'antd';
 import { 
-  ArrowLeftOutlined, EditOutlined, DeleteOutlined, 
+  EditOutlined, DeleteOutlined, 
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,

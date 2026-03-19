@@ -1,12 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
-  Table, Button, Space, Avatar, Tag, Popconfirm, message, 
-  Typography, Input, Breadcrumb, Tooltip, ConfigProvider, theme 
+  Table, Button, Space, Popconfirm, message, 
+  Typography, Input, Breadcrumb, Tooltip, ConfigProvider
 } from 'antd';
 import { 
-  DeleteOutlined, EditOutlined, PlusOutlined, 
+  DeleteOutlined, EditOutlined, 
   SearchOutlined, EyeOutlined, HomeOutlined 
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
@@ -29,8 +29,6 @@ const TourList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = useState('');
-  
-  const { token } = theme.useToken();
 
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours'],

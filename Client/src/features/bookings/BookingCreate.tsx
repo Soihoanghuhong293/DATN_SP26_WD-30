@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -27,7 +27,6 @@ const BookingCreate = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
-  const [calculatedPrice, setCalculatedPrice] = useState(0);
   const [currentPrices, setCurrentPrices] = useState<any[]>([]); 
   const [activeHolidayName, setActiveHolidayName] = useState<string | null>(null);
 
@@ -196,7 +195,6 @@ const BookingCreate = () => {
         totalPeople += qty;
       });
 
-      setCalculatedPrice(totalMoney);
       fieldsToUpdate.total_price = totalMoney;
       fieldsToUpdate.groupSize = totalPeople;
     }

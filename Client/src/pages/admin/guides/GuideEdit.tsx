@@ -3,7 +3,7 @@ import { Form, Input, Button, message, Card, Select, DatePicker, InputNumber, Sp
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getGuide, updateGuide } from '../../../services/api';
-import type { IGuide, IGuideUpdateRequest } from '../../../types/guide.types';
+import type { IGuideUpdateRequest } from '../../../types/guide.types';
 import dayjs from 'dayjs';
 
 const GuideEdit = () => {

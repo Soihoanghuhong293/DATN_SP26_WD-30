@@ -1,20 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { getProvider, getProviders } from '../../../services/api';
+import { getProviders } from '../../../services/api';
 import { 
-  Button, Card, Descriptions, Spin, Tabs, Tag, 
+  Button, Card, Spin, Tabs, Tag, 
   Timeline, Image, Table, Typography, Space, Popconfirm, message, 
   Breadcrumb, Row, Col, ConfigProvider, Divider, Modal, Select,
   Form, DatePicker, InputNumber
 } from 'antd';
 import { 
-  ArrowLeftOutlined, 
   EditOutlined, 
   DeleteOutlined, 
   CalendarOutlined,
-  DollarOutlined,
   EnvironmentOutlined,
   ClockCircleOutlined,
   UsergroupAddOutlined,
@@ -24,15 +22,13 @@ import {
   ShopOutlined,
   PhoneOutlined,
   MailOutlined,
-  ContactsOutlined,
-  FileTextOutlined,
   SwapOutlined,
   PlusOutlined,
   MinusCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const TourDetail = () => {
   const { id } = useParams();

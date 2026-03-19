@@ -1,4 +1,3 @@
-import React from 'react';
 import { Table, Button, Space, Typography, Popconfirm, message, Tag } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

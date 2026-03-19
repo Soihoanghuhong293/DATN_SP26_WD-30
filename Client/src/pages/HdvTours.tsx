@@ -5,7 +5,7 @@ import { Card, Table, Tag, Typography, Empty, Button } from "antd";
 import { CarOutlined, EyeOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Popconfirm, message, Input, Select, Modal } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { getGuides, deleteGuide } from '../../../services/api';
 import type { IGuide, GuideGroupType, HealthStatus } from '../../../types/guide.types';

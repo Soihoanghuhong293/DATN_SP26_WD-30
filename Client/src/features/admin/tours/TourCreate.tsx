@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
-  Space, Typography, message, Select, Divider, Spin, 
+  Space, Typography, message, Select, Divider, 
   DatePicker, Upload
 } from 'antd';
 import { 
@@ -274,7 +274,7 @@ const TourCreate = () => {
                 <div className="text-sm font-medium text-gray-500 mb-3">Cấu hình giá chi tiết </div>
                 
                 <Form.List name="prices">
-                  {(fields, { add, remove }) => (
+                  {(fields, { add: _add, remove }) => (
                     <div className="space-y-3">
                       {fields.map(({ key, name, ...restField }, index) => {
                         const isDefault = index < 2;
