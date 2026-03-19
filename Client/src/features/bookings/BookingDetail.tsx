@@ -5,7 +5,7 @@ import axios from 'axios';
 import { 
   Button, Card, Spin, Tabs, Tag, Timeline, Table, 
   Typography, Space, Popconfirm, message, Breadcrumb, 
-  Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload
+  Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, List, Empty
 } from 'antd';
 import { 
   ArrowLeftOutlined, EditOutlined, DeleteOutlined, 
@@ -51,6 +51,35 @@ const BookingDetail = () => {
     },
     enabled: !!id,
   });
+
+  const { data: postsData, isLoading: isPostsLoading } = useQuery({
+    queryKey: ["admin-booking-posts", id],
+    queryFn: async () => {
+      const res = await axios.get(`http://localhost:5000/api/v1/bookings/${id}/posts`, getAuthHeader());
+      return res.data?.data || [];
+    },
+    enabled: !!id,
+  });
+
+  const createPostMutation = useMutation({
+    mutationFn: async (payload: {
+      title: string;
+      content: string;
+      type: string;
+      images?: string[];
+    }) => {
+      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/posts`, payload, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success("Đã thêm bài viết mới cho chuyến đi");
+      queryClient.invalidateQueries({ queryKey: ["admin-booking-posts", id] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra');
+    }
+  });
+
+  const posts = Array.isArray(postsData) ? postsData : [];
 
   const { data: usersData } = useQuery({
     queryKey: ['users'],
@@ -498,6 +527,162 @@ const BookingDetail = () => {
     </Row>
   );
 
+  const PostsTab = () => (
+    <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
+      <Card
+        title="Thêm bài viết mới"
+        style={{ flex: 1, minWidth: 320, maxWidth: 420 }}
+        className="saas-card"
+      >
+        <Form
+          layout="vertical"
+          onFinish={(values: any) => {
+            const images =
+              typeof values.imageUrls === "string" && values.imageUrls.trim()
+                ? values.imageUrls
+                    .split(",")
+                    .map((s: string) => s.trim())
+                    .filter(Boolean)
+                : [];
+            createPostMutation.mutate({
+              title: values.title,
+              content: values.content,
+              type: values.type,
+              images,
+            });
+          }}
+        >
+          <Form.Item
+            label="Loại bài viết"
+            name="type"
+            initialValue="activity"
+            rules={[{ required: true, message: "Chọn loại bài viết" }]}
+          >
+            <Select>
+              <Select.Option value="activity">Hoạt động tour</Select.Option>
+              <Select.Option value="photo">Hình ảnh thực tế</Select.Option>
+              <Select.Option value="update">Cập nhật từ Admin/HDV</Select.Option>
+              <Select.Option value="note">Ghi chú khác</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            label="Tiêu đề"
+            name="title"
+            rules={[{ required: true, message: "Nhập tiêu đề bài viết" }]}
+          >
+            <Input placeholder="Ví dụ: Check-in tại điểm tham quan đầu tiên" />
+          </Form.Item>
+          <Form.Item
+            label="Nội dung"
+            name="content"
+            rules={[{ required: true, message: "Nhập nội dung bài viết" }]}
+          >
+            <Input.TextArea
+              rows={4}
+              placeholder="Mô tả hoạt động, cảm nhận của đoàn, lưu ý cho khách..."
+            />
+          </Form.Item>
+          <Form.Item
+            label="Link ảnh (tùy chọn)"
+            name="imageUrls"
+            extra="Nhập nhiều link, ngăn cách nhau bằng dấu phẩy (,)"
+          >
+            <Input.TextArea rows={2} placeholder="https://example.com/image1.jpg, https://example.com/image2.png" />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={createPostMutation.isPending}
+            block
+          >
+            Đăng bài viết
+          </Button>
+        </Form>
+      </Card>
+
+      <div style={{ flex: 2, minWidth: 320 }}>
+        <Title level={5} style={{ marginBottom: 16 }}>
+          Nhật ký chuyến đi
+        </Title>
+        {isPostsLoading ? (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Spin />
+          </div>
+        ) : posts.length === 0 ? (
+          <Empty description="Chưa có bài viết nào cho chuyến đi" />
+        ) : (
+          <List
+            dataSource={posts}
+            renderItem={(post: any) => (
+              <List.Item>
+                <Card
+                  style={{ width: "100%" }}
+                  className="saas-card"
+                  title={
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>{post.title}</span>
+                      <Tag
+                        color={
+                          post.type === "photo"
+                            ? "purple"
+                            : post.type === "update"
+                            ? "blue"
+                            : post.type === "note"
+                            ? "default"
+                            : "green"
+                        }
+                      >
+                        {post.type === "activity"
+                          ? "Hoạt động"
+                          : post.type === "photo"
+                          ? "Hình ảnh"
+                          : post.type === "update"
+                          ? "Cập nhật"
+                          : "Ghi chú"}
+                      </Tag>
+                    </div>
+                  }
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: 12, color: "#6b7280" }}>
+                    <span>
+                      Đăng bởi: <strong>{post.author_id?.name || 'Không rõ'}</strong>
+                      {post.author_id?.role === 'admin' && <Tag color="purple" style={{ marginLeft: 4 }}>Admin</Tag>}
+                      {post.author_id?.role === 'guide' && <Tag color="cyan" style={{ marginLeft: 4 }}>HDV</Tag>}
+                    </span>
+                    <span>
+                      {post.created_at &&
+                        new Date(post.created_at).toLocaleString("vi-VN", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      marginBottom: post.images?.length ? 12 : 0,
+                    }}
+                  >
+                    {post.content}
+                  </div>
+                  {post.images && post.images.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, }}>
+                      {post.images.map((url: string, index: number) => (
+                        <div key={index} style={{ width: 100, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                          <img src={url} alt={`post-${index}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </List.Item>
+            )}
+          />
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <ConfigProvider
       theme={{
@@ -556,7 +741,8 @@ const BookingDetail = () => {
             defaultActiveKey="1" size="large"
             items={[
                 { key: '1', label: 'Tổng quan', children: <OverviewTab /> },
-                { key: '2', label: 'Chi tiết & Dịch vụ', children: <DetailsTab /> }
+                { key: '2', label: 'Chi tiết & Dịch vụ', children: <DetailsTab /> },
+                { key: '3', label: (<span><ProfileOutlined /> Bài viết chuyến đi</span>), children: <PostsTab /> }
             ]} 
         />
 

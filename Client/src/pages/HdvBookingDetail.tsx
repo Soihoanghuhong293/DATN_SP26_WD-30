@@ -55,7 +55,7 @@ const HdvBookingDetail = () => {
   const { data: postsData, isLoading: isPostsLoading } = useQuery({
     queryKey: ["hdv-booking-posts", id],
     queryFn: async () => {
-      const res = await axios.get(`${API}/guide/${id}/posts`, getAuthHeader());
+      const res = await axios.get(`${API}/${id}/posts`, getAuthHeader());
       return res.data?.data || [];
     },
     enabled: !!id,
@@ -68,7 +68,7 @@ const HdvBookingDetail = () => {
       type: string;
       images?: string[];
     }) => {
-      await axios.post(`${API}/guide/${id}/posts`, payload, getAuthHeader());
+      await axios.post(`${API}/${id}/posts`, payload, getAuthHeader());
     },
     onSuccess: () => {
       message.success("Đã thêm bài viết mới cho chuyến đi");
@@ -386,13 +386,21 @@ const HdvBookingDetail = () => {
                         </div>
                       }
                     >
-                      <div style={{ marginBottom: 8, fontSize: 12, color: "#6b7280" }}>
-                        {post.created_at &&
-                          new Date(post.created_at).toLocaleString("vi-VN", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: 12, color: "#6b7280" }}>
+                        <span>
+                          Đăng bởi: <strong>{post.author_id?.name || 'Không rõ'}</strong>
+                          {post.author_id?.role === 'admin' && <Tag color="purple" style={{ marginLeft: 4 }}>Admin</Tag>}
+                          {post.author_id?.role === 'guide' && <Tag color="cyan" style={{ marginLeft: 4 }}>HDV</Tag>}
+                        </span>
+                        <span>
+                          {post.created_at &&
+                            new Date(post.created_at).toLocaleString("vi-VN", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })}
+                        </span>
                       </div>
+
                       <div
                         style={{
                           whiteSpace: "pre-wrap",
