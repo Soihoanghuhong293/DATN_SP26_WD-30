@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { autoAllocateCarsForBooking } from '../services/allocation.service';
 
 // Lấy danh sách booking của HDV đang đăng nhập 
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
@@ -484,6 +485,7 @@ export const updateBooking = async (req: Request, res: Response) => {
 
     // cập nhật danh sách hành khác
     const incomingPassengers = req.body.passengers || req.body.guests;
+    const shouldReallocateCars = Boolean(incomingPassengers);
     if (incomingPassengers) {
       // Cảnh báo nếu số lượng lố groupSize
       if (incomingPassengers.length > booking.groupSize) {
@@ -528,6 +530,17 @@ export const updateBooking = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
 
+    // Nếu người dùng cập nhật danh sách hành khách, tự động cập nhật phân bổ xe
+    // để linh hoạt theo số khách thực tế.
+    if (shouldReallocateCars) {
+      try {
+        await autoAllocateCarsForBooking(bookingId);
+      } catch (e) {
+        // Không chặn việc cập nhật danh sách khách.
+        // Nếu auto-allocate thất bại, booking sẽ giữ dữ liệu phân bổ cũ hoặc rỗng tùy trường hợp.
+      }
+    }
+
     res.status(200).json({
       status: 'success',
       data: updatedBooking
@@ -552,6 +565,30 @@ export const deleteBooking = async (req: Request, res: Response) => {
     res.status(500).json({
       status: 'error',
       message: error.message
+    });
+  }
+};
+
+// admin: tự động phân bổ xe theo ngày cho booking
+export const autoAllocateCars = async (req: Request, res: Response) => {
+  try {
+    const result = await autoAllocateCarsForBooking(req.params.id);
+
+    if (!result.success) {
+      return res.status(400).json({
+        status: 'fail',
+        ...result,
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: result.data,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi tự động phân bổ xe',
     });
   }
 };

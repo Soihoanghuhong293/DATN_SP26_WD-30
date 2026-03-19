@@ -10,6 +10,7 @@ router.get('/guide/:id', protect, restrictToGuide, bookingController.getMyBookin
 router.patch('/guide/:id/checkin', protect, restrictToGuide, bookingController.checkInPassenger);
 router.patch('/guide/:id/stage', protect, restrictToGuide, bookingController.updateTourStage);
 router.patch('/guide/:id/diary', protect, restrictToGuide, bookingController.addDiaryEntryForGuide);
+router.post('/:id/auto-allocate-cars', protect, bookingController.autoAllocateCars);
 
 router
   .route('/')

@@ -12,7 +12,7 @@ import {
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,
-  FileExcelOutlined, PlusOutlined, UploadOutlined, ShopOutlined
+  FileExcelOutlined, PlusOutlined, UploadOutlined, ShopOutlined, CarOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -134,6 +134,27 @@ const BookingDetail = () => {
     });
   }, [allGuides, allBookings, booking]);
 
+  const allocatedCars = useMemo(() => {
+    const rows = booking?.allocated_services?.cars;
+    if (!Array.isArray(rows)) return [];
+
+    return rows
+      .map((row: any, index: number) => {
+        const provider =
+          providers.find((p: any) => p._id === row.provider_id || p.id === row.provider_id) || null;
+
+        return {
+          key: row.vehicle_allocation_id || `${row.day_no}-${row.plate}-${index}`,
+          providerName: provider?.name || provider?.provider_name || '',
+          ...row,
+        };
+      })
+      .sort((a: any, b: any) => {
+        if ((a.day_no || 0) !== (b.day_no || 0)) return (a.day_no || 0) - (b.day_no || 0);
+        return String(a.plate || '').localeCompare(String(b.plate || ''));
+      });
+  }, [booking, providers]);
+
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
     mutationFn: async (updatedGuests: any[]) => { 
@@ -172,6 +193,24 @@ const BookingDetail = () => {
       setIsGuideModalOpen(false);
     },
     onError: () => message.error('Cập nhật HDV thất bại!'),
+  });
+
+  const autoAllocateCarsMutation = useMutation({
+    mutationFn: async () => {
+      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-cars`, {}, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã tự động phân bổ xe thành công!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    },
+    onError: (error: any) => {
+      const code = error?.response?.data?.code;
+      if (code === 'NOT_ENOUGH_CAR') {
+        message.error('Không đủ xe để phân bổ cho booking này.');
+        return;
+      }
+      message.error(error?.response?.data?.message || 'Phân bổ xe thất bại!');
+    },
   });
 
   // xuất excel
@@ -387,6 +426,54 @@ const BookingDetail = () => {
               ))}
             </Card>
           )}
+
+          <Card
+            title={<Space><CarOutlined style={{ color: '#2563eb' }} /> Phân bổ xe tự động</Space>}
+            bordered={true}
+            className="saas-card mb-6"
+            extra={(
+              <Button
+                type="primary"
+                ghost
+                size="small"
+                loading={autoAllocateCarsMutation.isPending}
+                onClick={() => autoAllocateCarsMutation.mutate()}
+              >
+                Tự động phân bổ xe
+              </Button>
+            )}
+          >
+            <Table
+              dataSource={allocatedCars}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có dữ liệu phân bổ xe. Bấm "Tự động phân bổ xe" để chạy.' }}
+              columns={[
+                { title: 'Ngày', dataIndex: 'day_no', width: 70, render: (v) => `Day ${v || 1}` },
+                {
+                  title: 'Ngày sử dụng',
+                  dataIndex: 'service_date',
+                  render: (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '---'),
+                },
+                { title: 'Biển số', dataIndex: 'plate', render: (v) => <Text strong>{v || '---'}</Text> },
+                {
+                  title: 'Nhà cung cấp',
+                  dataIndex: 'providerName',
+                  render: (v) => v || <Text type="secondary">---</Text>,
+                },
+                { title: 'Sức chứa', dataIndex: 'capacity', render: (v) => `${v || 0} chỗ` },
+                {
+                  title: 'Trạng thái',
+                  dataIndex: 'status',
+                  render: (v) => (
+                    <Tag color={v === 'confirmed' ? 'green' : v === 'cancelled' ? 'red' : 'processing'}>
+                      {v === 'confirmed' ? 'Đã xác nhận' : v === 'cancelled' ? 'Đã hủy' : 'Đã giữ chỗ'}
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
+          </Card>
         </Col>
 
         {/* CỘT PHẢI */}

@@ -10,6 +10,8 @@ export const ENDPOINTS = {
   guideStatistics: '/guides/statistics',
   providers: '/providers',
   providerById: (id: string) => `/providers/${id}`,
+  vehicles: '/vehicles',
+  vehicleById: (id: string) => `/vehicles/${id}`,
 } as const;
 
 

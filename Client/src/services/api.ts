@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { ApiResponse, ICategory, ITour, ToursListResponse } from '../types/tour.types';
 import type { IGuide, IGuideCreateRequest, IGuideUpdateRequest, IGuideRatingRequest, ITourHistoryRequest } from '../types/guide.types';
-import type { CreateProviderPayload, IProvider } from '../types/provider.types';
+import type { CreateProviderPayload, IProvider, IVehicle } from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
 
 const baseURL =
@@ -194,6 +194,42 @@ export async function updateProvider(id: string, payload: Partial<CreateProvider
 
 export async function deleteProvider(id: string) {
   const res = await api.delete(ENDPOINTS.providerById(id));
+  return res.data;
+}
+
+// ===== VEHICLE API FUNCTIONS =====
+
+export type GetVehiclesParams = {
+  provider_id?: string;
+};
+
+export async function getVehicles(params: GetVehiclesParams = {}) {
+  const res = await api.get<ApiResponse<{ vehicles: IVehicle[] }> & { results?: number }>(
+    ENDPOINTS.vehicles,
+    { params }
+  );
+  return res.data;
+}
+
+export type UpsertVehiclePayload = {
+  plate: string;
+  capacity: number;
+  status?: 'active' | 'inactive';
+  provider_id?: string;
+};
+
+export async function createVehicle(payload: UpsertVehiclePayload) {
+  const res = await api.post<ApiResponse<{ vehicle: IVehicle }>>(ENDPOINTS.vehicles, payload);
+  return res.data;
+}
+
+export async function updateVehicle(id: string, payload: Partial<UpsertVehiclePayload>) {
+  const res = await api.patch<ApiResponse<{ vehicle: IVehicle }>>(ENDPOINTS.vehicleById(id), payload);
+  return res.data;
+}
+
+export async function deleteVehicle(id: string) {
+  const res = await api.delete(ENDPOINTS.vehicleById(id));
   return res.data;
 }
 
