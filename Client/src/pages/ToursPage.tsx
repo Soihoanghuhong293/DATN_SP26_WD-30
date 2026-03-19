@@ -89,6 +89,10 @@ const ToursPage = () => {
 
   return (
     <div className="tours-page">
+      <div className="tours-page-header">
+        <h1 className="tours-page-title">Khám Phá Tours</h1>
+        <p className="tours-page-subtitle">Tìm kiếm những chuyến du lịch tuyệt vời nhất</p>
+      </div>
       <div className="tours-page-header-accent" />
 
       <div className="tours-content">

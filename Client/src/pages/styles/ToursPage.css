@@ -14,6 +14,28 @@
   margin-bottom: 0;
 }
 
+/* Banner */
+.tours-page-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 44px 20px;
+  text-align: center;
+}
+
+.tours-page-title {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.tours-page-subtitle {
+  margin: 10px 0 0 0;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 300;
+}
+
 /* Content container */
 .tours-content {
   max-width: 1200px;
