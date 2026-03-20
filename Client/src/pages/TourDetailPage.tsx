@@ -232,6 +232,8 @@ const TourDetailPage = () => {
     navigate("/tours");
   };
 
+  const durationDays = tour?.duration_days ?? tour?.duration_;
+
   if (loading) {
     return (
       <div className="tour-detail-loading">
@@ -411,6 +413,7 @@ const TourDetailPage = () => {
                     return `${Number(days)} ngày`;
                   })()}
                 </b>
+                <b>{durationDays ? `${durationDays} ngày` : "Chưa cập nhật"}</b>
               </div>
             </div>
 

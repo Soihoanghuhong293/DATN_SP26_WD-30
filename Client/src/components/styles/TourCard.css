@@ -8,47 +8,46 @@
 }
 
 .tour-card {
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  height: 100%;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transition: all 0.25s ease;
   display: flex;
   flex-direction: column;
   background: white;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  min-height: 200px;
 }
 
 .tour-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
 }
 
 .tour-card-image-container {
   position: relative;
   overflow: hidden;
   width: 100%;
-  padding-bottom: 66.67%;
-  background: #f0f0f0;
+  min-width: 0;
+  background: #0f172a;
+  height: 220px;
 }
 
 .tour-card-image {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.4s ease;
 }
 
 .tour-card:hover .tour-card-image {
-  transform: scale(1.08);
+  transform: scale(1.05);
 }
 
 .tour-card-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 16px;
 }
 
 .badge {
@@ -81,7 +80,7 @@
 }
 
 .tour-card-content {
-  padding: 18px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -89,10 +88,34 @@
 
 .tour-card-title {
   margin: 0 0 10px 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #1f2937;
   line-height: 1.4;
+}
+
+.tour-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.tour-meta-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.tour-meta-duration {
+  font-weight: 500;
+}
+
+.tour-meta-separator {
+  opacity: 0.5;
 }
 
 .tour-card-description {
@@ -100,13 +123,14 @@
   font-size: 13px;
   color: #6b7280;
   line-height: 1.5;
-  min-height: 32px;
+  max-height: 3.8em;
+  overflow: hidden;
 }
 
 .tour-card-info {
   display: flex;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
@@ -124,10 +148,9 @@
 }
 
 .tour-card-schedule {
-  margin: 12px 0;
-  padding: 12px 0;
+  margin: 10px 0 4px 0;
+  padding: 10px 0;
   border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .schedule-title {
@@ -223,27 +246,18 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .tour-card {
+    flex-direction: column;
+  }
+
+  .tour-card-image-container {
+    width: 100%;
+    min-width: 0;
+    height: 200px;
+  }
+
   .tour-card-content {
     padding: 14px;
-  }
-
-  .tour-card-title {
-    font-size: 14px;
-  }
-
-  .tour-card-description {
-    font-size: 12px;
-    min-height: 28px;
-  }
-
-  .tour-card-footer {
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-start;
-  }
-
-  .tour-card-btn {
-    width: 100%;
   }
 }
 
