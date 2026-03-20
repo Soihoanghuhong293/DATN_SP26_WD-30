@@ -13,7 +13,12 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const res = await loginAPI(values);
-      const { token, role } = res.data;
+      const { token, role } = res.data || {};
+
+      if (!token || !role) {
+        message.error("Phản hồi từ server không hợp lệ. Vui lòng thử lại.");
+        return;
+      }
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);

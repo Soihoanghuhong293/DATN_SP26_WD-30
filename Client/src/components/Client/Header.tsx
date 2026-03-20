@@ -26,7 +26,7 @@ const Header = () => {
     const userRole = localStorage.getItem("role");
     setIsLogin(!!token);
     setRole(userRole);
-  }, []);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
