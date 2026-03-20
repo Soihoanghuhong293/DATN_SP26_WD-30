@@ -85,6 +85,23 @@ const BookingDetail = () => {
     }
   });
 
+  const formatBirthDate = (val: any) => {
+    if (!val) return null;
+    const d = dayjs(val);
+    return d.isValid() ? d.format("DD/MM/YYYY") : null;
+  };
+
+  const formatGender = (val: any) => {
+    const raw = String(val || "").trim();
+    if (!raw) return "";
+    const lower = raw.toLowerCase();
+    if (lower === "male" || lower === "nam") return "Nam";
+    if (lower === "female" || lower === "nữ" || lower === "nu") return "Nữ";
+    if (lower === "other" || lower === "khác" || lower === "khac") return "Khác";
+    // Nếu backend/frontend đã lưu sẵn tiếng Việt
+    return raw;
+  };
+
   // cập nhật gueslistr
   useEffect(() => {
     if (booking?.passengers || booking?.guests || booking?.guest_list) {
@@ -191,8 +208,9 @@ const BookingDetail = () => {
     const exportData = guestList.map((guest: any, index: number) => ({
       'STT': index + 1,
       'Họ và Tên': guest.name || guest.full_name || '',
-      'Giới tính': guest.gender || '',
+      'Giới tính': formatGender(guest.gender),
       'Phân loại': guest.type || guest.age_group || 'Người lớn',
+      'Ngày sinh': formatBirthDate(guest.birthDate) || '',
       'Số điện thoại': guest.phone || guest.phoneNumber || '',
       'Số phòng': guest.room_name || guest.room || '',
       'Ghi chú': guest.note || ''
@@ -359,7 +377,8 @@ const BookingDetail = () => {
                 { title: 'Họ và Tên', render: (_, record) => <Text strong>{record.name || record.full_name}</Text> },
                 { title: 'Số điện thoại', dataIndex: 'phone', render: (text) => text || '---' },
                 { title: 'Loại', dataIndex: 'type', render: (t) => <Tag>{t || 'Người lớn'}</Tag> },
-                { title: 'Giới tính', dataIndex: 'gender' },
+                { title: 'Giới tính', dataIndex: 'gender', render: (g) => <span>{formatGender(g) || '---'}</span> },
+                { title: 'Ngày sinh', render: (_, record) => formatBirthDate(record.birthDate) || '---' },
                 { title: 'Phòng', dataIndex: ['room_name', 'room'] },
                 { 
                   title: '', width: 50, className: 'print:hidden',

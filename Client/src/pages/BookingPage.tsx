@@ -41,11 +41,13 @@ type BookingFormValues = {
     fullName?: string;
     gender?: PassengerGender;
     birthDate?: Dayjs;
+    phone?: string;
   }>;
   childPassengers?: Array<{
     fullName?: string;
     gender?: PassengerGender;
     birthDate?: Dayjs;
+    phone?: string;
   }>;
   termsAccepted: boolean;
   adults: number;
@@ -322,14 +324,18 @@ const BookingPage: React.FC = () => {
     const adultsFilled =
       Array.isArray(watchedAdultPassengers) &&
       watchedAdultPassengers.length === adults &&
-      watchedAdultPassengers.every((p: any) => !!String(p?.fullName || "").trim() && !!p?.gender && !!p?.birthDate);
+      watchedAdultPassengers.every(
+        (p: any) => !!String(p?.fullName || "").trim() && !!p?.gender && !!p?.birthDate && !!String(p?.phone || "").trim()
+      );
 
     const childrenFilled =
       children <= 0
         ? true
         : Array.isArray(watchedChildPassengers) &&
           watchedChildPassengers.length === children &&
-          watchedChildPassengers.every((p: any) => !!String(p?.fullName || "").trim() && !!p?.gender && !!p?.birthDate);
+          watchedChildPassengers.every(
+            (p: any) => !!String(p?.fullName || "").trim() && !!p?.gender && !!p?.birthDate
+          );
 
     const hasErrors = form.getFieldsError().some((f) => (f.errors || []).length > 0);
 
@@ -431,6 +437,28 @@ const BookingPage: React.FC = () => {
 
     setSubmitting(true);
     try {
+      const adultPassengers = Array.isArray(values.adultPassengers) ? values.adultPassengers : [];
+      const childPassengers = Array.isArray(values.childPassengers) ? values.childPassengers : [];
+
+      // Dữ liệu hiển thị trong `BookingDetail` là mảng `passengers`
+      const passengers = [
+        ...adultPassengers.slice(0, Number(values.adults || 0)).map((p) => ({
+          name: p?.fullName || "",
+          gender: p?.gender || "",
+          type: "Người lớn",
+          // Lưu dạng YYYY-MM-DD để hiển thị dễ (không phụ thuộc timezone)
+          birthDate: p?.birthDate ? dayjs(p.birthDate).format("YYYY-MM-DD") : undefined,
+          phone: p?.phone || "",
+        })),
+        ...childPassengers.slice(0, Number(values.children || 0)).map((p) => ({
+          name: p?.fullName || "",
+          gender: p?.gender || "",
+          type: "Trẻ em",
+          birthDate: p?.birthDate ? dayjs(p.birthDate).format("YYYY-MM-DD") : undefined,
+          phone: p?.phone || "",
+        })),
+      ];
+
       const payload = {
         tour_id: (tour as any)?._id || (tour as any)?.id,
         customerName: values.customerName,
@@ -441,6 +469,7 @@ const BookingPage: React.FC = () => {
         paymentMethod: "later",
         customer_note: values.note,
         totalPrice: totals.total,
+        passengers,
       };
 
       const res = await axios.post("http://localhost:5000/api/v1/bookings", payload);
@@ -481,6 +510,22 @@ const BookingPage: React.FC = () => {
     syncChildPassengers(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Đồng bộ số form khách với số chỗ khi chọn ngày hoặc slots thay đổi (tránh lỗi 16 form khi chỉ có 15 chỗ)
+  useEffect(() => {
+    if (!selectedDate) return;
+    const slots = selectableDepartureDates.get(selectedDate);
+    if (typeof slots !== "number") return;
+    const adults = Number(form.getFieldValue("adults") || 0);
+    const children = Number(form.getFieldValue("children") || 0);
+    if (adults + children <= slots) return;
+    const cappedAdults = Math.max(1, slots - children);
+    const cappedChildren = Math.max(0, slots - cappedAdults);
+    form.setFieldsValue({ adults: cappedAdults, children: cappedChildren });
+    syncAdultPassengers(cappedAdults);
+    syncChildPassengers(cappedChildren);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, selectableDepartureDates]);
 
   if (loadingTour) {
     return (
@@ -546,8 +591,31 @@ const BookingPage: React.FC = () => {
           message.error("Vui lòng kiểm tra lại các trường được đánh dấu đỏ trong form.");
         }}
         onValuesChange={(changed) => {
-          if ("adults" in changed) syncAdultPassengers(Number((changed as any).adults || 0));
-          if ("children" in changed) syncChildPassengers(Number((changed as any).children || 0));
+          if ("adults" in changed) {
+            let adults = Number((changed as any).adults || 0);
+            // Giới hạn theo số chỗ còn lại để tránh render dư form (ví dụ: 16 form khi chọn 15 khách)
+            if (selectedDate) {
+              const slots = selectableDepartureDates.get(selectedDate);
+              const children = Number(form.getFieldValue("children") || 0);
+              if (typeof slots === "number" && adults + children > slots) {
+                adults = Math.max(1, slots - children);
+                form.setFieldsValue({ adults });
+              }
+            }
+            syncAdultPassengers(adults);
+          }
+          if ("children" in changed) {
+            let children = Number((changed as any).children || 0);
+            if (selectedDate) {
+              const slots = selectableDepartureDates.get(selectedDate);
+              const adults = Number(form.getFieldValue("adults") || 0);
+              if (typeof slots === "number" && adults + children > slots) {
+                children = Math.max(0, slots - adults);
+                form.setFieldsValue({ children });
+              }
+            }
+            syncChildPassengers(children);
+          }
         }}
       >
         <Row gutter={[24, 24]}>
@@ -815,6 +883,17 @@ const BookingPage: React.FC = () => {
                             </Form.Item>
                           </Col>
                         </Row>
+
+                        <Form.Item
+                          label="SĐT khách"
+                          name={[field.name, "phone"]}
+                          rules={[
+                            { required: true, message: "Vui lòng nhập SĐT!" },
+                            { pattern: /^(\+84|0)[3|5|7|8|9][0-9]{8}$/, message: "Số điện thoại không hợp lệ!" },
+                          ]}
+                        >
+                          <Input placeholder="09xxxxxxxx" />
+                        </Form.Item>
                       </Card>
                     ))}
                   </div>
@@ -878,6 +957,24 @@ const BookingPage: React.FC = () => {
                                 </Form.Item>
                               </Col>
                             </Row>
+
+                            <Form.Item
+                              label="SĐT khách"
+                              name={[field.name, "phone"]}
+                              rules={[
+                                {
+                                  validator: async (_, v) => {
+                                    if (!v) return;
+                                    const value = String(v).trim();
+                                    if (!value) return;
+                                    const ok = /^(\+84|0)[3|5|7|8|9][0-9]{8}$/.test(value);
+                                    if (!ok) throw new Error("Số điện thoại không hợp lệ!");
+                                  },
+                                },
+                              ]}
+                            >
+                              <Input placeholder="09xxxxxxxx" />
+                            </Form.Item>
                           </Card>
                         ))}
                       </div>
