@@ -97,6 +97,13 @@ const BookingDetail = () => {
     return toursData?.find((t: any) => t._id === (booking.tour_id?._id || booking.tour_id)) || booking.tour_id;
   }, [booking, toursData]);
 
+  const displayEndDate = useMemo(() => {
+    if (!booking?.startDate) return null;
+    if (booking.endDate) return dayjs(booking.endDate);
+    const durationDays = Number((tourInfo as any)?.duration_days ?? 1);
+    return dayjs(booking.startDate).add(Math.max(0, durationDays - 1), 'day');
+  }, [booking?.startDate, booking?.endDate, tourInfo]);
+
   const tourProviders = useMemo(() => {
     if (!tourInfo || !tourInfo.suppliers) return [];
     return tourInfo.suppliers.map((sId: any) => {
@@ -113,7 +120,7 @@ const BookingDetail = () => {
   const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide' || u.role === 'hdv') || [], [usersData]);
 
   const availableGuides = useMemo(() => {
-    if (!booking?.startDate || !booking?.endDate) return allGuides;
+    if (!booking?.startDate || !displayEndDate) return allGuides;
 
     return allGuides.filter((guide: any) => {
       const isBusy = allBookings?.some((b: any) => {
@@ -124,15 +131,15 @@ const BookingDetail = () => {
         if (!currentGuideId || currentGuideId !== guide._id) return false;
 
         const bStart = dayjs(b.startDate);
-        const bEnd = dayjs(b.endDate);
+        const bEnd = b.endDate ? dayjs(b.endDate) : dayjs(b.startDate).add(Math.max(0, Number((b.tour_id as any)?.duration_days ?? 1) - 1), 'day');
         const currentStart = dayjs(booking.startDate);
-        const currentEnd = dayjs(booking.endDate);
+        const currentEnd = displayEndDate;
 
         return currentStart.isSameOrBefore(bEnd, 'day') && currentEnd.isSameOrAfter(bStart, 'day');
       });
       return !isBusy;
     });
-  }, [allGuides, allBookings, booking]);
+  }, [allGuides, allBookings, booking, displayEndDate]);
 
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
@@ -423,7 +430,7 @@ const BookingDetail = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Space><CalendarOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Ngày về</Text></Space>
-                      <Text strong>{booking.endDate ? dayjs(booking.endDate).format('DD/MM/YYYY') : '---'}</Text>
+                      <Text strong>{displayEndDate ? displayEndDate.format('DD/MM/YYYY') : '---'}</Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Space><UserOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">HDV</Text></Space>

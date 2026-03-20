@@ -366,13 +366,13 @@ const BookingCreate = () => {
             </Card>
 
             <Card title={<><IdcardOutlined className="text-blue-500 mr-2" /> Khách hàng đại diện (Trưởng đoàn)</>} className="mb-6 shadow-sm">
-              <Form.Item name="user_id" label="Liên kết Tài khoản hệ thống (Nếu có)">
+              {/* <Form.Item name="user_id" label="Liên kết Tài khoản hệ thống (Nếu có)">
                 <Select showSearch placeholder="Chọn tài khoản để liên kết..." allowClear optionFilterProp="children" loading={isUsersLoading}>
                   {customers.map((u: any) => (
                     <Option key={u._id} value={u._id}>{u.name} ({u.email})</Option>
                   ))}
                 </Select>
-              </Form.Item>
+              </Form.Item> */}
 
               <Row gutter={16}>
                 <Col span={12}>

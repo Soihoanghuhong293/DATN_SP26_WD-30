@@ -422,13 +422,7 @@ const TourDetailPage = () => {
               </div>
             </div>
 
-            <div className="info-card">
-              <TeamOutlined />
-              <div>
-                <p>Hướng dẫn viên</p>
-                <b>{tour.suppliers?.length || 0}</b>
-              </div>
-            </div>
+            
           </div>
 
         

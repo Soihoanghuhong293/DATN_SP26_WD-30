@@ -30,6 +30,9 @@ interface IBooking {
   // Trạng thái thanh toán (payment_status)
   payment_status?: 'unpaid' | 'deposit' | 'paid' | 'refunded';
 
+  // Giai đoạn tour do HDV cập nhật
+  tour_stage?: 'scheduled' | 'in_progress' | 'completed';
+
   created_at: string;
 }
 
@@ -133,19 +136,24 @@ const BookingList = () => {
     {
       title: 'Tour & Thời gian',
       key: 'tour',
-      render: (_: any, record: IBooking) => (
-        <div>
-          <Tooltip title={record.tour_id?.name}>
-            <div className="font-bold truncate max-w-[200px]">
-              {record.tour_id?.name || 'Tour đã bị xóa'}
+      render: (_: any, record: IBooking) => {
+        const durationDays = Number((record.tour_id as any)?.duration_days ?? 1);
+        const displayEndDate = record.endDate
+          ? dayjs(record.endDate)
+          : dayjs(record.startDate).add(Math.max(0, durationDays - 1), 'day');
+        return (
+          <div>
+            <Tooltip title={record.tour_id?.name}>
+              <div className="font-bold truncate max-w-[200px]">
+                {record.tour_id?.name || 'Tour đã bị xóa'}
+              </div>
+            </Tooltip>
+            <div className="text-xs text-gray-500 mt-1">
+              {dayjs(record.startDate).format('DD/MM/YYYY')} - {displayEndDate.format('DD/MM/YYYY')}
             </div>
-          </Tooltip>
-          <div className="text-xs text-gray-500 mt-1">
-            {dayjs(record.startDate).format('DD/MM/YYYY')}
-            {record.endDate && ` - ${dayjs(record.endDate).format('DD/MM/YYYY')}`}
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Khách',
@@ -175,10 +183,25 @@ const BookingList = () => {
           return <Tag color="error" bordered={false}>Đã hủy</Tag>;
         }
 
-        const resolved = resolvePaymentStatus(record);
-        const current = paymentStatusMap[resolved] || paymentStatusMap.unpaid;
+        const stage = record.tour_stage || 'scheduled';
+        if (stage === 'completed') {
+          return <Tag color="success" bordered={false}>Đã kết thúc</Tag>;
+        }
+        if (stage === 'in_progress') {
+          return <Tag color="processing" bordered={false}>Đang diễn ra</Tag>;
+        }
 
-        return <Tag color={current.color} bordered={false}>{current.text}</Tag>;
+        const resolved = resolvePaymentStatus(record);
+        if (resolved !== 'unpaid') {
+          const current = paymentStatusMap[resolved];
+          return <Tag color={current.color} bordered={false}>{current.text}</Tag>;
+        }
+
+        if (record.status === 'confirmed') {
+          return <Tag color="blue" bordered={false}>Đã xác nhận</Tag>;
+        }
+        
+        return <Tag color="warning" bordered={false}>Chờ duyệt</Tag>;
       },
     },
     {
@@ -242,8 +265,8 @@ const BookingList = () => {
           dataSource={filteredBookings}
           rowKey="_id"
           loading={isLoading}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
-          scroll={{ x: 1100 }}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 1000 }}
         />
       </AdminListCard>
     </div>
@@ -251,3 +274,4 @@ const BookingList = () => {
 };
 
 export default BookingList;
+   

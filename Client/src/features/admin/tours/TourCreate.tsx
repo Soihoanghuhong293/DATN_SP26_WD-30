@@ -73,6 +73,24 @@ const TourCreate = () => {
 
       form.setFieldsValue({ prices: updatedPrices });
     }
+
+    // Tự động sinh lịch trình dựa trên số ngày
+    if (changedValues.duration_days !== undefined) {
+      const duration = changedValues.duration_days || 1;
+      const currentSchedule = form.getFieldValue('schedule') || [];
+      
+      let newSchedule = [...currentSchedule];
+      
+      if (duration > currentSchedule.length) {
+        for (let i = currentSchedule.length; i < duration; i++) {
+          newSchedule.push({ day: i + 1, title: '', activities: [] });
+        }
+      } else if (duration < currentSchedule.length) {
+        newSchedule = newSchedule.slice(0, duration);
+      }
+      
+      form.setFieldsValue({ schedule: newSchedule });
+    }
   };
 
   const onFinish = (values: any) => {
@@ -123,8 +141,8 @@ const TourCreate = () => {
             loading={mutation.isPending} 
             className="btn-primary-vigo font-medium rounded-lg px-6"
           >
-            Lưu & Xuất bản
-          </Button>
+            XÁC NHẬN TẠO
+          </Button>A
         </div>
 
         <Form
@@ -138,7 +156,6 @@ const TourCreate = () => {
             schedule: [{ day: 1, title: '', activities: [] }],
             prices: DEFAULT_PRICE_CATEGORIES
           }}
-          requiredMark="optional"
         >
           <Row gutter={24}>
             <Col xs={24} lg={16}>
@@ -171,36 +188,29 @@ const TourCreate = () => {
               </Card>
 
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
-                <div className="text-lg font-semibold text-gray-800 mb-4">Lịch trình chi tiết</div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">Lịch trình chi tiết</div>
+                
                 <Form.List name="schedule">
-                  {(fields, { add, remove }) => (
+                  {(fields) => (
                     <div className="space-y-4">
                       {fields.map(({ key, name, ...restField }, index) => (
                         <div key={key} className="p-4 rounded-xl bg-gray-50 border border-gray-100 relative group">
-                          <Button 
-                            type="text" danger icon={<MinusCircleOutlined />} 
-                            onClick={() => remove(name)}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          />
                           <div className="font-semibold text-purple-600 mb-3">Ngày {index + 1}</div>
                           <Form.Item {...restField} name={[name, 'day']} hidden><InputNumber /></Form.Item>
                           <Row gutter={16}>
                             <Col span={8}>
-                              <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true }]} style={{marginBottom: 0}}>
+                              <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true, message: 'Vui lòng nhập tiêu đề ngày!' }]} style={{marginBottom: 0}}>
                                 <Input placeholder="Tiêu đề (VD: Hà Nội - Sapa)" className="rounded-lg" />
                               </Form.Item>
                             </Col>
                             <Col span={16}>
-                              <Form.Item {...restField} name={[name, 'activities']} style={{marginBottom: 0}}>
+                              <Form.Item {...restField} name={[name, 'activities']} rules={[{ required: true, message: 'Vui lòng thêm ít nhất 1 hoạt động!' }]} style={{marginBottom: 0}}>
                                 <Select mode="tags" placeholder="Nhập hoạt động & Enter" open={false} className="rounded-lg" />
                               </Form.Item>
                             </Col>
                           </Row>
                         </div>
                       ))}
-                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} className="h-10 rounded-xl text-purple-600 border-purple-200 hover:border-purple-400 hover:bg-purple-50">
-                        Thêm ngày mới
-                      </Button>
                     </div>
                   )}
                 </Form.List>
@@ -362,7 +372,7 @@ const TourCreate = () => {
                   >
                     {imageFileList.length >= 8 ? null : <div>+ Tải ảnh</div>}
                   </Upload>
-                  <div className="text-xs text-gray-500 mt-2">Tối đa 8 ảnh, mỗi ảnh &lt; 10MB.</div>
+                  {/* <div className="text-xs text-gray-500 mt-2">Tối đa 8 ảnh, mỗi ảnh &lt; 10MB.</div> */}
                 </Form.Item>
                 <Form.Item name="policies" label={<span className="font-medium text-gray-600">Chính sách </span>} style={{marginBottom: 0}}>
                    <Select mode="tags" placeholder="Ví dụ: Xe đưa đón..." open={false} className="rounded-lg" />

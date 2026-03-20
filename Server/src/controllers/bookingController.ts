@@ -529,6 +529,12 @@ export const createBooking = async (req: Request, res: Response) => {
           ? incomingStatus
           : 'confirmed';
 
+    // Tính ngày kết thúc từ ngày khởi hành + duration_days của tour
+    const durationDays = Number((tour as any)?.duration_days ?? 1);
+    const start = new Date(startDateStr + 'T00:00:00.000Z');
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + Math.max(0, durationDays - 1));
+
     const newBookingData: any = {
       ...req.body,
       customer_name: normalizedCustomerName,
@@ -540,6 +546,7 @@ export const createBooking = async (req: Request, res: Response) => {
       paymentMethod: paymentMethod || req.body.payment_method || 'later',
       status: normalizedBookingStatus,
       payment_status: normalizedPaymentStatus,
+      endDate: end,
     };
     // mặc định trạng thái giai đoạn tour là "sắp khởi hành"
     if (!newBookingData.tour_stage) {
