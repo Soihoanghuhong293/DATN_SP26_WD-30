@@ -34,9 +34,9 @@ const Header = () => {
   };
 
   const items = [
-    { key: '/', label: <Link to="/">Destinations</Link> },
-    { key: '/tours', label: <Link to="/tours">Tours</Link> },
-    { key: '/guides', label: <Link to="/guides">Guides</Link> },
+    { key: '/', label: <Link to="/">Điểm đến</Link> },
+    { key: '/tours', label: <Link to="/tours">Tour</Link> },
+    { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
     { key: '/blog', label: <Link to="/blog">Blog</Link> },
   ];
 
@@ -64,19 +64,25 @@ const Header = () => {
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: '#e6f7ff',
-              borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <SendOutlined rotate={-45} style={{ fontSize: '20px', color: '#13b6ec', marginBottom: '4px' }} />
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="12" fill="url(#logo_gradient)"/>
+              <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              <defs>
+                <linearGradient id="logo_gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#13B6EC"/>
+                  <stop offset="1" stopColor="#096dd9"/>
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-            ViGo
+            <span style={{ color: '#13b6ec' }}>Vi</span>Go
           </span>
         </Link>
 
@@ -103,7 +109,7 @@ const Header = () => {
             <>
               <Link to="/login">
                 <Button type="text" style={{ fontWeight: '600', color: '#595959' }}>
-                  Log In
+                  Đăng nhập
                 </Button>
               </Link>
               <Link to="/register">
@@ -118,7 +124,7 @@ const Header = () => {
                     boxShadow: '0 4px 14px rgba(19, 182, 236, 0.4)',
                   }}
                 >
-                  Sign Up
+                  Đăng ký
                 </Button>
               </Link>
             </>
@@ -129,7 +135,7 @@ const Header = () => {
               onClick={handleLogout}
               style={{ fontWeight: 'bold', borderRadius: '8px' }}
             >
-              Logout
+              Đăng xuất
             </Button>
           )}
         </div>
@@ -162,15 +168,15 @@ const Header = () => {
           {!isLogin ? (
             <>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button block size="large" style={{ fontWeight: '600' }}>Log In</Button>
+                <Button block size="large" style={{ fontWeight: '600' }}>Đăng nhập</Button>
               </Link>
               <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                <Button block type="primary" size="large" style={{ backgroundColor: '#13b6ec', fontWeight: 'bold' }}>Sign Up</Button>
+                <Button block type="primary" size="large" style={{ backgroundColor: '#13b6ec', fontWeight: 'bold' }}>Đăng ký</Button>
               </Link>
             </>
           ) : (
              <Button block danger size="large" onClick={handleLogout} style={{ fontWeight: 'bold' }}>
-               Logout
+               Đăng xuất
              </Button>
           )}
         </div>

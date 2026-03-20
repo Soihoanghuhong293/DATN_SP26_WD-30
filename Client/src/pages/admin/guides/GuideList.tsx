@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Table, Button, Space, Tag, Popconfirm, message, Input, Select, Modal } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { getGuides, deleteGuide } from '../../../services/api';
 import type { IGuide, GuideGroupType, HealthStatus } from '../../../types/guide.types';
+import AdminPageHeader from '../../../components/admin/AdminPageHeader';
+import AdminListCard from '../../../components/admin/AdminListCard';
 
 const GuideList = () => {
   const [guides, setGuides] = useState<IGuide[]>([]);
@@ -136,7 +138,7 @@ const GuideList = () => {
       render: (average: number) => (
         <div>
           <div style={{ fontWeight: 600 }}>{average.toFixed(1)}/5</div>
-          <div style={{ fontSize: 12, color: '#666' }}>({average > 0 ? '⭐' : 'N/A'})</div>
+          <div style={{ fontSize: 12, color: '#666' }}>({average > 0 ? '⭐' : 'Chưa có'})</div>
         </div>
       ),
     },
@@ -186,58 +188,74 @@ const GuideList = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h1 style={{ margin: 0 }}>Quản lý Hướng dẫn viên</h1>
-          
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          <Input
-            placeholder="Tìm kiếm theo tên, số điện thoại..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            allowClear
-          />
-          <Select
-            placeholder="Lọc theo loại HDV"
-            value={groupTypeFilter}
-            onChange={setGroupTypeFilter}
-            allowClear
-            options={[
-              { label: 'Nội địa', value: 'domestic' },
-              { label: 'Quốc tế', value: 'international' },
-              { label: 'Chuyên tuyến', value: 'specialized_line' },
-              { label: 'Chuyên khách đoàn', value: 'group_specialist' },
-            ]}
-          />
-          <Select
-            placeholder="Lọc theo tình trạng sức khoẻ"
-            value={healthStatusFilter}
-            onChange={setHealthStatusFilter}
-            allowClear
-            options={[
-              { label: 'Bình thường', value: 'healthy' },
-              { label: 'Bệnh', value: 'sick' },
-              { label: 'Nghỉ phép', value: 'on_leave' },
-              { label: 'Đã nghỉ hưu', value: 'retired' },
-            ]}
-          />
-        </div>
-      </div>
-
-      <Table
-        columns={columns}
-        dataSource={guides.map((guide) => ({ ...guide, key: guide.id }))}
-        loading={loading}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: pagination.total,
-          onChange: (page) => fetchGuides(page),
-        }}
-        scroll={{ x: 1200 }}
+      <AdminPageHeader
+        title="Hướng dẫn viên"
+        subtitle="Quản lý danh sách hướng dẫn viên."
+        extra={
+          <Space wrap>
+            <Link to="/admin/guides/create">
+              <Button type="primary" icon={<PlusOutlined />}>
+                Thêm HDV
+              </Button>
+            </Link>
+            <Button onClick={() => fetchGuides(pagination.page)}>Tải lại</Button>
+          </Space>
+        }
       />
+
+      <AdminListCard
+        toolbar={
+          <Space wrap>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+              placeholder="Tìm theo tên hoặc SĐT..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              style={{ width: 320 }}
+            />
+            <Select
+              placeholder="Lọc theo loại HDV"
+              value={groupTypeFilter}
+              onChange={setGroupTypeFilter}
+              allowClear
+              options={[
+                { label: 'Nội địa', value: 'domestic' },
+                { label: 'Quốc tế', value: 'international' },
+                { label: 'Chuyên tuyến', value: 'specialized_line' },
+                { label: 'Chuyên khách đoàn', value: 'group_specialist' },
+              ]}
+              style={{ width: 230 }}
+            />
+            <Select
+              placeholder="Lọc theo tình trạng sức khoẻ"
+              value={healthStatusFilter}
+              onChange={setHealthStatusFilter}
+              allowClear
+              options={[
+                { label: 'Bình thường', value: 'healthy' },
+                { label: 'Bệnh', value: 'sick' },
+                { label: 'Nghỉ phép', value: 'on_leave' },
+                { label: 'Đã nghỉ hưu', value: 'retired' },
+              ]}
+              style={{ width: 240 }}
+            />
+          </Space>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={guides.map((guide) => ({ ...guide, key: guide.id }))}
+          loading={loading}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: pagination.total,
+            onChange: (page) => fetchGuides(page),
+          }}
+          scroll={{ x: 1200 }}
+        />
+      </AdminListCard>
 
       <Modal
         title="Chi tiết Hướng dẫn viên"
@@ -266,7 +284,7 @@ const GuideList = () => {
                 <div style={{ marginBottom: 16 }}>{selectedGuide.phone}</div>
 
                 <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Email</div>
-                <div style={{ marginBottom: 16 }}>{selectedGuide.email || 'N/A'}</div>
+                <div style={{ marginBottom: 16 }}>{selectedGuide.email || 'Chưa có'}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Ngày sinh</div>
@@ -291,7 +309,7 @@ const GuideList = () => {
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Chuyên ngành</div>
-                  <div style={{ marginBottom: 16 }}>{selectedGuide.experience.specialization || 'N/A'}</div>
+                  <div style={{ marginBottom: 16 }}>{selectedGuide.experience.specialization || 'Chưa có'}</div>
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>

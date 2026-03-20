@@ -1,0 +1,112 @@
+.departure-calendar {
+  --cell-h: 92px;
+  --radius: 14px;
+}
+
+.departure-calendar .ant-picker-panel {
+  border: none;
+}
+
+.departure-calendar .ant-picker-content th {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.departure-calendar .ant-picker-cell {
+  padding: 6px 4px;
+}
+
+/* AntD month view includes previous/next month days (42 cells).
+   Hide out-of-view days so user only sees current month dates. */
+.departure-calendar .ant-picker-cell:not(.ant-picker-cell-in-view) {
+  visibility: hidden;
+}
+
+.departure-calendar .ant-picker-calendar-date {
+  height: var(--cell-h);
+  border-radius: var(--radius);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* Hide AntD default day number to avoid overlap */
+.departure-calendar .ant-picker-calendar-date-value {
+  display: none;
+}
+
+.departure-calendar .ant-picker-calendar-date-content {
+  height: 100%;
+}
+
+.departure-calendar .departure-cell {
+  height: 100%;
+  border-radius: var(--radius);
+  padding: 10px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.departure-calendar .departure-cell--available {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.departure-calendar .departure-cell--selected {
+  background: #fff7ed;
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.18);
+}
+
+.departure-calendar .departure-cell--muted {
+  background: #ffffff;
+  border-color: #eef2f7;
+}
+
+.departure-calendar .departure-cell--muted .departure-cell__day {
+  color: #94a3b8;
+}
+
+.departure-calendar .departure-cell--muted .departure-cell__price,
+.departure-calendar .departure-cell--muted .departure-cell__slots {
+  color: #cbd5e1;
+}
+
+.departure-calendar .departure-cell__day {
+  font-weight: 800;
+  font-size: 18px;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.departure-calendar .departure-cell__price {
+  font-weight: 800;
+  font-size: 13px;
+  color: #dc2626;
+  line-height: 1.2;
+}
+
+.departure-calendar .departure-cell__slots {
+  font-size: 13px;
+  font-weight: 700;
+  color: #16a34a;
+  line-height: 1.2;
+}
+
+.departure-calendar .departure-cell__slots--empty {
+  color: #9ca3af;
+}
+
+.departure-calendar .ant-picker-calendar-header {
+  display: none;
+}
+
+.departure-calendar .ant-picker-calendar-mode-switch {
+  display: none;
+}
+

@@ -20,7 +20,8 @@ export interface IBooking extends Document {
   service_detail?: string;
   notes?: string;
 
-  status: "pending" | "confirmed" | "paid" | "cancelled" | "deposit" | "refunded";
+  status: "pending" | "confirmed" | "cancelled";
+  payment_status?: "unpaid" | "deposit" | "paid" | "refunded";
 
   tour_stage?: "scheduled" | "in_progress" | "completed";
 
@@ -107,8 +108,14 @@ const BookingSchema: Schema = new Schema(
 
     status: {
       type: String,
-      enum: ["pending", "confirmed", "paid", "cancelled","refunded","deposit"],
+      enum: ["pending", "confirmed", "cancelled"],
       default: "confirmed",
+    },
+
+    payment_status: {
+      type: String,
+      enum: ["unpaid", "deposit", "paid", "refunded"],
+      default: "unpaid",
     },
 
     tour_stage: {
@@ -168,12 +175,9 @@ const BookingSchema: Schema = new Schema(
 
 // validate chuyển trạng thái
 const validTransitions: Record<string, string[]> = {
-  pending: ["confirmed", "deposit", "paid", "cancelled"], // pending có thể sang các trạng thái này
-  confirmed: ["deposit", "paid", "cancelled"],
-  deposit: ["paid", "cancelled"],
-  paid: ["cancelled"], //  thanh toán thì chỉ có thể huỷ hoặc kết thúc
-  cancelled: ["refunded"], // huỷ thì chỉ được phép sang hoàn tiền
-  refunded: [], // k thể thay đổi
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["cancelled"],
+  cancelled: [],
 };
 
 BookingSchema.pre("findOneAndUpdate", async function () {

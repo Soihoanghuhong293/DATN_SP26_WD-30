@@ -9,36 +9,55 @@ interface TourCardProps {
 }
 
 const TourCard: React.FC<TourCardProps> = ({ tour }) => {
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
+  const statusLabelMap: Record<string, string> = {
+    active: 'ACTIVE',
+    draft: 'DRAFT',
+    inactive: 'INACTIVE',
+    hidden: 'HIDDEN',
   };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Kh%C3%B4ng+%E1%BA%A3nh';
+  };
+
+  const durationDays = tour.duration_days ?? tour.duration_;
 
   return (
     <Link to={`/tours/${tour.id}`} className="tour-card-link">
       <div className="tour-card">
         <div className="tour-card-image-container">
           <img
-            src={tour.images?.[0] || 'https://via.placeholder.com/300x200?text=Tour+Image'}
+            src={tour.images?.[0] || 'https://via.placeholder.com/300x200?text=%E1%BA%A2nh+tour'}
             alt={tour.name || 'Tour'}
             className="tour-card-image"
             onError={handleImageError}
           />
           <div className="tour-card-badge">
-            <span className={`badge badge-${tour.status}`}>{tour.status}</span>
+            <span className={`badge badge-${tour.status}`}>
+              {statusLabelMap[tour.status] ?? tour.status}
+            </span>
           </div>
         </div>
 
         <div className="tour-card-content">
           <h3 className="tour-card-title">{tour.name}</h3>
 
+           <div className="tour-card-meta">
+             <span className="tour-meta-code">Mã tour: {tour.id?.slice(-6).toUpperCase()}</span>
+             <span className="tour-meta-separator">•</span>
+             <span className="tour-meta-duration">{durationDays ?? '-'} ngày</span>
+           </div>
+
           <p className="tour-card-description">
-            {tour.description?.substring(0, 100)}...
+            {tour.description?.length > 140
+              ? `${tour.description.substring(0, 140)}...`
+              : tour.description}
           </p>
 
           <div className="tour-card-info">
             <div className="info-item">
               <CalendarOutlined className="info-icon" />
-              <span>{tour.duration_} ngày</span>
+              <span>{durationDays ?? '-'} ngày</span>
             </div>
             <div className="info-item">
               <EnvironmentOutlined className="info-icon" />

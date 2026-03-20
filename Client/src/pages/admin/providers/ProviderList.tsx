@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProviders } from '../../../services/api';
 import { useNavigate } from 'react-router-dom';
 import type { IProvider } from '../../../types/provider.types';
+import AdminPageHeader from '../../../components/admin/AdminPageHeader';
+import AdminListCard from '../../../components/admin/AdminListCard';
 
 const { Title, Text } = Typography;
 
@@ -99,41 +101,20 @@ const ProviderList = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Danh sách Nhà cung cấp
-        </Title>
-        <Button type="primary" onClick={() => navigate('/admin/providers/create')}>
-          Thêm nhà cung cấp mới
-        </Button>
-      </div>
-
-      <div style={{ marginTop: 16, marginBottom: 16 }}>
-        <Space wrap>
-          <Input.Search
-            allowClear
-            placeholder="Tìm theo tên, email, SĐT..."
-            style={{ width: 320 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={() => {}}
-          />
-          <Select
-            allowClear
-            placeholder="Trạng thái"
-            style={{ width: 180 }}
-            value={status}
-            onChange={(v) => setStatus(v)}
-            options={[
-              { value: 'active', label: 'Hoạt động' },
-              { value: 'inactive', label: 'Không hoạt động' },
-            ]}
-          />
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['providers'] })}>
-            Tải lại
-          </Button>
-        </Space>
-      </div>
+      <AdminPageHeader
+        title="Nhà cung cấp"
+        subtitle="Quản lý danh sách nhà cung cấp dịch vụ."
+        extra={
+          <Space wrap>
+            <Button type="primary" onClick={() => navigate('/admin/providers/create')}>
+              Thêm nhà cung cấp
+            </Button>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['providers'] })}>
+              Tải lại
+            </Button>
+          </Space>
+        }
+      />
 
       {isError ? (
         <div style={{ background: '#fff', padding: 16, border: '1px solid #eee' }}>
@@ -147,17 +128,42 @@ const ProviderList = () => {
           </div>
         </div>
       ) : (
-        <Table<IProvider>
-          loading={isLoading}
-          rowKey={(r) => r.id || r._id || Math.random().toString(16)}
-          dataSource={providers}
-          columns={columns}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: false,
-          }}
-          style={{ background: '#fff', borderRadius: 8 }}
-        />
+        <AdminListCard
+          toolbar={
+            <Space wrap>
+              <Input.Search
+                allowClear
+                placeholder="Tìm theo tên, email, SĐT..."
+                style={{ width: 320 }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onSearch={() => {}}
+              />
+              <Select
+                allowClear
+                placeholder="Trạng thái"
+                style={{ width: 180 }}
+                value={status}
+                onChange={(v) => setStatus(v)}
+                options={[
+                  { value: 'active', label: 'Hoạt động' },
+                  { value: 'inactive', label: 'Không hoạt động' },
+                ]}
+              />
+            </Space>
+          }
+        >
+          <Table<IProvider>
+            loading={isLoading}
+            rowKey={(r) => r.id || r._id || Math.random().toString(16)}
+            dataSource={providers}
+            columns={columns}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+            }}
+          />
+        </AdminListCard>
       )}
     </div>
   );

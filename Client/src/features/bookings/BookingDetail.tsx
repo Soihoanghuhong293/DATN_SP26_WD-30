@@ -85,6 +85,23 @@ const BookingDetail = () => {
     }
   });
 
+  const formatBirthDate = (val: any) => {
+    if (!val) return null;
+    const d = dayjs(val);
+    return d.isValid() ? d.format("DD/MM/YYYY") : null;
+  };
+
+  const formatGender = (val: any) => {
+    const raw = String(val || "").trim();
+    if (!raw) return "";
+    const lower = raw.toLowerCase();
+    if (lower === "male" || lower === "nam") return "Nam";
+    if (lower === "female" || lower === "nữ" || lower === "nu") return "Nữ";
+    if (lower === "other" || lower === "khác" || lower === "khac") return "Khác";
+    // Nếu backend/frontend đã lưu sẵn tiếng Việt
+    return raw;
+  };
+
   // cập nhật gueslistr
   useEffect(() => {
     if (booking?.passengers || booking?.guests || booking?.guest_list) {
@@ -96,6 +113,13 @@ const BookingDetail = () => {
     if (!booking) return null;
     return toursData?.find((t: any) => t._id === (booking.tour_id?._id || booking.tour_id)) || booking.tour_id;
   }, [booking, toursData]);
+
+  const displayEndDate = useMemo(() => {
+    if (!booking?.startDate) return null;
+    if (booking.endDate) return dayjs(booking.endDate);
+    const durationDays = Number((tourInfo as any)?.duration_days ?? 1);
+    return dayjs(booking.startDate).add(Math.max(0, durationDays - 1), 'day');
+  }, [booking?.startDate, booking?.endDate, tourInfo]);
 
   const tourProviders = useMemo(() => {
     if (!tourInfo || !tourInfo.suppliers) return [];
@@ -113,7 +137,7 @@ const BookingDetail = () => {
   const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide' || u.role === 'hdv') || [], [usersData]);
 
   const availableGuides = useMemo(() => {
-    if (!booking?.startDate || !booking?.endDate) return allGuides;
+    if (!booking?.startDate || !displayEndDate) return allGuides;
 
     return allGuides.filter((guide: any) => {
       const isBusy = allBookings?.some((b: any) => {
@@ -124,15 +148,15 @@ const BookingDetail = () => {
         if (!currentGuideId || currentGuideId !== guide._id) return false;
 
         const bStart = dayjs(b.startDate);
-        const bEnd = dayjs(b.endDate);
+        const bEnd = b.endDate ? dayjs(b.endDate) : dayjs(b.startDate).add(Math.max(0, Number((b.tour_id as any)?.duration_days ?? 1) - 1), 'day');
         const currentStart = dayjs(booking.startDate);
-        const currentEnd = dayjs(booking.endDate);
+        const currentEnd = displayEndDate;
 
         return currentStart.isSameOrBefore(bEnd, 'day') && currentEnd.isSameOrAfter(bStart, 'day');
       });
       return !isBusy;
     });
-  }, [allGuides, allBookings, booking]);
+  }, [allGuides, allBookings, booking, displayEndDate]);
 
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
@@ -184,8 +208,9 @@ const BookingDetail = () => {
     const exportData = guestList.map((guest: any, index: number) => ({
       'STT': index + 1,
       'Họ và Tên': guest.name || guest.full_name || '',
-      'Giới tính': guest.gender || '',
+      'Giới tính': formatGender(guest.gender),
       'Phân loại': guest.type || guest.age_group || 'Người lớn',
+      'Ngày sinh': formatBirthDate(guest.birthDate) || '',
       'Số điện thoại': guest.phone || guest.phoneNumber || '',
       'Số phòng': guest.room_name || guest.room || '',
       'Ghi chú': guest.note || ''
@@ -272,11 +297,23 @@ const BookingDetail = () => {
     switch (status) {
       case 'confirmed': return <Tag color="success" bordered={false}>Đã xác nhận</Tag>;
       case 'pending': return <Tag color="warning" bordered={false}>Chờ duyệt</Tag>;
-      case 'paid': return <Tag color="processing" bordered={false}>Đã thanh toán</Tag>;
       case 'cancelled': return <Tag color="error" bordered={false}>Đã hủy</Tag>;
-      case 'deposit': return <Tag color="purple" bordered={false}>Đã cọc</Tag>;
-      case 'refunded': return <Tag color="default" bordered={false}>Hoàn tiền</Tag>;
       default: return <Tag bordered={false}>{status || 'Chưa rõ'}</Tag>;
+    }
+  };
+
+  const renderPaymentStatus = (paymentStatus?: string, legacyStatus?: string) => {
+    const resolved = paymentStatus
+      || (legacyStatus === 'paid' ? 'paid'
+        : legacyStatus === 'deposit' ? 'deposit'
+        : legacyStatus === 'refunded' ? 'refunded'
+        : 'unpaid');
+
+    switch (resolved) {
+      case 'paid': return <Tag color="green">Đã thanh toán đủ</Tag>;
+      case 'deposit': return <Tag color="purple">Đã đặt cọc</Tag>;
+      case 'refunded': return <Tag color="default">Đã hoàn tiền</Tag>;
+      default: return <Tag color="warning">Chưa thanh toán</Tag>;
     }
   };
 
@@ -340,7 +377,8 @@ const BookingDetail = () => {
                 { title: 'Họ và Tên', render: (_, record) => <Text strong>{record.name || record.full_name}</Text> },
                 { title: 'Số điện thoại', dataIndex: 'phone', render: (text) => text || '---' },
                 { title: 'Loại', dataIndex: 'type', render: (t) => <Tag>{t || 'Người lớn'}</Tag> },
-                { title: 'Giới tính', dataIndex: 'gender' },
+                { title: 'Giới tính', dataIndex: 'gender', render: (g) => <span>{formatGender(g) || '---'}</span> },
+                { title: 'Ngày sinh', render: (_, record) => formatBirthDate(record.birthDate) || '---' },
                 { title: 'Phòng', dataIndex: ['room_name', 'room'] },
                 { 
                   title: '', width: 50, className: 'print:hidden',
@@ -398,11 +436,7 @@ const BookingDetail = () => {
                       {booking.total_price?.toLocaleString() || 0} ₫
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    {booking.status === 'paid' && <Tag color="green">Đã thanh toán đủ</Tag>}
-                    {booking.status === 'deposit' && <Tag color="purple">Đã đặt cọc</Tag>}
-                    {booking.status === 'refunded' && <Tag color="default">Đã hoàn tiền</Tag>}
-                    {['pending', 'confirmed'].includes(booking.status) && <Tag color="warning">Chưa thanh toán</Tag>}
-                    {booking.status === 'cancelled' && <Tag color="error">Đã hủy</Tag>}
+                    {renderPaymentStatus(booking.payment_status, booking.status)}
                   </div>
               </div>
               
@@ -415,7 +449,7 @@ const BookingDetail = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Space><CalendarOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Ngày về</Text></Space>
-                      <Text strong>{booking.endDate ? dayjs(booking.endDate).format('DD/MM/YYYY') : '---'}</Text>
+                      <Text strong>{displayEndDate ? displayEndDate.format('DD/MM/YYYY') : '---'}</Text>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Space><UserOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">HDV</Text></Space>

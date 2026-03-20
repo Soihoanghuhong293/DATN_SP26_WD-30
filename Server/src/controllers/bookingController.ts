@@ -3,6 +3,15 @@ import Booking from '../models/Booking';
 import Tour from '../models/Tour';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
+const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
+  pending: 'unpaid',
+  confirmed: 'unpaid',
+  deposit: 'deposit',
+  paid: 'paid',
+  refunded: 'refunded',
+  cancelled: 'unpaid',
+};
+
 // Lấy danh sách booking của HDV đang đăng nhập 
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
@@ -420,13 +429,37 @@ export const getBooking = async (req: Request, res: Response) => {
 // tạo đơn đặt tour mới
 export const createBooking = async (req: Request, res: Response) => {
   try {
-    const { tour_id, startDate, customer_name, customer_phone, groupSize } = req.body;
+    const {
+      tour_id,
+      startDate,
+      customer_name,
+      customerName,
+      customer_phone,
+      phone,
+      customer_email,
+      email,
+      customer_address,
+      address,
+      customer_note,
+      note,
+      total_price,
+      totalPrice,
+      groupSize,
+      paymentMethod,
+    } = req.body;
+
+    const normalizedCustomerName = customer_name || customerName;
+    const normalizedCustomerPhone = customer_phone || phone;
+    const normalizedCustomerEmail = customer_email || email;
+    const normalizedCustomerAddress = customer_address || address;
+    const normalizedCustomerNote = customer_note || note;
+    const normalizedTotalPrice = total_price ?? totalPrice;
 
     if (!tour_id || !startDate) {
       return res.status(400).json({ status: 'fail', message: 'Thiếu tour hoặc ngày khởi hành' });
     }
 
-    if (!customer_name || !customer_phone || !groupSize) {
+    if (!normalizedCustomerName || !normalizedCustomerPhone || !groupSize) {
       return res.status(400).json({ status: 'fail', message: 'Thiếu thông tin khách hàng' });
     }
 
@@ -435,7 +468,86 @@ export const createBooking = async (req: Request, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
     }
 
-    const newBookingData = { ...req.body };
+    // Validate số chỗ còn lại cho ngày khởi hành
+    const departureSchedule = (tour as any).departure_schedule || [];
+    const startDateStr = new Date(startDate).toISOString().split('T')[0]; // YYYY-MM-DD
+
+    const scheduleForDate = Array.isArray(departureSchedule)
+      ? departureSchedule.find((s: any) => {
+          if (!s?.date) return false;
+          const normalized =
+            typeof s.date === 'string'
+              ? (s.date.includes('T') ? s.date.split('T')[0] : s.date)
+              : new Date(s.date).toISOString().split('T')[0];
+          return normalized === startDateStr;
+        })
+      : null;
+
+    if (!scheduleForDate) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Ngày khởi hành không hợp lệ hoặc không có trong lịch trình của tour. Vui lòng chọn ngày khác.',
+      });
+    }
+
+    const totalSlotsForDate = scheduleForDate.slots ?? 0;
+
+    // Tính tổng groupSize của các booking không bị hủy cho cùng tour + ngày
+    const existingBookings = await Booking.find({
+      tour_id,
+      startDate: {
+        $gte: new Date(startDateStr + 'T00:00:00.000Z'),
+        $lte: new Date(startDateStr + 'T23:59:59.999Z'),
+      },
+      status: { $ne: 'cancelled' },
+    }).select('groupSize');
+
+    const usedSlots = existingBookings.reduce((sum, b: any) => sum + (b.groupSize || 0), 0);
+    const requested = Number(groupSize || 0);
+    const remaining = totalSlotsForDate - usedSlots;
+
+    if (requested > remaining) {
+      return res.status(400).json({
+        status: 'fail',
+        message: `Số chỗ còn lại cho ngày khởi hành này chỉ còn ${Math.max(
+          remaining,
+          0
+        )} chỗ. Vui lòng giảm số khách hoặc chọn ngày khác.`,
+      });
+    }
+
+    const incomingStatus = req.body?.status;
+    const normalizedPaymentStatus =
+      req.body?.payment_status ||
+      (typeof incomingStatus === 'string' ? LEGACY_PAYMENT_STATUS_MAP[incomingStatus] : undefined) ||
+      'unpaid';
+
+    const normalizedBookingStatus =
+      incomingStatus === 'cancelled'
+        ? 'cancelled'
+        : incomingStatus === 'pending' || incomingStatus === 'confirmed'
+          ? incomingStatus
+          : 'confirmed';
+
+    // Tính ngày kết thúc từ ngày khởi hành + duration_days của tour
+    const durationDays = Number((tour as any)?.duration_days ?? 1);
+    const start = new Date(startDateStr + 'T00:00:00.000Z');
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + Math.max(0, durationDays - 1));
+
+    const newBookingData: any = {
+      ...req.body,
+      customer_name: normalizedCustomerName,
+      customer_phone: normalizedCustomerPhone,
+      customer_email: normalizedCustomerEmail,
+      customer_address: normalizedCustomerAddress,
+      customer_note: normalizedCustomerNote,
+      total_price: normalizedTotalPrice ?? 0,
+      paymentMethod: paymentMethod || req.body.payment_method || 'later',
+      status: normalizedBookingStatus,
+      payment_status: normalizedPaymentStatus,
+      endDate: end,
+    };
     // mặc định trạng thái giai đoạn tour là "sắp khởi hành"
     if (!newBookingData.tour_stage) {
       newBookingData.tour_stage = 'scheduled';
@@ -506,14 +618,34 @@ export const updateBooking = async (req: Request, res: Response) => {
       });
     }
 
-    // Nếu có đổi trạng thái
-    if (req.body.status && req.body.status !== booking.status) {
+    // Nếu có đổi trạng thái đơn (booking status)
+    if (req.body.status && ['pending', 'confirmed', 'cancelled'].includes(req.body.status) && req.body.status !== booking.status) {
       logsToAdd.push({
         time: new Date(),
         user: currentUser,
         old: booking.status,
         new: req.body.status,
         note: req.body.note || 'Thay đổi trạng thái đơn'
+      });
+    }
+
+    // Nếu có đổi trạng thái thanh toán (payment status)
+    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    const nextPaymentStatus =
+      req.body.payment_status ||
+      (req.body.status && ['deposit', 'paid', 'refunded'].includes(req.body.status) ? req.body.status : undefined);
+
+    if (nextPaymentStatus && nextPaymentStatus !== currentPaymentStatus) {
+      updateData.payment_status = nextPaymentStatus;
+      if (['deposit', 'paid', 'refunded'].includes(updateData.status)) {
+        delete updateData.status;
+      }
+      logsToAdd.push({
+        time: new Date(),
+        user: currentUser,
+        old: currentPaymentStatus,
+        new: nextPaymentStatus,
+        note: req.body.note || 'Thay đổi trạng thái thanh toán',
       });
     }
 
@@ -552,6 +684,66 @@ export const deleteBooking = async (req: Request, res: Response) => {
     res.status(500).json({
       status: 'error',
       message: error.message
+    });
+  }
+};
+
+// Giả lập thanh toán MoMo (sandbox/dev) cho đơn booking
+export const initMomoPaymentMock = async (req: Request, res: Response) => {
+  try {
+    const bookingId = req.params.id;
+    const { amount, pay_type } = req.body || {};
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Không tìm thấy đơn hàng để thanh toán',
+      });
+    }
+
+    const currentUser = (req as any).user?.name || 'Khách hàng';
+    const paymentAmount = typeof amount === 'number' && amount > 0 ? amount : booking.total_price;
+
+    // Xác định trạng thái thanh toán mới dựa trên loại thanh toán
+    const nextPaymentStatus = pay_type === 'deposit' ? 'deposit' : 'paid';
+    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+
+    // Chuẩn bị log lịch sử thanh toán
+    const paymentLog = {
+      time: new Date(),
+      user: currentUser,
+      old: currentPaymentStatus,
+      new: nextPaymentStatus,
+      note: `Giả lập thanh toán MoMo (${pay_type || 'full'}) với số tiền ${paymentAmount.toLocaleString('vi-VN')}đ (sandbox/dev)`,
+    };
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      {
+        $set: {
+          payment_status: nextPaymentStatus,
+          // đơn đang pending thì khi thanh toán mock thành công sẽ xác nhận luôn
+          ...(booking.status === 'pending' ? { status: 'confirmed' } : {}),
+        },
+        $push: { logs: paymentLog },
+      },
+      { new: true, runValidators: true }
+    );
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const redirectUrl = `${clientUrl}/booking/success/${bookingId}?payment=success&gateway=momo&mode=mock`;
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Thanh toán giả lập (sandbox) thành công.',
+      payUrl: redirectUrl,
+      data: updatedBooking,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi thực hiện thanh toán giả lập',
     });
   }
 };

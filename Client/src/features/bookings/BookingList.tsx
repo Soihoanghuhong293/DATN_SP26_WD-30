@@ -5,8 +5,10 @@ import axios from 'axios';
 import { Table, Button, Space, Tag, Popconfirm, message, Typography, Tooltip, Input } from 'antd';
 import { DeleteOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import AdminListCard from '../../components/admin/AdminListCard';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface IBooking {
   _id: string;
@@ -23,13 +25,13 @@ interface IBooking {
   endDate?: string;
   groupSize: number;
 
-  status:
-    | 'pending'
-    | 'confirmed'
-    | 'paid'
-    | 'cancelled'
-    | 'deposit'
-    | 'refunded';
+  // Trạng thái đơn (booking_status)
+  status: 'pending' | 'confirmed' | 'cancelled';
+  // Trạng thái thanh toán (payment_status)
+  payment_status?: 'unpaid' | 'deposit' | 'paid' | 'refunded';
+
+  // Giai đoạn tour do HDV cập nhật
+  tour_stage?: 'scheduled' | 'in_progress' | 'completed';
 
   created_at: string;
 }
@@ -85,14 +87,25 @@ const BookingList = () => {
     });
   }, [bookings, searchText]);
 
-  const statusMap = {
-    pending: { color: 'warning', text: 'Chờ duyệt' },
-    confirmed: { color: 'processing', text: 'Đã xác nhận' },
-    paid: { color: 'success', text: 'Đã thanh toán' },
-    cancelled: { color: 'error', text: 'Đã hủy' },
-    deposit: { color: 'purple', text: 'Đã cọc' },
-    refunded: { color: 'default', text: 'Hoàn tiền' },
+  const paymentStatusMap = {
+    unpaid: { color: 'warning', text: 'Chưa thanh toán' },
+    deposit: { color: 'purple', text: 'Đã đặt cọc' },
+    paid: { color: 'success', text: 'Đã thanh toán đủ' },
+    refunded: { color: 'default', text: 'Đã hoàn tiền' },
   } as const;
+
+  const resolvePaymentStatus = (record: IBooking) => {
+    if (record.status === 'cancelled') return 'unpaid' as const;
+    if (record.payment_status) return record.payment_status;
+
+    // Tương thích dữ liệu cũ (nếu từng lưu paid/deposit/refunded trong status)
+    const legacy = record.status as any;
+    if (legacy === 'paid') return 'paid' as const;
+    if (legacy === 'deposit') return 'deposit' as const;
+    if (legacy === 'refunded') return 'refunded' as const;
+
+    return 'unpaid' as const;
+  };
 
   const columns = [
     {
@@ -123,19 +136,24 @@ const BookingList = () => {
     {
       title: 'Tour & Thời gian',
       key: 'tour',
-      render: (_: any, record: IBooking) => (
-        <div>
-          <Tooltip title={record.tour_id?.name}>
-            <div className="font-bold truncate max-w-[200px]">
-              {record.tour_id?.name || 'Tour đã bị xóa'}
+      render: (_: any, record: IBooking) => {
+        const durationDays = Number((record.tour_id as any)?.duration_days ?? 1);
+        const displayEndDate = record.endDate
+          ? dayjs(record.endDate)
+          : dayjs(record.startDate).add(Math.max(0, durationDays - 1), 'day');
+        return (
+          <div>
+            <Tooltip title={record.tour_id?.name}>
+              <div className="font-bold truncate max-w-[200px]">
+                {record.tour_id?.name || 'Tour đã bị xóa'}
+              </div>
+            </Tooltip>
+            <div className="text-xs text-gray-500 mt-1">
+              {dayjs(record.startDate).format('DD/MM/YYYY')} - {displayEndDate.format('DD/MM/YYYY')}
             </div>
-          </Tooltip>
-          <div className="text-xs text-gray-500 mt-1">
-            {dayjs(record.startDate).format('DD/MM/YYYY')}
-            {record.endDate && ` - ${dayjs(record.endDate).format('DD/MM/YYYY')}`}
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Khách',
@@ -161,16 +179,29 @@ const BookingList = () => {
       title: 'Trạng thái',
       key: 'status',
       render: (_: any, record: IBooking) => {
-        const current = statusMap[record.status] || {
-          color: 'default',
-          text: 'Không rõ',
-        };
+        if (record.status === 'cancelled') {
+          return <Tag color="error" bordered={false}>Đã hủy</Tag>;
+        }
 
-        return (
-          <Tag color={current.color} bordered={false} className="px-2 py-1 text-sm font-medium">
-            {current.text}
-          </Tag>
-        );
+        const stage = record.tour_stage || 'scheduled';
+        if (stage === 'completed') {
+          return <Tag color="success" bordered={false}>Đã kết thúc</Tag>;
+        }
+        if (stage === 'in_progress') {
+          return <Tag color="processing" bordered={false}>Đang diễn ra</Tag>;
+        }
+
+        const resolved = resolvePaymentStatus(record);
+        if (resolved !== 'unpaid') {
+          const current = paymentStatusMap[resolved];
+          return <Tag color={current.color} bordered={false}>{current.text}</Tag>;
+        }
+
+        if (record.status === 'confirmed') {
+          return <Tag color="blue" bordered={false}>Đã xác nhận</Tag>;
+        }
+        
+        return <Tag color="warning" bordered={false}>Chờ duyệt</Tag>;
       },
     },
     {
@@ -204,36 +235,43 @@ const BookingList = () => {
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
-        <Title level={3} className="m-0">
-          Quản lý Đơn Hàng
-        </Title>
-      </div>
-
-      {/* SEARCH */}
-      <div className="mb-4">
-        <Input
-          prefix={<SearchOutlined />}
-          placeholder="Tìm kiếm..."
-          allowClear
-          size="large"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="max-w-md"
-        />
-      </div>
-
-      {/* TABLE */}
-      <Table
-        columns={columns}
-        dataSource={filteredBookings}
-        rowKey="_id"
-        loading={isLoading}
-        pagination={{ pageSize: 10 }}
+    <div>
+      <AdminPageHeader
+        title="Đơn đặt tour"
+        subtitle="Quản lý booking và thao tác cơ bản."
+        extra={
+          <Space wrap>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['bookings'] })}>
+              Tải lại
+            </Button>
+          </Space>
+        }
       />
+
+      <AdminListCard
+        toolbar={
+          <Input
+            prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
+            placeholder="Tìm theo khách, tour hoặc mã..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            style={{ maxWidth: 420 }}
+          />
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredBookings}
+          rowKey="_id"
+          loading={isLoading}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 1000 }}
+        />
+      </AdminListCard>
     </div>
   );
 };
 
 export default BookingList;
+   

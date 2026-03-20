@@ -388,7 +388,7 @@ const TourDetail = () => {
             <Breadcrumb 
                 items={[
                     { title: <Link to="/admin"><HomeOutlined /></Link> },
-                    { title: <Link to="/admin/tours">Tours</Link> },
+                    { title: <Link to="/admin/tours">Tour</Link> },
                     { title: 'Chi tiết tour' },
                 ]} 
             />
@@ -413,7 +413,7 @@ const TourDetail = () => {
                         <Text type="secondary">ID: {tour._id}</Text>
                         <Divider type="vertical" />
                         <Tag color={tour.status === 'active' ? 'success' : 'warning'} bordered={false}>
-                            {tour.status === 'active' ? 'Active' : 'Draft'}
+                    {tour.status === 'active' ? 'Đang hoạt động' : 'Bản nháp'}
                         </Tag>
                     </Space>
                 </div>
