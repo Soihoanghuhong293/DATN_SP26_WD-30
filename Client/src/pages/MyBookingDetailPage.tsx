@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Card, Descriptions, Empty, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
+import { Button, Card, Descriptions, Empty, Space, Spin, Tag, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import './styles/MyBookingDetailPage.css';
 
@@ -17,6 +17,33 @@ const statusMap: Record<string, { color: string; text: string }> = {
   paid: { color: 'success', text: 'Đã thanh toán' },
   deposit: { color: 'purple', text: 'Đã cọc' },
   refunded: { color: 'default', text: 'Hoàn tiền' }
+};
+
+const getFriendlyStatusText = (status: string): string => {
+  const map: Record<string, string> = {
+    pending: 'Chờ duyệt',
+    confirmed: 'Đã xác nhận',
+    cancelled: 'Đã hủy',
+    paid: 'Đã thanh toán',
+    deposit: 'Đã cọc',
+    refunded: 'Hoàn tiền'
+  };
+  return map[status] || status;
+};
+
+const getFriendlyLogMessage = (log: { old?: string; new?: string; note?: string }): string => {
+  const oldStatus = (log.old || '').toLowerCase();
+  const newStatus = (log.new || '').toLowerCase();
+  if (oldStatus === 'khởi tạo' || !oldStatus) {
+    if (newStatus === 'confirmed') return 'Đơn của bạn đã được xác nhận';
+    if (newStatus === 'pending') return 'Đơn đã được gửi, đang chờ xử lý';
+  }
+  if (newStatus === 'paid') return 'Đã thanh toán đủ';
+  if (newStatus === 'deposit') return 'Đã đặt cọc';
+  if (newStatus === 'cancelled') return 'Đơn đã được hủy';
+  if (newStatus === 'refunded') return 'Đã hoàn tiền';
+  if (newStatus === 'confirmed') return 'Đơn đã được xác nhận';
+  return log.note || `${getFriendlyStatusText(log.old || '')} → ${getFriendlyStatusText(log.new || '')}`;
 };
 
 const getAuthHeader = () => ({
@@ -133,26 +160,25 @@ const MyBookingDetailPage = () => {
           </Descriptions.Item>
         </Descriptions>
 
-        <Card title="Lịch sử trạng thái" className="my-booking-detail__history">
+        <Card title="Tiến trình đơn hàng" className="my-booking-detail__history">
           {logs.length === 0 ? (
-            <Empty description="Chưa có lịch sử xử lý" />
+            <div className="my-booking-detail__progress-empty">Chưa có cập nhật</div>
           ) : (
-            <Timeline
-              items={logs.map((log: any) => ({
-                children: (
-                  <div>
-                    <div className="my-booking-detail__timeline-time">
-                      {log.time || dayjs(log.created_at).format('DD/MM/YYYY HH:mm')}
+            <div className="my-booking-detail__progress-list">
+              {logs.map((log: any, idx: number) => (
+                <div key={idx} className="my-booking-detail__progress-item">
+                  <div className="my-booking-detail__progress-dot" />
+                  <div className="my-booking-detail__progress-content">
+                    <div className="my-booking-detail__progress-message">
+                      {getFriendlyLogMessage(log)}
                     </div>
-                    <div className="my-booking-detail__timeline-user">{log.user || 'Hệ thống'}</div>
-                    <div className="my-booking-detail__timeline-change">
-                      {log.old || 'Khởi tạo'} -&gt; {log.new || 'Cập nhật'}
+                    <div className="my-booking-detail__progress-time">
+                      {log.time || dayjs(log.created_at).format('DD/MM/YYYY · HH:mm')}
                     </div>
-                    {log.note ? <div className="my-booking-detail__timeline-note">"{log.note}"</div> : null}
                   </div>
-                )
-              }))}
-            />
+                </div>
+              ))}
+            </div>
           )}
         </Card>
       </Card>

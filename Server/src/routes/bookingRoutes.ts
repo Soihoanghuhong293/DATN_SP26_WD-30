@@ -17,7 +17,7 @@ router.patch('/guide/:id/diary', protect, restrictToGuide, bookingController.add
 router
   .route('/')
   .get(protect, restrictToAdmin, bookingController.getAllBookings) 
-  .post(bookingController.createBooking); 
+  .post(protect, bookingController.createBooking); 
 
 router
   .route('/:id')
