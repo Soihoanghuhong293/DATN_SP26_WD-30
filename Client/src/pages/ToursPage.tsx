@@ -7,6 +7,15 @@ import { ITour } from '../types/tour.types';
 import TourCard from '../components/Client/TourCard';
 import './styles/ToursPage.css';
 
+const normalizeGroupName = (name?: string) => {
+  const n = String(name || '').trim();
+  if (!n) return '';
+  return n
+    .replace(/\s*\(\s*\d{1,2}\/\d{1,2}\/\d{4}\s*\)\s*$/i, '')
+    .replace(/\s*\(\s*copy\s*\)\s*$/i, '')
+    .trim();
+};
+
 const ToursPage = () => {
   const [tours, setTours] = useState<ITour[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,19 +42,64 @@ const ToursPage = () => {
     const fetchTours = async () => {
       try {
         setLoading(true);
+        // Tour instances được tách theo ngày khởi hành.
+        // Ở trang khách hàng: gộp lại thành 1 sản phẩm tour, paginate phía client.
         const data = await getTours({
-          page: currentPage,
-          limit: pageSize,
+          page: 1,
+          limit: 2000,
           status: statusFilter || undefined,
           search: debouncedSearch || undefined,
           ...mapBudgetToPriceRange(budgetFilter),
           departureDate: departureDate || undefined,
         });
         
-        // Server returns `data` as an array of tours
-        setTours(Array.isArray(data.data) ? data.data : []);
-        
-        setTotal(data.total || data.results || 0);
+        const instances = Array.isArray(data.data) ? (data.data as ITour[]) : [];
+
+        // Group theo tên tour (tạo 1 card cho nhiều ngày khởi hành)
+        const byName = new Map<string, ITour[]>();
+        for (const t of instances) {
+          const groupKey = normalizeGroupName(t.name);
+          if (!groupKey) continue;
+          const arr = byName.get(groupKey) || [];
+          arr.push(t);
+          byName.set(groupKey, arr);
+        }
+
+        const grouped: ITour[] = Array.from(byName.entries()).map(([groupKey, group]) => {
+          // chọn instance có ngày khởi hành sớm nhất (nếu có) làm đại diện để link detail
+          const sorted = [...group].sort((a: any, b: any) => {
+            const aDate = String((a as any)?.departure_schedule?.[0]?.date || '').slice(0, 10);
+            const bDate = String((b as any)?.departure_schedule?.[0]?.date || '').slice(0, 10);
+            const av = aDate ? dayjs(aDate).valueOf() : Number.MAX_SAFE_INTEGER;
+            const bv = bDate ? dayjs(bDate).valueOf() : Number.MAX_SAFE_INTEGER;
+            return av - bv;
+          });
+          const rep = sorted[0] || group[0];
+          // prefer ảnh nếu rep thiếu
+          const anyWithImage = group.find((x) => Array.isArray(x.images) && x.images.length > 0);
+          const images = (rep.images?.length ? rep.images : anyWithImage?.images) || [];
+
+          return {
+            ...rep,
+            name: groupKey,
+            images,
+            // attach instance list for detail page (không dùng ở TourCard, nhưng hữu ích nếu cần)
+            ...( { _instances: group } as any ),
+          } as ITour;
+        });
+
+        // sort theo created_at mới nhất nếu có
+        grouped.sort((a: any, b: any) => {
+          const av = a.created_at ? dayjs(a.created_at).valueOf() : 0;
+          const bv = b.created_at ? dayjs(b.created_at).valueOf() : 0;
+          return bv - av;
+        });
+
+        setTotal(grouped.length);
+
+        const startIdx = (currentPage - 1) * pageSize;
+        const pageItems = grouped.slice(startIdx, startIdx + pageSize);
+        setTours(pageItems);
       } catch (error) {
         console.error('Error fetching tours:', error);
         setTours([]);

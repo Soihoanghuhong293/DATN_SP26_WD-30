@@ -28,6 +28,9 @@ const TourCreate = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
+  const [rawTourName, setRawTourName] = useState<string>('');
+  const [selectedDepartureDate, setSelectedDepartureDate] = useState<any>(null);
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -43,6 +46,16 @@ const TourCreate = () => {
     queryFn: () => getProviders({ status: 'active' }),
   });
   const providers = providersData?.data?.providers ?? [];
+
+  const { data: tourTemplates = [] } = useQuery({
+    queryKey: ['tour-templates'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/tour-templates', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data?.data || res.data || [];
+    },
+  });
 
   const mutation = useMutation({
     mutationFn: async (values: any) => {
@@ -93,9 +106,70 @@ const TourCreate = () => {
     }
   };
 
+  const applyTemplateToForm = async (templateId: string) => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/v1/tour-templates/${templateId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      const tpl = res.data?.data || res.data;
+      if (!tpl) return;
+
+      // Không đụng departure_schedule vì tour thật sẽ set theo lịch khởi hành
+      form.setFieldsValue({
+        name: tpl.name ? `${tpl.name} ` : undefined,
+        description: tpl.description || '',
+        duration_days: Number(tpl.duration_days || 1),
+        category_id: tpl.category_id?._id || tpl.category_id,
+        schedule: Array.isArray(tpl.schedule) && tpl.schedule.length ? tpl.schedule : [{ day: 1, title: '', activities: [] }],
+        policies: Array.isArray(tpl.policies) ? tpl.policies : [],
+        suppliers: Array.isArray(tpl.suppliers) ? tpl.suppliers : [],
+      });
+
+      // Đồng bộ ảnh từ template sang tour (dạng fileList của Upload)
+      const tplImages: string[] = Array.isArray(tpl.images) ? tpl.images.filter(Boolean) : [];
+      if (tplImages.length) {
+        setImageFileList(
+          tplImages.slice(0, 8).map((url: string, idx: number) => ({
+            uid: `tpl-${templateId}-${idx}`,
+            name: `template-${idx + 1}`,
+            status: 'done',
+            url,
+          }))
+        );
+      } else {
+        setImageFileList([]);
+      }
+      message.success('Đã áp dụng template vào form');
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || 'Không thể tải template');
+    }
+  };
+
   const onFinish = (values: any) => {
     const finalValues = { ...values };
     finalValues.suppliers = Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []);
+
+    // template tồn tại (backend validate); frontend gửi template_id nếu chọn template
+    if (selectedTemplateId) {
+      finalValues.template_id = selectedTemplateId;
+    }
+
+    // Admin chỉ hiển thị tên có ngày, DB vẫn lưu tên gốc
+    if (rawTourName && typeof rawTourName === 'string') {
+      finalValues.name = rawTourName.trim();
+    }
+
+    // Mỗi tour instance chỉ có 1 ngày khởi hành
+    if (!values.departure_date || !values.departure_slots) {
+      message.error('Vui lòng chọn 1 ngày khởi hành và nhập số chỗ.');
+      return;
+    }
+    finalValues.departure_schedule = [
+      {
+        date: values.departure_date.format('YYYY-MM-DD'),
+        slots: Number(values.departure_slots || 0),
+      },
+    ];
 
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
@@ -107,12 +181,9 @@ const TourCreate = () => {
     }
     finalValues.images = imageUrls;
 
-    if (finalValues.departure_schedule) {
-      finalValues.departure_schedule = finalValues.departure_schedule.map((item: any) => ({
-        ...item,
-        date: item.date ? item.date.format('YYYY-MM-DD') : null
-      })).filter((item: any) => item.date);
-    }
+    // Xoá field phụ trợ chỉ dùng cho form
+    delete finalValues.departure_date;
+    delete finalValues.departure_slots;
 
     mutation.mutate(finalValues);
   };
@@ -161,8 +232,39 @@ const TourCreate = () => {
             <Col xs={24} lg={16}>
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Thông tin cơ bản</div>
-                <Form.Item name="name" label={<span className="font-medium text-gray-600">Tên Tour</span>} rules={[{ required: true, message: 'Vui lòng nhập tên tour!' }]}>
-                  <Input placeholder="Ví dụ: Khám phá Hà Giang 3N2Đ..." size="large" className="rounded-lg" />
+                <Form.Item label={<span className="font-medium text-gray-600">Chọn Template (tuỳ chọn)</span>}>
+                  <Select
+                    size="large"
+                    placeholder="Chọn template để đổ dữ liệu..."
+                    value={selectedTemplateId}
+                    onChange={(v) => {
+                      setSelectedTemplateId(v);
+                      if (v) applyTemplateToForm(v);
+                    }}
+                    allowClear
+                    className="rounded-lg"
+                    options={(tourTemplates || []).map((t: any) => ({
+                      value: t._id,
+                      label: `${t.name} • ${t.duration_days || 1} ngày`,
+                    }))}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="name"
+                  label={<span className="font-medium text-gray-600">Tên Tour (Admin hiển thị kèm ngày khởi hành)</span>}
+                  rules={[{ required: true, message: 'Vui lòng nhập tên tour!' }]}
+                >
+                  <Input
+                    placeholder="Ví dụ: Khám phá Hà Giang 3N2Đ..."
+                    size="large"
+                    className="rounded-lg"
+                    onChange={(e) => {
+                      const v = e.target.value || '';
+                      // nếu đang hiển thị tên có ngày, admin sửa lại sẽ cập nhật rawName theo phần trước dấu (
+                      const raw = v.split('(')[0].trim();
+                      setRawTourName(raw);
+                    }}
+                  />
                 </Form.Item>
 
                 <Row gutter={16}>
@@ -218,34 +320,50 @@ const TourCreate = () => {
 
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Lịch khởi hành & Số chỗ</div>
-                <Form.List name="departure_schedule">
-                  {(fields, { add, remove }) => (
-                    <div className="space-y-4">
-                      {fields.map(({ key, name, ...restField }) => (
-                        <Space key={key} align="baseline" className="w-full bg-gray-50 p-3 rounded-lg">
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'date']}
-                            rules={[{ required: true, message: 'Chọn ngày!' }]}
-                            className="flex-1 mb-0"
-                          >
-                            <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" className="w-full" />
-                          </Form.Item>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'slots']}
-                            rules={[{ required: true, message: 'Nhập số chỗ!' }]}
-                            className="mb-0"
-                          >
-                            <InputNumber min={1} placeholder="Số chỗ" />
-                          </Form.Item>
-                          <MinusCircleOutlined onClick={() => remove(name)} className="text-gray-400 hover:text-red-500" />
-                        </Space>
-                      ))}
-                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày khởi hành</Button>
+                <div className="w-full bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <Row gutter={16}>
+                    <Col xs={24} md={14}>
+                      <Form.Item
+                        name="departure_date"
+                        label={<span className="font-medium text-gray-600">Ngày khởi hành</span>}
+                        rules={[{ required: true, message: 'Chọn ngày khởi hành!' }]}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <DatePicker
+                          format="DD/MM/YYYY"
+                          placeholder="Chọn 1 ngày khởi hành"
+                          className="w-full"
+                          onChange={(v) => {
+                            setSelectedDepartureDate(v);
+                            const currentName = form.getFieldValue('name') || '';
+                            const base = (rawTourName || currentName || '').split('(')[0].trim();
+                            setRawTourName(base);
+                            if (v && base) {
+                              form.setFieldsValue({ name: `${base} (${v.format('DD/MM/YYYY')})` });
+                            } else if (base) {
+                              form.setFieldsValue({ name: base });
+                            }
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={10}>
+                      <Form.Item
+                        name="departure_slots"
+                        label={<span className="font-medium text-gray-600">Số chỗ</span>}
+                        rules={[{ required: true, message: 'Nhập số chỗ!' }]}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <InputNumber min={1} placeholder="VD: 25" className="w-full" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  {selectedDepartureDate ? (
+                    <div className="text-xs text-gray-500 mt-3">
+                      Admin hiển thị: <b>{rawTourName || form.getFieldValue('name')}</b> — Khách hàng chỉ thấy tên gốc.
                     </div>
-                  )}
-                </Form.List>
+                  ) : null}
+                </div>
               </Card>
             </Col>
 

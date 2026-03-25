@@ -99,6 +99,16 @@ const AdminSidebar = () => {
                 icon: <PlusCircleOutlined />,
                 label: <Link to="/admin/tours/create">Thêm Tour mới</Link>,
               },
+              {
+                key: "/admin/tour-templates",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/tour-templates">Tour Templates</Link>,
+              },
+              {
+                key: "/admin/tour-templates/create",
+                icon: <PlusCircleOutlined />,
+                label: <Link to="/admin/tour-templates/create">Thêm Template</Link>,
+              },
             ],
           },
 

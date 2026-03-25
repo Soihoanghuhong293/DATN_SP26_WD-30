@@ -42,6 +42,9 @@ import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
 import HolidayPricingList from '../components/layout/HolidayPricingList';
 import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
+import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
+import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
+import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
 
 const AppRoutes = () => {
   return (
@@ -77,6 +80,10 @@ const AppRoutes = () => {
         <Route path="tours/create" element={<TourCreate />} />
         <Route path="tours/:id" element={<TourDetail />} />
         <Route path="tours/:id/edit" element={<TourEdit />} />
+
+        <Route path="tour-templates" element={<TourTemplateList />} />
+        <Route path="tour-templates/create" element={<TourTemplateCreate />} />
+        <Route path="tour-templates/:id/edit" element={<TourTemplateEdit />} />
 
         <Route path="guides" element={<GuideList />} />
        

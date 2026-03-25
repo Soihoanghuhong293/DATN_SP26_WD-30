@@ -13,6 +13,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import AdminPageHeader from '../../../components/admin/AdminPageHeader';
 import AdminListCard from '../../../components/admin/AdminListCard';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -25,6 +26,7 @@ interface ITour {
   duration_days: number;
   status: string;
   category_id?: { name: string } | string;
+  departure_schedule?: { date: string; slots: number }[];
 }
 
 const TourList = () => {
@@ -65,6 +67,10 @@ const TourList = () => {
       width: 350,
       render: (_, record) => {
         const imgLink = record.image || (record.images && record.images[0]);
+        const departureDate = record.departure_schedule?.[0]?.date
+          ? dayjs(record.departure_schedule[0].date).format('DD/MM/YYYY')
+          : null;
+        const displayName = departureDate ? `${record.name} (${departureDate})` : record.name;
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ 
@@ -78,7 +84,7 @@ const TourList = () => {
                 />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text strong style={{ fontSize: 14, color: '#111827' }}>{record.name}</Text>
+              <Text strong style={{ fontSize: 14, color: '#111827' }}>{displayName}</Text>
               <Text type="secondary" style={{ fontSize: 12 }}>
                 ID: <span style={{ fontFamily: 'monospace' }}>{record._id.slice(-6).toUpperCase()}</span>
               </Text>
