@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, Typography, Button, Spin, message } from 'antd';
+import { Card, Typography, Button, Spin, message, Result } from 'antd';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
@@ -96,6 +96,25 @@ const BookingPaymentPage: React.FC = () => {
     );
   }
 
+  if (paymentStatus === 'paid') {
+    return (
+      <div style={{ padding: '40px 20px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        <Card style={{ maxWidth: 600, margin: '0 auto', borderRadius: 12, textAlign: 'center' }}>
+          <Result
+            status="success"
+            title="Đơn hàng đã thanh toán đủ"
+            subTitle="Bạn không cần thực hiện thêm thanh toán."
+            extra={[
+              <Button key="back" type="primary" size="large" onClick={() => navigate(`/booking/success/${id}`)}>
+                Quay lại đơn hàng
+              </Button>,
+            ]}
+          />
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '40px 20px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       <Card
@@ -153,7 +172,7 @@ const BookingPaymentPage: React.FC = () => {
             size="large"
             onClick={handleConfirmScanned}
             loading={processing}
-            disabled={paymentStatus === 'paid' || paymentAmount <= 0}
+            disabled={paymentAmount <= 0}
           >
             Xác nhận đã quét
           </Button>
