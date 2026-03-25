@@ -57,6 +57,7 @@ const BookingSuccessPage = () => {
   const isDeposit = paymentMethod === 'deposit';
   const isLater = paymentMethod === 'later';
   const paymentAmount = isLater ? 0 : (isDeposit ? Math.round(totalPrice * 0.3) : totalPrice);
+  const remainingAmount = isDeposit ? Math.max(0, totalPrice - paymentAmount) : 0;
   const paymentStatusInfo = getPaymentStatusInfo(booking);
   const bookingStatusInfo = getBookingStatusInfo(booking);
 
@@ -124,6 +125,14 @@ const BookingSuccessPage = () => {
              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#ff4d4f', margin: '4px 0 16px' }}>
                 {paymentAmount.toLocaleString()} ₫
              </div>
+
+             {isDeposit && (
+               <div style={{ marginTop: -8, marginBottom: 16 }}>
+                 <Text type="secondary">
+                   Số tiền còn lại cần thanh toán sau: <b>{remainingAmount.toLocaleString()} ₫</b>
+                 </Text>
+               </div>
+             )}
              
              <Space size="middle">
                <Button size="large" onClick={() => navigate('/')}>Về trang chủ</Button>

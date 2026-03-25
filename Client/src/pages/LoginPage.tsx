@@ -18,6 +18,7 @@ const LoginPage = () => {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("user_email", values.email);
+      window.dispatchEvent(new Event("auth:changed"));
 
       message.success("Đăng nhập thành công");
 
