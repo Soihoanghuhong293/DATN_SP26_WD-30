@@ -53,11 +53,22 @@ const BookingSuccessPage = () => {
   if (!booking) return <div style={{ textAlign: 'center', marginTop: 100 }}>Không tìm thấy đơn hàng.</div>;
 
   const totalPrice = booking.total_price || booking.totalPrice || 0;
+  const paymentStatus = booking?.payment_status
+    || (booking?.status === 'paid' ? 'paid'
+      : booking?.status === 'deposit' ? 'deposit'
+      : booking?.status === 'refunded' ? 'refunded'
+      : 'unpaid');
   const paymentMethod = booking.paymentMethod || 'full';
   const isDeposit = paymentMethod === 'deposit';
   const isLater = paymentMethod === 'later';
-  const paymentAmount = isLater ? 0 : (isDeposit ? Math.round(totalPrice * 0.3) : totalPrice);
-  const remainingAmount = isDeposit ? Math.max(0, totalPrice - paymentAmount) : 0;
+  const depositAmount = Number(booking?.deposit_amount || Math.round(Number(totalPrice || 0) * 0.3));
+  const remainingAmount = Math.max(0, Number(totalPrice || 0) - depositAmount);
+  const paymentAmount =
+    isLater ? 0
+    : paymentStatus === 'paid' ? 0
+    : paymentStatus === 'deposit' ? remainingAmount
+    : isDeposit ? depositAmount
+    : totalPrice;
   const paymentStatusInfo = getPaymentStatusInfo(booking);
   const bookingStatusInfo = getBookingStatusInfo(booking);
 
@@ -126,7 +137,7 @@ const BookingSuccessPage = () => {
                 {paymentAmount.toLocaleString()} ₫
              </div>
 
-             {isDeposit && (
+             {isDeposit && paymentStatus !== 'paid' && (
                <div style={{ marginTop: -8, marginBottom: 16 }}>
                  <Text type="secondary">
                    Số tiền còn lại cần thanh toán sau: <b>{remainingAmount.toLocaleString()} ₫</b>
@@ -140,10 +151,10 @@ const BookingSuccessPage = () => {
                  type="primary"
                  size="large"
                  onClick={() => setIsModalOpen(true)}
-                 disabled={isLater || paymentAmount <= 0}
+                 disabled={isLater || paymentAmount <= 0 || paymentStatus === 'paid'}
                  style={{ height: 48, padding: '0 40px', fontSize: 16, fontWeight: 600 }}
                >
-                 THANH TOÁN NGAY
+                 {paymentStatus === 'deposit' ? 'THANH TOÁN PHẦN CÒN LẠI' : 'THANH TOÁN NGAY'}
                </Button>
              </Space>
           </div>
@@ -155,7 +166,7 @@ const BookingSuccessPage = () => {
             onCancel={() => setIsModalOpen(false)}
             okText="Tiếp tục"
             cancelText="Đóng"
-            okButtonProps={{ disabled: isLater || paymentAmount <= 0 }}
+            okButtonProps={{ disabled: isLater || paymentAmount <= 0 || paymentStatus === 'paid' }}
           >
             <div style={{ marginBottom: 16 }}>
               <Text>Số tiền cần thanh toán: </Text>

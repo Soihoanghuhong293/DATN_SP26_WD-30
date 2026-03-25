@@ -715,7 +715,8 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
       });
     }
 
-    const normalizedPayType = pay_type === 'deposit' ? 'deposit' : 'full';
+    const rawPayType = String(pay_type || '').trim().toLowerCase();
+    const normalizedPayType = rawPayType === 'deposit' ? 'deposit' : rawPayType === 'remaining' ? 'remaining' : 'full';
 
     // Nếu booking chọn "thanh toán sau" thì cho phép thanh toán full hoặc deposit (tuỳ bạn muốn siết chặt)
     // Nếu booking chọn "đặt cọc" thì cho phép deposit trước, và full để thanh toán phần còn lại.
@@ -734,12 +735,37 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
       });
     }
 
+    const existingDepositAmount = Number((booking as any).deposit_amount || 0);
+    const computedDepositAmount = Math.round(total * 0.3);
+    const depositAmount = existingDepositAmount > 0 ? existingDepositAmount : computedDepositAmount;
+
     // Backend tự tính số tiền để tránh client sửa amount
-    const depositAmount = Math.round(total * 0.3);
-    const paymentAmount = normalizedPayType === 'deposit' ? depositAmount : total;
+    let paymentAmount = 0;
+    if (normalizedPayType === 'deposit') paymentAmount = depositAmount;
+    else if (normalizedPayType === 'remaining') paymentAmount = Math.max(0, total - depositAmount);
+    else paymentAmount = total;
+
+    if (normalizedPayType === 'remaining') {
+      if (currentPaymentStatus !== 'deposit') {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Chỉ có thể thanh toán phần còn lại sau khi đã đặt cọc.',
+        });
+      }
+      if (paymentAmount <= 0) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Không còn số tiền nào để thanh toán.',
+        });
+      }
+    }
 
     // Xác định trạng thái thanh toán mới dựa trên loại thanh toán
     const nextPaymentStatus = normalizedPayType === 'deposit' ? 'deposit' : 'paid';
+
+    const nextDepositAmount = normalizedPayType === 'deposit' ? depositAmount : (existingDepositAmount > 0 ? existingDepositAmount : (method === 'deposit' ? depositAmount : 0));
+    const nextPaidAmount = normalizedPayType === 'deposit' ? depositAmount : total;
+    const nextRemainingAmount = normalizedPayType === 'deposit' ? Math.max(0, total - depositAmount) : 0;
 
     // Chuẩn bị log lịch sử thanh toán
     const paymentLog = {
@@ -755,6 +781,9 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
       {
         $set: {
           payment_status: nextPaymentStatus,
+          deposit_amount: nextDepositAmount,
+          paid_amount: nextPaidAmount,
+          remaining_amount: nextRemainingAmount,
           // đơn đang pending thì khi thanh toán mock thành công sẽ xác nhận luôn
           ...(booking.status === 'pending' ? { status: 'confirmed' } : {}),
         },
