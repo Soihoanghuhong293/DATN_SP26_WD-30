@@ -1,7 +1,7 @@
 import { Button, Card, Form, Input, Select, Space, Typography, message, Spin } from 'antd';
 import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { getCategory, updateCategory } from '../../../services/api';
+import { getCategories, getCategory, updateCategory } from '../../../services/api';
 import type { ICategory } from '../../../types/tour.types';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ type FormValues = {
   name: string;
   description?: string;
   status: 'active' | 'inactive';
+  parent_id?: string | null;
 };
 
 const CategoryEdit = () => {
@@ -31,6 +32,12 @@ const CategoryEdit = () => {
 
   const category: ICategory | undefined = categoryRes?.data?.category;
 
+  const { data: categoriesRes, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories', { status: 'active' }],
+    queryFn: () => getCategories({ status: 'active' }),
+  });
+  const categories: ICategory[] = categoriesRes?.data?.categories ?? [];
+
   useEffect(() => {
     if (!category) return;
 
@@ -38,6 +45,7 @@ const CategoryEdit = () => {
       name: category.name,
       description: category.description ?? '',
       status: (category.status as 'active' | 'inactive') || 'active',
+      parent_id: category.parent_id ?? null,
     });
   }, [form, category]);
 
@@ -93,6 +101,17 @@ const CategoryEdit = () => {
 
           <Form.Item label="Mô tả" name="description">
             <Input.TextArea rows={3} placeholder="Mô tả chi tiết về danh mục..." />
+          </Form.Item>
+
+          <Form.Item label="Danh mục cha" name="parent_id">
+            <Select
+              allowClear
+              loading={isLoadingCategories}
+              placeholder="(Không chọn) = danh mục gốc"
+              options={categories
+                .filter((c) => (c.id || c._id) !== (category.id || category._id))
+                .map((c) => ({ value: c.id || c._id, label: c.name }))}
+            />
           </Form.Item>
 
           <Form.Item label="Trạng thái" name="status" style={{ maxWidth: 240 }}>

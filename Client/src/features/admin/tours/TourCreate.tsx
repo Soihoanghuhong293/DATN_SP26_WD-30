@@ -23,6 +23,28 @@ const DEFAULT_PRICE_CATEGORIES = [
   { name: 'Trẻ em (0-10 tuổi)', price: 0 }
 ];
 
+type CategoryNode = {
+  _id?: string;
+  id?: string;
+  name: string;
+  children?: CategoryNode[];
+};
+
+const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string; label: string }[] => {
+  const res: { value: string; label: string }[] = [];
+  for (const n of nodes) {
+    const value = (n._id || n.id || '') as string;
+    if (value) {
+      const prefix = level > 0 ? `${'— '.repeat(level)}` : '';
+      res.push({ value, label: `${prefix}${n.name}` });
+    }
+    if (Array.isArray(n.children) && n.children.length) {
+      res.push(...flattenCategoryTree(n.children, level + 1));
+    }
+  }
+  return res;
+};
+
 const TourCreate = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -35,11 +57,13 @@ const TourCreate = () => {
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/categories');
+      const res = await axios.get('http://localhost:5000/api/v1/categories/tree');
       const data = res.data?.data?.categories || res.data?.data || res.data;
       return Array.isArray(data) ? data : []; 
     }
   });
+
+  const categoryOptions = useMemo(() => flattenCategoryTree(categories as CategoryNode[]), [categories]);
 
   const { data: providersData, isLoading: isProvidersLoading } = useQuery({
     queryKey: ['providers'],
@@ -271,8 +295,10 @@ const TourCreate = () => {
                   <Col span={12}>
                     <Form.Item name="category_id" label={<span className="font-medium text-gray-600">Danh mục</span>} rules={[{ required: true }]}>
                       <Select size="large" placeholder="Chọn danh mục..." loading={isCategoriesLoading} className="rounded-lg">
-                        {Array.isArray(categories) && categories.map((cat: any) => (
-                          <Option key={cat._id} value={cat._id}>{cat.name}</Option>
+                        {categoryOptions.map((opt) => (
+                          <Option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </Option>
                         ))}
                       </Select>
                     </Form.Item>
