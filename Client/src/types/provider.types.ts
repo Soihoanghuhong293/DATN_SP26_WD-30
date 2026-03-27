@@ -27,6 +27,29 @@ export interface IVehicle {
   updated_at?: string;
 }
 
+export interface IHotel {
+  id?: string;
+  _id?: string;
+  name: string;
+  address?: string;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface IRoom {
+  id?: string;
+  _id?: string;
+  hotel_id?: string | { _id?: string; name?: string; address?: string };
+  room_number: string;
+  max_occupancy?: number;
+  status?: 'active' | 'inactive';
+  provider_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface CreateProviderPayload {
   name: string;
   description?: string;

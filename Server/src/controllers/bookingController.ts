@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { autoAllocateCarsForBooking } from '../services/allocation.service';
+import { autoAllocateCarsForBooking, autoAllocateRoomsForBooking } from '../services/allocation.service';
+import VehicleAllocation from '../models/VehicleAllocation';
+import RoomAllocation from '../models/RoomAllocation';
 
 const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
   pending: 'unpaid',
@@ -582,7 +584,7 @@ export const createBooking = async (req: Request, res: Response) => {
 // quản lí danh sách khách
 export const updateBooking = async (req: Request, res: Response) => {
   try {
-    const bookingId = req.params.id;
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const currentUser = (req as any).user?.name || 'Admin';
 
     //  kiểm tra booking có tồn tại không
@@ -597,7 +599,7 @@ export const updateBooking = async (req: Request, res: Response) => {
 
     // cập nhật danh sách hành khác
     const incomingPassengers = req.body.passengers || req.body.guests;
-    const shouldReallocateCars = Boolean(incomingPassengers);
+    const shouldReallocateServices = Boolean(incomingPassengers);
     if (incomingPassengers) {
       // Cảnh báo nếu số lượng lố groupSize
       if (incomingPassengers.length > booking.groupSize) {
@@ -662,14 +664,13 @@ export const updateBooking = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
 
-    // Nếu người dùng cập nhật danh sách hành khách, tự động cập nhật phân bổ xe
-    // để linh hoạt theo số khách thực tế.
-    if (shouldReallocateCars) {
+    // Cập nhật danh sách khách → tự động phân bổ lại xe & phòng theo số khách thực tế.
+    if (shouldReallocateServices) {
       try {
         await autoAllocateCarsForBooking(bookingId);
+        await autoAllocateRoomsForBooking(bookingId);
       } catch (e) {
-        // Không chặn việc cập nhật danh sách khách.
-        // Nếu auto-allocate thất bại, booking sẽ giữ dữ liệu phân bổ cũ hoặc rỗng tùy trường hợp.
+        // Không chặn cập nhật danh sách; phân bổ có thể giữ bản cũ nếu lỗi.
       }
     }
 
@@ -687,7 +688,10 @@ export const updateBooking = async (req: Request, res: Response) => {
 // xóa đơn hàng
 export const deleteBooking = async (req: Request, res: Response) => {
   try {
-    await Booking.findByIdAndDelete(req.params.id);
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await VehicleAllocation.deleteMany({ booking_id: bookingId });
+    await RoomAllocation.deleteMany({ booking_id: bookingId });
+    await Booking.findByIdAndDelete(bookingId);
 
     res.status(204).json({
       status: 'success',
@@ -764,7 +768,8 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
 // admin: tự động phân bổ xe theo ngày cho booking
 export const autoAllocateCars = async (req: Request, res: Response) => {
   try {
-    const result = await autoAllocateCarsForBooking(req.params.id);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await autoAllocateCarsForBooking(id);
 
     if (!result.success) {
       return res.status(400).json({
@@ -781,6 +786,54 @@ export const autoAllocateCars = async (req: Request, res: Response) => {
     return res.status(500).json({
       status: 'error',
       message: error.message || 'Lỗi khi tự động phân bổ xe',
+    });
+  }
+};
+
+export const autoAllocateRooms = async (req: Request, res: Response) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await autoAllocateRoomsForBooking(id);
+
+    if (!result.success) {
+      return res.status(400).json({
+        status: 'fail',
+        ...result,
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: result.data,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi tự động phân bổ phòng',
+    });
+  }
+};
+
+/** Phân bổ xe trước, sau đó phân bổ phòng (cùng logic như cập nhật danh sách khách). */
+export const autoAllocateCarsAndRooms = async (req: Request, res: Response) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const cars = await autoAllocateCarsForBooking(id);
+    if (!cars.success) {
+      return res.status(400).json({ status: 'fail', phase: 'cars', ...cars });
+    }
+    const rooms = await autoAllocateRoomsForBooking(id);
+    if (!rooms.success) {
+      return res.status(400).json({ status: 'fail', phase: 'rooms', ...rooms });
+    }
+    return res.status(200).json({
+      status: 'success',
+      data: { cars: cars.data, rooms: rooms.data },
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi phân bổ dịch vụ',
     });
   }
 };

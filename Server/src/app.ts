@@ -14,7 +14,8 @@ import authRoutes from './routes/auth.route.js';
 import userRoutes from './routes/user.route.js'; // Đã import
 import providerRoutes from './routes/provider.routes.js';
 import vehicleRoutes from './routes/vehicle.routes';
-
+import hotelRoutes from './routes/hotel.routes';
+import roomRoutes from './routes/room.routes';
 
 import bookingRouter from './routes/bookingRoutes';
 import chatRouter from './routes/chat.routes.js';
@@ -53,6 +54,8 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes); // 👈 THÊM DÒNG NÀY ĐỂ KÍCH HOẠT API USERS
 app.use('/api/v1/providers', providerRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
+app.use('/api/v1/hotels', hotelRoutes);
+app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/bookings', bookingRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);

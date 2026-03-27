@@ -179,6 +179,27 @@ const BookingDetail = () => {
       });
   }, [booking, providers]);
 
+  const allocatedRooms = useMemo(() => {
+    const rows = booking?.allocated_services?.rooms;
+    if (!Array.isArray(rows)) return [];
+
+    return rows
+      .map((row: any, index: number) => {
+        const provider =
+          providers.find((p: any) => p._id === row.provider_id || p.id === row.provider_id) || null;
+
+        return {
+          key: row.room_allocation_id || `${row.day_no}-${row.hotel_name}-${row.room_number}-${index}`,
+          providerName: provider?.name || provider?.provider_name || '',
+          ...row,
+        };
+      })
+      .sort((a: any, b: any) => {
+        if ((a.day_no || 0) !== (b.day_no || 0)) return (a.day_no || 0) - (b.day_no || 0);
+        return String(a.hotel_name || '').localeCompare(String(b.hotel_name || ''));
+      });
+  }, [booking, providers]);
+
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
     mutationFn: async (updatedGuests: any[]) => { 
@@ -234,6 +255,47 @@ const BookingDetail = () => {
         return;
       }
       message.error(error?.response?.data?.message || 'Phân bổ xe thất bại!');
+    },
+  });
+
+  const autoAllocateRoomsMutation = useMutation({
+    mutationFn: async () => {
+      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-rooms`, {}, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã tự động phân bổ phòng thành công!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    },
+    onError: (error: any) => {
+      const code = error?.response?.data?.code;
+      if (code === 'NOT_ENOUGH_ROOM') {
+        message.error('Không đủ phòng để phân bổ cho booking này.');
+        return;
+      }
+      message.error(error?.response?.data?.message || 'Phân bổ phòng thất bại!');
+    },
+  });
+
+  const autoAllocateAllServicesMutation = useMutation({
+    mutationFn: async () => {
+      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-services`, {}, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã phân bổ xe và phòng thành công!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    },
+    onError: (error: any) => {
+      const phase = error?.response?.data?.phase;
+      const code = error?.response?.data?.code;
+      if (phase === 'cars' && code === 'NOT_ENOUGH_CAR') {
+        message.error('Không đủ xe để phân bổ.');
+        return;
+      }
+      if (phase === 'rooms' && code === 'NOT_ENOUGH_ROOM') {
+        message.error('Xe đã phân bổ nhưng không đủ phòng.');
+        return;
+      }
+      message.error(error?.response?.data?.message || 'Phân bổ dịch vụ thất bại!');
     },
   });
 
@@ -500,6 +562,65 @@ const BookingDetail = () => {
                   render: (v) => v || <Text type="secondary">---</Text>,
                 },
                 { title: 'Sức chứa', dataIndex: 'capacity', render: (v) => `${v || 0} chỗ` },
+                {
+                  title: 'Trạng thái',
+                  dataIndex: 'status',
+                  render: (v) => (
+                    <Tag color={v === 'confirmed' ? 'green' : v === 'cancelled' ? 'red' : 'processing'}>
+                      {v === 'confirmed' ? 'Đã xác nhận' : v === 'cancelled' ? 'Đã hủy' : 'Đã giữ chỗ'}
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+
+          <Card
+            title={<Space><HomeOutlined style={{ color: '#059669' }} /> Phân bổ khách sạn &amp; phòng</Space>}
+            bordered={true}
+            className="saas-card mb-6"
+            extra={(
+              <Space size="small" wrap>
+                <Button
+                  type="primary"
+                  ghost
+                  size="small"
+                  loading={autoAllocateRoomsMutation.isPending || autoAllocateAllServicesMutation.isPending}
+                  onClick={() => autoAllocateRoomsMutation.mutate()}
+                >
+                  Phân bổ phòng
+                </Button>
+                <Button
+                  type="primary"
+                  size="small"
+                  loading={autoAllocateAllServicesMutation.isPending}
+                  onClick={() => autoAllocateAllServicesMutation.mutate()}
+                >
+                  Phân bổ xe &amp; phòng
+                </Button>
+              </Space>
+            )}
+          >
+            <Table
+              dataSource={allocatedRooms}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có phân bổ phòng. Khai báo khách sạn/phòng ở nhà cung cấp rồi bấm phân bổ.' }}
+              columns={[
+                { title: 'Ngày', dataIndex: 'day_no', width: 70, render: (v) => `Đêm ${v || 1}` },
+                {
+                  title: 'Ngày ở',
+                  dataIndex: 'service_date',
+                  render: (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '---'),
+                },
+                { title: 'Khách sạn', dataIndex: 'hotel_name', render: (v) => <Text strong>{v || '---'}</Text> },
+                { title: 'Số phòng', dataIndex: 'room_number', render: (v) => <Text strong>{v || '---'}</Text> },
+                {
+                  title: 'Nhà cung cấp',
+                  dataIndex: 'providerName',
+                  render: (v) => v || <Text type="secondary">---</Text>,
+                },
+                { title: 'Sức chứa', dataIndex: 'max_occupancy', render: (v) => `${v || 0} người` },
                 {
                   title: 'Trạng thái',
                   dataIndex: 'status',

@@ -20,10 +20,12 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Đồng bộ khi đổi route: sau khi đăng nhập từ /login về /, MainLayout không remount
+  // nên phải đọc lại token (trước đây chỉ chạy một lần lúc vào /login nên luôn "chưa đăng nhập").
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsLogin(!!token);
-  }, []);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");

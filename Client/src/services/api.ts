@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { ApiResponse, ICategory, ITour, ToursListResponse } from '../types/tour.types';
 import type { IGuide, IGuideCreateRequest, IGuideUpdateRequest, IGuideRatingRequest, ITourHistoryRequest } from '../types/guide.types';
-import type { CreateProviderPayload, IProvider, IVehicle } from '../types/provider.types';
+import type { CreateProviderPayload, IProvider, IVehicle, IHotel, IRoom } from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
 
 const baseURL =
@@ -233,6 +233,61 @@ export async function updateVehicle(id: string, payload: Partial<UpsertVehiclePa
 
 export async function deleteVehicle(id: string) {
   const res = await api.delete(ENDPOINTS.vehicleById(id));
+  return res.data;
+}
+
+// ===== HOTEL & ROOM (theo nhà cung cấp) =====
+
+export type GetHotelsParams = { provider_id?: string };
+
+export async function getHotels(params: GetHotelsParams = {}) {
+  const res = await api.get<ApiResponse<{ hotels: IHotel[] }> & { results?: number }>(ENDPOINTS.hotels, {
+    params,
+  });
+  return res.data;
+}
+
+export type UpsertHotelPayload = {
+  name: string;
+  address?: string;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createHotel(payload: UpsertHotelPayload) {
+  const res = await api.post<ApiResponse<{ hotel: IHotel }>>(ENDPOINTS.hotels, payload);
+  return res.data;
+}
+
+export async function deleteHotel(id: string) {
+  const res = await api.delete(ENDPOINTS.hotelById(id));
+  return res.data;
+}
+
+export type GetRoomsParams = { provider_id?: string; hotel_id?: string };
+
+export async function getRooms(params: GetRoomsParams = {}) {
+  const res = await api.get<ApiResponse<{ rooms: IRoom[] }> & { results?: number }>(ENDPOINTS.rooms, {
+    params,
+  });
+  return res.data;
+}
+
+export type UpsertRoomPayload = {
+  hotel_id: string;
+  room_number: string;
+  max_occupancy?: number;
+  status?: 'active' | 'inactive';
+  provider_id?: string;
+};
+
+export async function createRoom(payload: UpsertRoomPayload) {
+  const res = await api.post<ApiResponse<{ room: IRoom }>>(ENDPOINTS.rooms, payload);
+  return res.data;
+}
+
+export async function deleteRoom(id: string) {
+  const res = await api.delete(ENDPOINTS.roomById(id));
   return res.data;
 }
 

@@ -32,9 +32,22 @@ import {
   DollarOutlined,
   CalendarOutlined,
   CarOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
-import { getProvider, deleteProvider, getVehicles, createVehicle, deleteVehicle } from '../../../services/api';
-import type { IProvider, IVehicle } from '../../../types/provider.types';
+import {
+  getProvider,
+  deleteProvider,
+  getVehicles,
+  createVehicle,
+  deleteVehicle,
+  getHotels,
+  createHotel,
+  deleteHotel,
+  getRooms,
+  createRoom,
+  deleteRoom,
+} from '../../../services/api';
+import type { IProvider, IVehicle, IHotel, IRoom } from '../../../types/provider.types';
 
 const { Title, Text } = Typography;
 
@@ -54,6 +67,10 @@ const ProviderDetail = () => {
   const queryClient = useQueryClient();
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const [vehicleForm] = Form.useForm();
+  const [hotelModalOpen, setHotelModalOpen] = useState(false);
+  const [hotelForm] = Form.useForm();
+  const [roomModalOpen, setRoomModalOpen] = useState(false);
+  const [roomForm] = Form.useForm();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['provider', id],
@@ -68,6 +85,21 @@ const ProviderDetail = () => {
   });
 
   const vehicles: IVehicle[] = vehiclesData?.data?.vehicles || [];
+
+  const { data: hotelsData, isLoading: isHotelsLoading } = useQuery({
+    queryKey: ['hotels', id],
+    queryFn: () => getHotels({ provider_id: id }),
+    enabled: Boolean(id),
+  });
+
+  const { data: roomsData, isLoading: isRoomsLoading } = useQuery({
+    queryKey: ['rooms', id],
+    queryFn: () => getRooms({ provider_id: id }),
+    enabled: Boolean(id),
+  });
+
+  const hotels: IHotel[] = hotelsData?.data?.hotels || [];
+  const rooms: IRoom[] = roomsData?.data?.rooms || [];
 
   const provider: IProvider | undefined = data?.data?.provider;
 
@@ -103,6 +135,55 @@ const ProviderDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles', id] });
     },
     onError: () => message.error('Xoá xe thất bại'),
+  });
+
+  const { mutate: mutateCreateHotel, isPending: isCreatingHotel } = useMutation({
+    mutationFn: (values: { name: string; address?: string; status: 'active' | 'inactive' }) =>
+      createHotel({
+        ...values,
+        provider_id: provider?.id || provider?._id,
+      }),
+    onSuccess: () => {
+      message.success('Đã thêm khách sạn');
+      queryClient.invalidateQueries({ queryKey: ['hotels', id] });
+      setHotelModalOpen(false);
+      hotelForm.resetFields();
+    },
+    onError: () => message.error('Thêm khách sạn thất bại'),
+  });
+
+  const { mutate: mutateDeleteHotel, isPending: isDeletingHotel } = useMutation({
+    mutationFn: (hotelId: string) => deleteHotel(hotelId),
+    onSuccess: () => {
+      message.success('Đã xoá khách sạn và phòng thuộc khách sạn');
+      queryClient.invalidateQueries({ queryKey: ['hotels', id] });
+      queryClient.invalidateQueries({ queryKey: ['rooms', id] });
+    },
+    onError: () => message.error('Xoá khách sạn thất bại'),
+  });
+
+  const { mutate: mutateCreateRoom, isPending: isCreatingRoom } = useMutation({
+    mutationFn: (values: { hotel_id: string; room_number: string; max_occupancy: number; status: 'active' | 'inactive' }) =>
+      createRoom({
+        ...values,
+        provider_id: provider?.id || provider?._id,
+      }),
+    onSuccess: () => {
+      message.success('Đã thêm phòng');
+      queryClient.invalidateQueries({ queryKey: ['rooms', id] });
+      setRoomModalOpen(false);
+      roomForm.resetFields();
+    },
+    onError: () => message.error('Thêm phòng thất bại'),
+  });
+
+  const { mutate: mutateDeleteRoom, isPending: isDeletingRoom } = useMutation({
+    mutationFn: (roomId: string) => deleteRoom(roomId),
+    onSuccess: () => {
+      message.success('Đã xoá phòng');
+      queryClient.invalidateQueries({ queryKey: ['rooms', id] });
+    },
+    onError: () => message.error('Xoá phòng thất bại'),
   });
 
   if (isLoading) {
@@ -261,6 +342,117 @@ const ProviderDetail = () => {
         />
       </Card>
 
+      <Card
+        title={
+          <Space>
+            <BankOutlined />
+            <span>Danh sách khách sạn</span>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button type="primary" size="small" onClick={() => setHotelModalOpen(true)}>
+            Thêm khách sạn
+          </Button>
+        }
+      >
+        <Table
+          loading={isHotelsLoading}
+          dataSource={hotels}
+          rowKey={(h) => h.id || h._id || h.name}
+          size="small"
+          pagination={false}
+          locale={{ emptyText: 'Chưa khai báo khách sạn' }}
+          columns={[
+            { title: 'Tên khách sạn', dataIndex: 'name', render: (v) => <Text strong>{v}</Text> },
+            { title: 'Địa chỉ', dataIndex: 'address', ellipsis: true, render: (v) => v || '—' },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'status',
+              width: 120,
+              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
+            },
+            {
+              title: '',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm
+                  title="Xoá khách sạn và toàn bộ phòng?"
+                  okText="Xoá"
+                  cancelText="Huỷ"
+                  onConfirm={() => mutateDeleteHotel(record.id || record._id || '')}
+                >
+                  <Button danger size="small" loading={isDeletingHotel}>
+                    Xoá
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
+      <Card
+        title={
+          <Space>
+            <HomeOutlined />
+            <span>Danh sách phòng</span>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button
+            type="primary"
+            size="small"
+            disabled={hotels.length === 0}
+            onClick={() => {
+              roomForm.setFieldsValue({ hotel_id: hotels[0]?.id || hotels[0]?._id });
+              setRoomModalOpen(true);
+            }}
+          >
+            Thêm phòng
+          </Button>
+        }
+      >
+        <Table
+          loading={isRoomsLoading}
+          dataSource={rooms}
+          rowKey={(r) => r.id || r._id || `${r.room_number}`}
+          size="small"
+          pagination={false}
+          locale={{ emptyText: 'Chưa có phòng — thêm khách sạn rồi khai báo số phòng' }}
+          columns={[
+            {
+              title: 'Khách sạn',
+              render: (_, record) => {
+                const h = record.hotel_id as any;
+                const name = typeof h === 'object' && h?.name ? h.name : '—';
+                return <Text>{name}</Text>;
+              },
+            },
+            { title: 'Số phòng', dataIndex: 'room_number', render: (v) => <Text strong>{v}</Text> },
+            { title: 'Sức chứa (người/phòng)', dataIndex: 'max_occupancy', width: 160, render: (v) => v ?? 2 },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'status',
+              width: 120,
+              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
+            },
+            {
+              title: '',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm title="Xoá phòng này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => mutateDeleteRoom(record.id || record._id || '')}>
+                  <Button danger size="small" loading={isDeletingRoom}>
+                    Xoá
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
       <Card>
         <Descriptions column={{ xs: 1, sm: 2 }} size="small">
           <Descriptions.Item label={<><CalendarOutlined /> Ngày tạo</>}>
@@ -310,6 +502,87 @@ const ProviderDetail = () => {
               options={[
                 { value: 'active', label: 'Hoạt động' },
                 { value: 'inactive', label: 'Ngưng sử dụng' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Thêm khách sạn"
+        open={hotelModalOpen}
+        onOk={() => {
+          hotelForm
+            .validateFields()
+            .then((values) => mutateCreateHotel(values))
+            .catch(() => undefined);
+        }}
+        onCancel={() => {
+          setHotelModalOpen(false);
+          hotelForm.resetFields();
+        }}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={isCreatingHotel}
+        destroyOnClose
+      >
+        <Form form={hotelForm} layout="vertical">
+          <Form.Item name="name" label="Tên khách sạn" rules={[{ required: true, message: 'Nhập tên' }]}>
+            <Input placeholder="VD: Khách sạn Đà Lạt Xanh" />
+          </Form.Item>
+          <Form.Item name="address" label="Địa chỉ">
+            <Input.TextArea rows={2} placeholder="Địa chỉ (tuỳ chọn)" />
+          </Form.Item>
+          <Form.Item name="status" label="Trạng thái" initialValue="active">
+            <Select
+              options={[
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Ngưng' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Thêm phòng"
+        open={roomModalOpen}
+        onOk={() => {
+          roomForm
+            .validateFields()
+            .then((values) => mutateCreateRoom(values))
+            .catch(() => undefined);
+        }}
+        onCancel={() => {
+          setRoomModalOpen(false);
+          roomForm.resetFields();
+        }}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={isCreatingRoom}
+        destroyOnClose
+      >
+        <Form form={roomForm} layout="vertical">
+          <Form.Item name="hotel_id" label="Khách sạn" rules={[{ required: true, message: 'Chọn khách sạn' }]}>
+            <Select
+              placeholder="Chọn khách sạn"
+              options={hotels.map((h) => ({
+                value: h.id || h._id,
+                label: h.name,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="room_number" label="Số phòng" rules={[{ required: true, message: 'Nhập số phòng' }]}>
+            <Input placeholder="VD: 301, A-12" />
+          </Form.Item>
+          <Form.Item name="max_occupancy" label="Sức chứa tối đa (người/phòng)" initialValue={2}>
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+          <Form.Item name="status" label="Trạng thái" initialValue="active">
+            <Select
+              options={[
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Ngưng' },
               ]}
             />
           </Form.Item>
