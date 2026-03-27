@@ -621,6 +621,9 @@ const HdvBookingDetail = () => {
             confirmLoading={checkInMutation.isPending}
             okText="Xác nhận vắng mặt"
             cancelText="Hủy"
+            zIndex={2000}
+            maskClosable={false}
+            destroyOnClose
           >
             <Form
               form={reasonForm}
