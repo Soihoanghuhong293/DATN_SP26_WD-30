@@ -106,7 +106,7 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { type, passengerIndex, day, checkpointIndex } = req.body;
+    const { type, passengerIndex, day, checkpointIndex, checked, reason } = req.body;
 
     const hasCheckpoint =
       (typeof day === 'number' || (typeof day === 'string' && String(day).trim() !== '')) &&
@@ -120,20 +120,46 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
       const totalPassengers = Array.isArray(b.passengers) ? b.passengers.length : 0;
       const current = (b.checkpoint_checkins || {}) as any;
       const dayObj = current[dayKey] || {};
-      const cpObj = dayObj[cpKey] || { leader: false, passengers: Array(totalPassengers).fill(false) };
+      const cpObj =
+        dayObj[cpKey] ||
+        ({
+          leader: undefined,
+          passengers: Array(totalPassengers).fill(undefined),
+          reasons: { leader: "", passengers: Array(totalPassengers).fill("") },
+        } as any);
 
       // đồng bộ độ dài passengers nếu có thay đổi
       const normalizedPassengers = Array.isArray(cpObj.passengers) ? cpObj.passengers.slice(0, totalPassengers) : [];
-      while (normalizedPassengers.length < totalPassengers) normalizedPassengers.push(false);
+      while (normalizedPassengers.length < totalPassengers) normalizedPassengers.push(undefined);
+      cpObj.passengers = normalizedPassengers;
+
+      // normalize reasons
+      if (!cpObj.reasons) cpObj.reasons = { leader: "", passengers: Array(totalPassengers).fill("") };
+      if (!cpObj.reasons.passengers) cpObj.reasons.passengers = [];
+      const normalizedReasons = Array.isArray(cpObj.reasons.passengers) ? cpObj.reasons.passengers.slice(0, totalPassengers) : [];
+      while (normalizedReasons.length < totalPassengers) normalizedReasons.push("");
+      cpObj.reasons.passengers = normalizedReasons;
+
+      const mustReason = (val: any) => typeof val === "string" && val.trim().length > 0;
 
       if (type === 'leader') {
-        cpObj.leader = !Boolean(cpObj.leader);
+        const nextChecked = typeof checked === "boolean" ? checked : !Boolean(cpObj.leader);
+        if (nextChecked === false && !mustReason(reason)) {
+          return res.status(400).json({ status: "fail", message: "Lý do vắng mặt là bắt buộc." });
+        }
+        cpObj.leader = nextChecked;
+        cpObj.reasons.leader = nextChecked ? "" : String(reason || "").trim();
       } else if (type === 'passenger' && typeof passengerIndex === 'number') {
         if (passengerIndex < 0 || passengerIndex >= totalPassengers) {
           return res.status(400).json({ status: 'fail', message: 'Chỉ mục khách không hợp lệ' });
         }
-        normalizedPassengers[passengerIndex] = !Boolean(normalizedPassengers[passengerIndex]);
+        const nextChecked = typeof checked === "boolean" ? checked : !Boolean(normalizedPassengers[passengerIndex]);
+        if (nextChecked === false && !mustReason(reason)) {
+          return res.status(400).json({ status: "fail", message: "Lý do vắng mặt là bắt buộc." });
+        }
+        normalizedPassengers[passengerIndex] = nextChecked;
         cpObj.passengers = normalizedPassengers;
+        cpObj.reasons.passengers[passengerIndex] = nextChecked ? "" : String(reason || "").trim();
       } else {
         return res.status(400).json({ status: 'fail', message: 'Thiếu type hoặc passengerIndex' });
       }
@@ -143,8 +169,9 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
         [dayKey]: {
           ...dayObj,
           [cpKey]: {
-            leader: Boolean(cpObj.leader),
+            leader: cpObj.leader,
             passengers: cpObj.passengers || normalizedPassengers,
+            reasons: cpObj.reasons,
           },
         },
       };

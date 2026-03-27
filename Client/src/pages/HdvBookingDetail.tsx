@@ -14,7 +14,9 @@ import {
   Spin,
   Empty,
   Steps,
-  message,  Modal,
+  message,
+  Modal,
+  Tooltip,
   Popconfirm,
   Form,
   Input,
@@ -88,6 +90,9 @@ const HdvBookingDetail = () => {
   const [diaryFileList, setDiaryFileList] = useState<any[]>([]);
   const [selectedDiaryDayIndex, setSelectedDiaryDayIndex] = useState<number>(0);
   const [isDiaryEditing, setIsDiaryEditing] = useState<boolean>(true);
+  const [absentTarget, setAbsentTarget] = useState<any>(null);
+  const [reasonForm] = Form.useForm();
+  const [activeCheckpointDay, setActiveCheckpointDay] = useState<string>("1");
 
   const { data, isLoading } = useQuery({
     queryKey: ["hdv-booking", id],
@@ -116,7 +121,7 @@ const HdvBookingDetail = () => {
   });
 
   const checkInMutation = useMutation({
-    mutationFn: async (payload: { type: string; passengerIndex?: number; day?: number; checkpointIndex?: number }) => {
+    mutationFn: async (payload: { type: string; passengerIndex?: number; day?: number; checkpointIndex?: number; checked: boolean; reason?: string }) => {
       await axios.patch(`${API}/guide/${id}/checkin`, payload, getAuthHeader());
     },
     onSuccess: () => {
@@ -270,13 +275,40 @@ const HdvBookingDetail = () => {
 
   const checkpointCheckins = (booking as any)?.checkpoint_checkins || {};
 
-  const getCheckpointChecked = (day: number, cpIndex: number, type: "leader" | "passenger", passengerIdx?: number) => {
+  const getCheckpointStatus = (day: number, cpIndex: number, type: "leader" | "passenger", passengerIdx?: number) => {
     const d = checkpointCheckins?.[String(day)];
     const cp = d?.[String(cpIndex)];
-    if (!cp) return false;
-    if (type === "leader") return Boolean(cp.leader);
-    if (typeof passengerIdx !== "number") return false;
-    return Boolean(cp.passengers?.[passengerIdx]);
+    if (!cp) return undefined;
+    if (type === "leader") return cp.leader;
+    if (typeof passengerIdx !== "number") return undefined;
+    return cp.passengers?.[passengerIdx];
+  };
+
+  const getCheckpointChecked = (day: number, cpIndex: number, type: "leader" | "passenger", passengerIdx?: number) => {
+    return getCheckpointStatus(day, cpIndex, type, passengerIdx) === true;
+  };
+
+  const isDayFinished = (dayNum: number) => {
+    const dayData = checkpointDays.find((d) => d.day === dayNum);
+    if (!dayData) return true;
+
+    const checkins = checkpointCheckins[String(dayNum)] || {};
+    
+    return dayData.checkpoints.every((_: any, cpIdx: number) => {
+      const cp = checkins[String(cpIdx)];
+      if (!cp || cp.leader === undefined) return false;
+
+      // Leader ok if present OR absent with reason
+      const leaderOk = cp.leader === true || (cp.leader === false && cp.reasons?.leader);
+      if (!leaderOk) return false;
+
+      // Passengers ok if all accounted for and have reasons if absent
+      return passengers.every((_: any, pIdx: number) => {
+        const status = cp.passengers?.[pIdx];
+        if (status === undefined) return false;
+        return status === true || (status === false && cp.reasons?.passengers?.[pIdx]);
+      });
+    });
   };
 
   const tabItems = [
@@ -343,9 +375,12 @@ const HdvBookingDetail = () => {
           ) : (
             <Tabs
               type="card"
-              items={checkpointDays.map((d: any) => ({
+              activeKey={activeCheckpointDay}
+              onChange={setActiveCheckpointDay}
+              items={checkpointDays.map((d: any, idx: number) => ({
                 key: String(d.day),
                 label: `NGÀY ${d.day}`,
+                disabled: idx > 0 && !isDayFinished(checkpointDays[idx - 1].day),
                 children: (
                   <div>
                     <div style={{ fontWeight: 700, marginBottom: 12, color: "#111827" }}>
@@ -438,11 +473,13 @@ const HdvBookingDetail = () => {
                 <List
                   dataSource={displayList}
                   renderItem={(p) => {
-                    const checked =
-                      p.type === "leader"
-                        ? getCheckpointChecked(openPoint.day, openPoint.checkpointIndex, "leader")
-                        : getCheckpointChecked(openPoint.day, openPoint.checkpointIndex, "passenger", p.passengerIndex);
-
+                    const status = getCheckpointStatus(openPoint.day, openPoint.checkpointIndex, p.type as any, p.passengerIndex);
+                    const checked = status === true;
+                    const absent = status === false;
+                    
+                    const cpData = checkpointCheckins?.[String(openPoint.day)]?.[String(openPoint.checkpointIndex)];
+                    const reason = p.type === "leader" ? cpData?.reasons?.leader : cpData?.reasons?.passengers?.[p.passengerIndex];
+                    
                     const phone =
                       p.type === "leader"
                         ? booking.customer_phone
@@ -462,18 +499,52 @@ const HdvBookingDetail = () => {
                               Gọi
                             </Button>
                           ) : null,
+                          !checked ? (
+                            <Button
+                              key="reason"
+                              size="small"
+                              disabled={!canCheckin}
+                              onClick={() => {
+                                reasonForm.resetFields();
+                                setAbsentTarget({
+                                  name: p.name,
+                                  type: p.type,
+                                  passengerIndex: p.passengerIndex,
+                                  day: openPoint.day,
+                                  checkpointIndex: openPoint.checkpointIndex,
+                                });
+                              }}
+                            >
+                              Nhập lý do
+                            </Button>
+                          ) : null,
                           <Switch
                             key="checkin"
                             checked={checked}
                             disabled={!canCheckin}
-                            onChange={() =>
+                            onChange={(nextChecked) => {
+                              // Nếu chuyển sang "Vắng mặt" thì bắt buộc nhập lý do trước khi submit lên server
+                              if (nextChecked === false) {
+                                reasonForm.resetFields();
+                                setAbsentTarget({
+                                  name: p.name,
+                                  type: p.type,
+                                  passengerIndex: p.passengerIndex,
+                                  day: openPoint.day,
+                                  checkpointIndex: openPoint.checkpointIndex,
+                                });
+                                return;
+                              }
+
+                              // Có mặt: submit luôn
                               checkInMutation.mutate({
                                 type: p.type,
                                 passengerIndex: p.passengerIndex,
                                 day: openPoint.day,
                                 checkpointIndex: openPoint.checkpointIndex,
-                              })
-                            }
+                                checked: true,
+                              });
+                            }}
                             loading={checkInMutation.isPending}
                             checkedChildren="Có mặt"
                             unCheckedChildren="Vắng mặt"
@@ -512,6 +583,10 @@ const HdvBookingDetail = () => {
                                 <Tag color="green" style={{ marginLeft: 8 }}>
                                   Có mặt
                                 </Tag>
+                              ) : absent ? (
+                                <Tag color="red" style={{ marginLeft: 8 }}>
+                                  Vắng mặt
+                                </Tag>
                               ) : (
                                 <Tag color="default" style={{ marginLeft: 8 }}>
                                   Vắng mặt
@@ -519,7 +594,16 @@ const HdvBookingDetail = () => {
                               )}
                             </span>
                           }
-                          description={phone}
+                          description={
+                            <div>
+                              {phone ? <div>{phone}</div> : null}
+                              {absent && reason ? (
+                                <div style={{ marginTop: 6, color: "#6b7280", fontStyle: "italic" }}>
+                                  Lý do: {reason}
+                                </div>
+                              ) : null}
+                            </div>
+                          }
                         />
                       </List.Item>
                     );
@@ -527,6 +611,33 @@ const HdvBookingDetail = () => {
                 />
               </div>
             )}
+          </Modal>
+
+          <Modal
+            title={`Lý do vắng mặt: ${absentTarget?.name}`}
+            open={!!absentTarget}
+            onCancel={() => setAbsentTarget(null)}
+            onOk={() => reasonForm.submit()}
+            confirmLoading={checkInMutation.isPending}
+            okText="Xác nhận vắng mặt"
+            cancelText="Hủy"
+          >
+            <Form
+              form={reasonForm}
+              layout="vertical"
+              onFinish={(values) => {
+                checkInMutation.mutate({
+                  ...absentTarget,
+                  checked: false,
+                  reason: values.reason
+                });
+                setAbsentTarget(null);
+              }}
+            >
+              <Form.Item name="reason" label="Vui lòng nhập lý do vắng mặt" rules={[{ required: true, message: 'Lý do là bắt buộc khi khách vắng mặt!' }]}>
+                <Input.TextArea rows={3} placeholder="Ví dụ: Khách bị ốm, khách tự di chuyển..." />
+              </Form.Item>
+            </Form>
           </Modal>
         </Card>
       ),
