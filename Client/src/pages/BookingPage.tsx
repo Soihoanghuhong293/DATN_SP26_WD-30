@@ -37,6 +37,7 @@ type BookingFormValues = {
   email: string;
   address?: string;
   note?: string;
+  paymentMethod: "full" | "deposit" | "later";
   adultPassengers?: Array<{
     fullName?: string;
     gender?: PassengerGender;
@@ -104,6 +105,7 @@ const BookingPage: React.FC = () => {
   const watchedPhone = Form.useWatch("phone", form);
   const watchedEmail = Form.useWatch("email", form);
   const watchedTermsAccepted = Form.useWatch("termsAccepted", form);
+  const watchedPaymentMethod = Form.useWatch("paymentMethod", form);
   const watchedAdultPassengers = Form.useWatch("adultPassengers", form);
   const watchedChildPassengers = Form.useWatch("childPassengers", form);
   const lastSlotsWarnRef = useRef<number | null>(null);
@@ -435,6 +437,14 @@ const BookingPage: React.FC = () => {
       return message.error(`Rất tiếc! Tour hiện tại số chỗ còn nhận chỉ còn: ${slots} chỗ.`);
     }
 
+    if (values.paymentMethod === "deposit") {
+      const today = dayjs().startOf("day");
+      const selectedD = dayjs(selectedDate).startOf("day");
+      if (selectedD.isSame(today) || selectedD.isBefore(today.add(1, "day"))) {
+        return message.error("Không thể đặt cọc cho tour khởi hành trong ngày hôm nay hoặc ngày mai.");
+      }
+    }
+
     setSubmitting(true);
     try {
       const adultPassengers = Array.isArray(values.adultPassengers) ? values.adultPassengers : [];
@@ -466,7 +476,7 @@ const BookingPage: React.FC = () => {
         email: values.email,
         startDate: selectedDate,
         groupSize,
-        paymentMethod: "later",
+        paymentMethod: values.paymentMethod || "full",
         customer_note: values.note,
         totalPrice: totals.total,
         passengers,
@@ -505,7 +515,7 @@ const BookingPage: React.FC = () => {
   };
 
   useEffect(() => {
-    form.setFieldsValue({ adults: 1, children: 0, termsAccepted: false });
+    form.setFieldsValue({ adults: 1, children: 0, termsAccepted: false, paymentMethod: "full" });
     syncAdultPassengers(1);
     syncChildPassengers(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1069,6 +1079,35 @@ const BookingPage: React.FC = () => {
             </div>
 
             <Divider style={{ margin: "12px 0" }} />
+
+            <Form.Item
+              name="paymentMethod"
+              label="Phương thức thanh toán"
+              rules={[{ required: true, message: "Vui lòng chọn phương thức thanh toán!" }]}
+              style={{ marginBottom: 12 }}
+            >
+              <Select
+                size="large"
+                options={[
+                  { label: "Thanh toán toàn bộ (100%)", value: "full" },
+                  { label: "Đặt cọc 30%", value: "deposit" },
+                  { label: "Thanh toán sau", value: "later" },
+                ]}
+              />
+            </Form.Item>
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+              <Text>Thanh toán ngay</Text>
+              <Text strong style={{ color: "#f5222d" }}>
+                {(() => {
+                  const method = watchedPaymentMethod || "full";
+                  if (method === "later") return "0đ";
+                  const base = Number(totals.total || 0);
+                  const due = method === "deposit" ? Math.round(base * 0.3) : base;
+                  return `${due.toLocaleString("vi-VN")}đ`;
+                })()}
+              </Text>
+            </div>
 
             <Form.Item
               name="termsAccepted"

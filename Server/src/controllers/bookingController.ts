@@ -107,7 +107,7 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { type, passengerIndex, day, checkpointIndex } = req.body;
+    const { type, passengerIndex, day, checkpointIndex, checked, reason } = req.body;
 
     const hasCheckpoint =
       (typeof day === 'number' || (typeof day === 'string' && String(day).trim() !== '')) &&
@@ -121,20 +121,46 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
       const totalPassengers = Array.isArray(b.passengers) ? b.passengers.length : 0;
       const current = (b.checkpoint_checkins || {}) as any;
       const dayObj = current[dayKey] || {};
-      const cpObj = dayObj[cpKey] || { leader: false, passengers: Array(totalPassengers).fill(false) };
+      const cpObj =
+        dayObj[cpKey] ||
+        ({
+          leader: undefined,
+          passengers: Array(totalPassengers).fill(undefined),
+          reasons: { leader: "", passengers: Array(totalPassengers).fill("") },
+        } as any);
 
       // đồng bộ độ dài passengers nếu có thay đổi
       const normalizedPassengers = Array.isArray(cpObj.passengers) ? cpObj.passengers.slice(0, totalPassengers) : [];
-      while (normalizedPassengers.length < totalPassengers) normalizedPassengers.push(false);
+      while (normalizedPassengers.length < totalPassengers) normalizedPassengers.push(undefined);
+      cpObj.passengers = normalizedPassengers;
+
+      // normalize reasons
+      if (!cpObj.reasons) cpObj.reasons = { leader: "", passengers: Array(totalPassengers).fill("") };
+      if (!cpObj.reasons.passengers) cpObj.reasons.passengers = [];
+      const normalizedReasons = Array.isArray(cpObj.reasons.passengers) ? cpObj.reasons.passengers.slice(0, totalPassengers) : [];
+      while (normalizedReasons.length < totalPassengers) normalizedReasons.push("");
+      cpObj.reasons.passengers = normalizedReasons;
+
+      const mustReason = (val: any) => typeof val === "string" && val.trim().length > 0;
 
       if (type === 'leader') {
-        cpObj.leader = !Boolean(cpObj.leader);
+        const nextChecked = typeof checked === "boolean" ? checked : !Boolean(cpObj.leader);
+        if (nextChecked === false && !mustReason(reason)) {
+          return res.status(400).json({ status: "fail", message: "Lý do vắng mặt là bắt buộc." });
+        }
+        cpObj.leader = nextChecked;
+        cpObj.reasons.leader = nextChecked ? "" : String(reason || "").trim();
       } else if (type === 'passenger' && typeof passengerIndex === 'number') {
         if (passengerIndex < 0 || passengerIndex >= totalPassengers) {
           return res.status(400).json({ status: 'fail', message: 'Chỉ mục khách không hợp lệ' });
         }
-        normalizedPassengers[passengerIndex] = !Boolean(normalizedPassengers[passengerIndex]);
+        const nextChecked = typeof checked === "boolean" ? checked : !Boolean(normalizedPassengers[passengerIndex]);
+        if (nextChecked === false && !mustReason(reason)) {
+          return res.status(400).json({ status: "fail", message: "Lý do vắng mặt là bắt buộc." });
+        }
+        normalizedPassengers[passengerIndex] = nextChecked;
         cpObj.passengers = normalizedPassengers;
+        cpObj.reasons.passengers[passengerIndex] = nextChecked ? "" : String(reason || "").trim();
       } else {
         return res.status(400).json({ status: 'fail', message: 'Thiếu type hoặc passengerIndex' });
       }
@@ -144,8 +170,9 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
         [dayKey]: {
           ...dayObj,
           [cpKey]: {
-            leader: Boolean(cpObj.leader),
+            leader: cpObj.leader,
             passengers: cpObj.passengers || normalizedPassengers,
+            reasons: cpObj.reasons,
           },
         },
       };
@@ -705,7 +732,7 @@ export const deleteBooking = async (req: Request, res: Response) => {
 export const initMomoPaymentMock = async (req: Request, res: Response) => {
   try {
     const bookingId = req.params.id;
-    const { amount, pay_type } = req.body || {};
+    const { pay_type } = req.body || {};
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -716,11 +743,69 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     }
 
     const currentUser = (req as any).user?.name || 'Khách hàng';
-    const paymentAmount = typeof amount === 'number' && amount > 0 ? amount : booking.total_price;
+    const total = Number((booking as any).total_price || 0);
+    const method = String((booking as any).paymentMethod || '').trim() || 'full';
+    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+
+    // Không cho thanh toán lại nếu đã paid
+    if (currentPaymentStatus === 'paid') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đơn hàng đã thanh toán đủ. Không thể thanh toán lại.',
+      });
+    }
+
+    const rawPayType = String(pay_type || '').trim().toLowerCase();
+    const normalizedPayType = rawPayType === 'deposit' ? 'deposit' : rawPayType === 'remaining' ? 'remaining' : 'full';
+
+    // Nếu booking chọn "thanh toán sau" thì cho phép thanh toán full hoặc deposit (tuỳ bạn muốn siết chặt)
+    // Nếu booking chọn "đặt cọc" thì cho phép deposit trước, và full để thanh toán phần còn lại.
+    // Nếu booking chọn "full" thì chỉ cho full.
+    if (method === 'full' && normalizedPayType !== 'full') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đơn hàng này yêu cầu thanh toán toàn bộ. Không hỗ trợ đặt cọc.',
+      });
+    }
+
+    if (currentPaymentStatus === 'deposit' && normalizedPayType === 'deposit') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đơn hàng đã đặt cọc rồi. Vui lòng thanh toán phần còn lại.',
+      });
+    }
+
+    const existingDepositAmount = Number((booking as any).deposit_amount || 0);
+    const computedDepositAmount = Math.round(total * 0.3);
+    const depositAmount = existingDepositAmount > 0 ? existingDepositAmount : computedDepositAmount;
+
+    // Backend tự tính số tiền để tránh client sửa amount
+    let paymentAmount = 0;
+    if (normalizedPayType === 'deposit') paymentAmount = depositAmount;
+    else if (normalizedPayType === 'remaining') paymentAmount = Math.max(0, total - depositAmount);
+    else paymentAmount = total;
+
+    if (normalizedPayType === 'remaining') {
+      if (currentPaymentStatus !== 'deposit') {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Chỉ có thể thanh toán phần còn lại sau khi đã đặt cọc.',
+        });
+      }
+      if (paymentAmount <= 0) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Không còn số tiền nào để thanh toán.',
+        });
+      }
+    }
 
     // Xác định trạng thái thanh toán mới dựa trên loại thanh toán
-    const nextPaymentStatus = pay_type === 'deposit' ? 'deposit' : 'paid';
-    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    const nextPaymentStatus = normalizedPayType === 'deposit' ? 'deposit' : 'paid';
+
+    const nextDepositAmount = normalizedPayType === 'deposit' ? depositAmount : (existingDepositAmount > 0 ? existingDepositAmount : (method === 'deposit' ? depositAmount : 0));
+    const nextPaidAmount = normalizedPayType === 'deposit' ? depositAmount : total;
+    const nextRemainingAmount = normalizedPayType === 'deposit' ? Math.max(0, total - depositAmount) : 0;
 
     // Chuẩn bị log lịch sử thanh toán
     const paymentLog = {
@@ -728,7 +813,7 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
       user: currentUser,
       old: currentPaymentStatus,
       new: nextPaymentStatus,
-      note: `Giả lập thanh toán MoMo (${pay_type || 'full'}) với số tiền ${paymentAmount.toLocaleString('vi-VN')}đ (sandbox/dev)`,
+      note: `Giả lập thanh toán MoMo (${normalizedPayType}) với số tiền ${paymentAmount.toLocaleString('vi-VN')}đ (sandbox/dev)`,
     };
 
     const updatedBooking = await Booking.findByIdAndUpdate(
@@ -736,6 +821,9 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
       {
         $set: {
           payment_status: nextPaymentStatus,
+          deposit_amount: nextDepositAmount,
+          paid_amount: nextPaidAmount,
+          remaining_amount: nextRemainingAmount,
           // đơn đang pending thì khi thanh toán mock thành công sẽ xác nhận luôn
           ...(booking.status === 'pending' ? { status: 'confirmed' } : {}),
         },
