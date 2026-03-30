@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getAllCategories,
+  getCategoryTree,
   getCategoryById,
   createCategory,
   updateCategory,
@@ -8,6 +9,8 @@ import {
 } from '../controllers/category.controller.js';
 
 const router = express.Router();
+
+router.route('/tree').get(getCategoryTree);
 
 router
   .route('/')

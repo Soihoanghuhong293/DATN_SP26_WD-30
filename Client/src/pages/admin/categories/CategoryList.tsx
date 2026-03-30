@@ -75,6 +75,13 @@ const CategoryList = () => {
         ),
       },
       {
+        title: 'Danh mục cha',
+        dataIndex: 'parent_id',
+        key: 'parent_id',
+        width: 180,
+        render: (value: any) => <Text type="secondary">{value ? String(value) : '-'}</Text>,
+      },
+      {
         title: 'Trạng thái',
         dataIndex: 'status',
         key: 'status',

@@ -70,6 +70,14 @@ export async function getCategories(params: GetCategoriesParams = {}) {
   return res.data;
 }
 
+export async function getCategoryTree(params: GetCategoriesParams = {}) {
+  const res = await api.get<ApiResponse<{ categories: ICategory[] }> & { results?: number }>(
+    ENDPOINTS.categoryTree,
+    { params }
+  );
+  return res.data;
+}
+
 export async function getCategory(id: string) {
   const res = await api.get<ApiResponse<{ category: ICategory }>>(ENDPOINTS.categoryById(id));
   return res.data;
@@ -79,6 +87,7 @@ export type CreateCategoryPayload = {
   name: string;
   description?: string;
   status?: 'active' | 'inactive';
+  parent_id?: string | null;
 };
 
 export async function createCategory(payload: CreateCategoryPayload) {

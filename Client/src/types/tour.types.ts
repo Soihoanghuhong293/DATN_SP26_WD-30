@@ -43,6 +43,8 @@ export interface ICategory {
   _id?: string;
   name: string;
   description?: string;
+  parent_id?: string | null;
+  children?: ICategory[];
   status?: CategoryStatus;
   created_at: string;
   update_at: string;
