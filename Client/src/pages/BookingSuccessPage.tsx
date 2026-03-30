@@ -53,13 +53,37 @@ const BookingSuccessPage = () => {
   if (!booking) return <div style={{ textAlign: 'center', marginTop: 100 }}>Không tìm thấy đơn hàng.</div>;
 
   const totalPrice = booking.total_price || booking.totalPrice || 0;
-  const isDeposit = booking.paymentMethod === 'deposit';
-  const paymentAmount = isDeposit ? Math.round(totalPrice * 0.3) : totalPrice;
+  const paymentStatus = booking?.payment_status
+    || (booking?.status === 'paid' ? 'paid'
+      : booking?.status === 'deposit' ? 'deposit'
+      : booking?.status === 'refunded' ? 'refunded'
+      : 'unpaid');
+  const paymentMethod = booking.paymentMethod || 'full';
+  const isDeposit = paymentMethod === 'deposit';
+  const isLater = paymentMethod === 'later';
+  const depositAmount = Number(booking?.deposit_amount || Math.round(Number(totalPrice || 0) * 0.3));
+  const remainingAmount = Math.max(0, Number(totalPrice || 0) - depositAmount);
+  const isPaid = paymentStatus === 'paid';
+  const isDeposited = paymentStatus === 'deposit';
+  const paymentAmount =
+    isLater ? 0
+    : isPaid ? 0
+    : isDeposited ? remainingAmount
+    : isDeposit ? depositAmount
+    : totalPrice;
   const paymentStatusInfo = getPaymentStatusInfo(booking);
   const bookingStatusInfo = getBookingStatusInfo(booking);
 
   const handleGoToPaymentPage = () => {
     setIsModalOpen(false);
+    if (isLater) {
+      message.info('Bạn đã chọn "Thanh toán sau". Bạn có thể quay lại để xem thông tin đơn hàng.');
+      return;
+    }
+    if (isPaid) {
+      message.success('Đơn hàng đã thanh toán đủ.');
+      return;
+    }
     if (paymentGateway !== 'momo') {
       message.info('Hiện tại chỉ hỗ trợ mô phỏng thanh toán qua MoMo.');
       return;
@@ -77,8 +101,16 @@ const BookingSuccessPage = () => {
         <Card style={{ maxWidth: 800, margin: '0 auto', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <Result
             status="success"
-            title="Đặt tour thành công!"
-            subTitle="Vui lòng kiểm tra lại thông tin và tiến hành thanh toán để hoàn tất booking."
+            title={isPaid ? 'Thanh toán thành công!' : 'Đặt tour thành công!'}
+            subTitle={
+              isPaid
+                ? 'Đơn hàng đã được thanh toán đầy đủ. Cảm ơn bạn!'
+                : isLater
+                  ? 'Bạn đã chọn thanh toán sau. Hãy lưu mã booking để thanh toán/đối soát sau.'
+                  : isDeposited
+                    ? 'Bạn đã đặt cọc. Vui lòng thanh toán phần còn lại để hoàn tất booking.'
+                    : 'Vui lòng kiểm tra lại thông tin và tiến hành thanh toán để hoàn tất booking.'
+            }
           />
           
           <Divider orientation="left" style={{ borderColor: '#d9d9d9' }}><CheckCircleOutlined /> Thông tin đơn hàng</Divider>
@@ -111,21 +143,45 @@ const BookingSuccessPage = () => {
                 </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Phương thức">
-                <Tag color={isDeposit ? 'orange' : 'blue'}>
-                   {isDeposit ? 'Đặt cọc trước (30%)' : 'Thanh toán toàn bộ (100%)'}
+                <Tag color={isLater ? 'default' : (isDeposit ? 'orange' : 'blue')}>
+                   {isLater ? 'Thanh toán sau' : (isDeposit ? 'Đặt cọc trước (30%)' : 'Thanh toán toàn bộ (100%)')}
                 </Tag>
             </Descriptions.Item>
           </Descriptions>
 
           <div style={{ marginTop: 24, padding: 24, background: '#f9f9f9', borderRadius: 8, textAlign: 'right', border: '1px solid #f0f0f0' }}>
-             <Text style={{ fontSize: 16 }}>Số tiền cần thanh toán ngay:</Text>
+             <Text style={{ fontSize: 16 }}>
+               {isPaid ? 'Tổng đã thanh toán:' : 'Số tiền cần thanh toán ngay:'}
+             </Text>
              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#ff4d4f', margin: '4px 0 16px' }}>
                 {paymentAmount.toLocaleString()} ₫
              </div>
+
+             {(isDeposit || isDeposited) && !isPaid && (
+               <div style={{ marginTop: -8, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                 <Text type="secondary">
+                   Đã đặt cọc: <b>{depositAmount.toLocaleString()} ₫</b>
+                 </Text>
+                 <Text type="secondary">
+                   Còn lại: <b>{remainingAmount.toLocaleString()} ₫</b>
+                 </Text>
+               </div>
+             )}
              
              <Space size="middle">
                <Button size="large" onClick={() => navigate('/')}>Về trang chủ</Button>
-               <Button type="primary" size="large" onClick={() => setIsModalOpen(true)} style={{ height: 48, padding: '0 40px', fontSize: 16, fontWeight: 600 }}>THANH TOÁN NGAY</Button>
+               <Button
+                 type="primary"
+                 size="large"
+                 onClick={() => {
+                   if (isLater || isPaid) return;
+                   setIsModalOpen(true);
+                 }}
+                 disabled={paymentAmount <= 0 || isPaid}
+                 style={{ height: 48, padding: '0 40px', fontSize: 16, fontWeight: 600 }}
+               >
+                 {isPaid ? 'ĐÃ THANH TOÁN' : isLater ? 'XEM ĐƠN HÀNG' : (isDeposited ? 'THANH TOÁN PHẦN CÒN LẠI' : 'THANH TOÁN NGAY')}
+               </Button>
              </Space>
           </div>
 
@@ -136,6 +192,7 @@ const BookingSuccessPage = () => {
             onCancel={() => setIsModalOpen(false)}
             okText="Tiếp tục"
             cancelText="Đóng"
+            okButtonProps={{ disabled: isLater || paymentAmount <= 0 || isPaid }}
           >
             <div style={{ marginBottom: 16 }}>
               <Text>Số tiền cần thanh toán: </Text>

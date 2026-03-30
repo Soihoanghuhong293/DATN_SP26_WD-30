@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,6 +12,12 @@ import {
   Breadcrumb,
   Space,
   message,
+  Table,
+  Modal,
+  Form,
+  Input,
+  InputNumber,
+  Select,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -24,9 +31,10 @@ import {
   FileTextOutlined,
   DollarOutlined,
   CalendarOutlined,
+  CarOutlined,
 } from '@ant-design/icons';
-import { getProvider, deleteProvider } from '../../../services/api';
-import type { IProvider } from '../../../types/provider.types';
+import { getProvider, deleteProvider, getVehicles, createVehicle, deleteVehicle } from '../../../services/api';
+import type { IProvider, IVehicle } from '../../../types/provider.types';
 
 const { Title, Text } = Typography;
 
@@ -44,12 +52,22 @@ const ProviderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+  const [vehicleForm] = Form.useForm();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['provider', id],
     queryFn: () => getProvider(id || ''),
     enabled: Boolean(id),
   });
+
+  const { data: vehiclesData, isLoading: isVehiclesLoading } = useQuery({
+    queryKey: ['vehicles', id],
+    queryFn: () => getVehicles({ provider_id: id }),
+    enabled: Boolean(id),
+  });
+
+  const vehicles: IVehicle[] = vehiclesData?.data?.vehicles || [];
 
   const provider: IProvider | undefined = data?.data?.provider;
 
@@ -61,6 +79,30 @@ const ProviderDetail = () => {
       navigate('/admin/providers');
     },
     onError: () => message.error('Xoá nhà cung cấp thất bại'),
+  });
+
+  const { mutate: mutateCreateVehicle, isPending: isCreatingVehicle } = useMutation({
+    mutationFn: (values: { plate: string; capacity: number; status: 'active' | 'inactive' }) =>
+      createVehicle({
+        ...values,
+        provider_id: provider?.id || provider?._id,
+      }),
+    onSuccess: () => {
+      message.success('Đã thêm xe cho nhà cung cấp');
+      queryClient.invalidateQueries({ queryKey: ['vehicles', id] });
+      setVehicleModalOpen(false);
+      vehicleForm.resetFields();
+    },
+    onError: () => message.error('Thêm xe thất bại'),
+  });
+
+  const { mutate: mutateDeleteVehicle, isPending: isDeletingVehicle } = useMutation({
+    mutationFn: (vehicleId: string) => deleteVehicle(vehicleId),
+    onSuccess: () => {
+      message.success('Đã xoá xe');
+      queryClient.invalidateQueries({ queryKey: ['vehicles', id] });
+    },
+    onError: () => message.error('Xoá xe thất bại'),
   });
 
   if (isLoading) {
@@ -169,6 +211,56 @@ const ProviderDetail = () => {
         </Descriptions>
       </Card>
 
+      <Card
+        title={
+          <Space>
+            <CarOutlined />
+            <span>Danh sách xe</span>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button type="primary" size="small" onClick={() => setVehicleModalOpen(true)}>
+            Thêm xe
+          </Button>
+        }
+      >
+        <Table
+          loading={isVehiclesLoading}
+          dataSource={vehicles}
+          rowKey={(v) => v.id || v._id || v.plate}
+          size="small"
+          pagination={false}
+          locale={{ emptyText: 'Chưa khai báo xe cho nhà cung cấp này' }}
+          columns={[
+            { title: 'Biển số', dataIndex: 'plate', render: (v) => <Text strong>{v}</Text> },
+            { title: 'Số chỗ', dataIndex: 'capacity', width: 100 },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'status',
+              width: 120,
+              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
+            },
+            {
+              title: '',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm
+                  title="Xoá xe này?"
+                  okText="Xoá"
+                  cancelText="Huỷ"
+                  onConfirm={() => mutateDeleteVehicle(record.id || record._id || '')}
+                >
+                  <Button danger size="small" loading={isDeletingVehicle}>
+                    Xoá
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
       <Card>
         <Descriptions column={{ xs: 1, sm: 2 }} size="small">
           <Descriptions.Item label={<><CalendarOutlined /> Ngày tạo</>}>
@@ -179,6 +271,50 @@ const ProviderDetail = () => {
           </Descriptions.Item>
         </Descriptions>
       </Card>
+
+      <Modal
+        title="Thêm xe cho nhà cung cấp"
+        open={vehicleModalOpen}
+        onOk={() => {
+          vehicleForm
+            .validateFields()
+            .then((values) => mutateCreateVehicle(values))
+            .catch(() => undefined);
+        }}
+        onCancel={() => {
+          setVehicleModalOpen(false);
+          vehicleForm.resetFields();
+        }}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={isCreatingVehicle}
+        destroyOnClose
+      >
+        <Form form={vehicleForm} layout="vertical">
+          <Form.Item
+            name="plate"
+            label="Biển số"
+            rules={[{ required: true, message: 'Nhập biển số xe' }]}
+          >
+            <Input placeholder="VD: 51A-12345" />
+          </Form.Item>
+          <Form.Item
+            name="capacity"
+            label="Số chỗ"
+            rules={[{ required: true, message: 'Nhập số chỗ ngồi' }]}
+          >
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+          <Form.Item name="status" label="Trạng thái" initialValue="active">
+            <Select
+              options={[
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Ngưng sử dụng' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

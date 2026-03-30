@@ -16,6 +16,17 @@ export interface IProvider {
   update_at: string;
 }
 
+export interface IVehicle {
+  id?: string;
+  _id?: string;
+  plate: string;
+  capacity: number;
+  status?: 'active' | 'inactive';
+  provider_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface CreateProviderPayload {
   name: string;
   description?: string;

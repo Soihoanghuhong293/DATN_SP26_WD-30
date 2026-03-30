@@ -122,7 +122,8 @@ const BookingCreate = () => {
   const availableSlotsForSelectedDate = useMemo(() => {
     if (!watchedStartDate) return null;
     const dateStr = dayjs(watchedStartDate).format('YYYY-MM-DD');
-    const dateInfo = availableDepartureDates.find(d => d.value === dateStr);
+
+    const dateInfo = availableDepartureDates.find((d: { value: string; slots: number }) => d.value === dateStr);
     return dateInfo ? dateInfo.slots : null;
   }, [watchedStartDate, availableDepartureDates]);
 

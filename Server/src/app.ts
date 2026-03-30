@@ -9,10 +9,12 @@ import { AppError } from './utils/AppError.js';
 // Routes
 import guideRouter from './routes/guide.routes.js';
 import tourRouter from './routes/tourRoutes.js';
+import tourTemplateRouter from './routes/tourTemplateRoutes';
 import categoryRoutes from './routes/category.routes.js';
 import authRoutes from './routes/auth.route.js'; 
 import userRoutes from './routes/user.route.js'; // Đã import
 import providerRoutes from './routes/provider.routes.js';
+import vehicleRoutes from './routes/vehicle.routes';
 
 
 import bookingRouter from './routes/bookingRoutes';
@@ -47,10 +49,12 @@ app.get('/', (req: Request, res: Response) => {
 // API routes
 app.use('/api/v1/guides', guideRouter);
 app.use('/api/v1/tours', tourRouter);
+app.use('/api/v1/tour-templates', tourTemplateRouter);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes); // 👈 THÊM DÒNG NÀY ĐỂ KÍCH HOẠT API USERS
 app.use('/api/v1/providers', providerRoutes);
+app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/bookings', bookingRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);

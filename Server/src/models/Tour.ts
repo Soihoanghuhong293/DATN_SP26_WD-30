@@ -38,6 +38,8 @@ export interface ITour extends Document {
     endDate: Date;
     prices: { name: string; price: number }[]; 
   }[];
+
+  template_id?: mongoose.Types.ObjectId;
 }
 
 
@@ -62,7 +64,6 @@ departure_schedule: [{
   name: { 
     type: String, 
     required: [true, 'Tour phải có tên'], 
-    unique: true,
     trim: true 
   },
   slug: String,
@@ -99,16 +100,35 @@ departure_schedule: [{
   
   duration_days: { type: Number, required: true }
 
+  ,
+  template_id: { type: Schema.Types.ObjectId, ref: 'TourTemplate' }
+
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-TourSchema.pre('save', function () {
-   if (!this.isModified('name')) return;
+TourSchema.pre('save', async function () {
+  if (!this.isModified('name')) return;
 
-  this.slug = slugify(this.name as string, { lower: true });
+  const baseSlug = slugify(this.name as string, { lower: true, strict: true });
+  let nextSlug = baseSlug;
+  let counter = 2;
+
+  // đảm bảo slug không trùng (đặc biệt khi tạo tour từ template)
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const existed = await (this.constructor as any).findOne({
+      slug: nextSlug,
+      _id: { $ne: this._id },
+    });
+    if (!existed) break;
+    nextSlug = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
+
+  this.slug = nextSlug;
 });
 
 export default mongoose.model<ITour>('Tour', TourSchema);
