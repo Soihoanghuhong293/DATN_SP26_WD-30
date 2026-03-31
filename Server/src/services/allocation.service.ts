@@ -13,6 +13,25 @@ type AllocateRoomsResult =
   | { success: true; data: any[] }
   | { success: false; code: string; message: string; day_no?: number; required?: number; available?: number };
 
+type CapacityItem = { capacity: number };
+
+const ROOM_MESSAGES = {
+  ROOM_ALREADY_USED: 'Phòng đã được sử dụng',
+  ROOM_MISSING_BY_DAY: 'Thiếu phòng theo ngày',
+  NOT_ENOUGH_CAPACITY: 'Không đủ sức chứa',
+} as const;
+
+const getBookingPaxCount = (booking: any): number => {
+  const passengersCount = Array.isArray(booking?.passengers) ? booking.passengers.length : 0;
+  if (passengersCount > 0) return passengersCount;
+
+  const guestsCount = Array.isArray(booking?.guests) ? booking.guests.length : 0;
+  if (guestsCount > 0) return guestsCount;
+
+  const groupSize = Number(booking?.groupSize || 0);
+  return Number.isFinite(groupSize) ? groupSize : 0;
+};
+
 const toStartOfDay = (value: Date | string): Date => {
   const d = new Date(value);
   d.setHours(0, 0, 0, 0);
@@ -44,6 +63,80 @@ const dedupeByRoomId = (rows: any[]) => {
   });
 };
 
+/**
+ * Chọn subset items sao cho tổng capacity >= required với ưu tiên:
+ * - Ít item nhất
+ * - Dư chỗ (sum - required) ít nhất
+ * - Nếu hoà, ưu tiên tổng lớn hơn (ổn định theo sort đầu vào)
+ *
+ * Lưu ý: items là các "phòng/xe" cụ thể (mỗi item chỉ dùng 1 lần).
+ */
+const pickOptimizedCover = <T extends CapacityItem>(items: T[], required: number): T[] => {
+  if (!Array.isArray(items) || items.length === 0 || required <= 0) return [];
+
+  const normalized = items
+    .map((it) => ({ it, cap: Math.max(0, Number(it.capacity || 0)) }))
+    .filter((x) => x.cap > 0);
+  if (normalized.length === 0) return [];
+
+  // sort giảm dần theo sức chứa (theo yêu cầu) để tie-break ổn định.
+  normalized.sort((a, b) => b.cap - a.cap);
+
+  const maxCap = normalized.reduce((m, x) => Math.max(m, x.cap), 0);
+  const maxSum = required + maxCap; // đủ để so sánh dư chỗ nhỏ nhất
+
+  type State = { rooms: number; prevSum: number; idx: number };
+  const dp: Array<State | null> = Array.from({ length: maxSum + 1 }, () => null);
+  dp[0] = { rooms: 0, prevSum: -1, idx: -1 };
+
+  for (let i = 0; i < normalized.length; i += 1) {
+    const cap = normalized[i].cap;
+    for (let s = maxSum - cap; s >= 0; s -= 1) {
+      const cur = dp[s];
+      if (!cur) continue;
+      const ns = s + cap;
+      const candidateRooms = cur.rooms + 1;
+      const existing = dp[ns];
+      if (!existing || candidateRooms < existing.rooms) {
+        dp[ns] = { rooms: candidateRooms, prevSum: s, idx: i };
+      }
+    }
+  }
+
+  let bestSum = -1;
+  let bestRooms = Number.POSITIVE_INFINITY;
+  let bestWaste = Number.POSITIVE_INFINITY;
+
+  for (let sum = required; sum <= maxSum; sum += 1) {
+    const st = dp[sum];
+    if (!st) continue;
+    const waste = sum - required;
+    if (
+      st.rooms < bestRooms ||
+      (st.rooms === bestRooms && waste < bestWaste) ||
+      (st.rooms === bestRooms && waste === bestWaste && sum > bestSum)
+    ) {
+      bestSum = sum;
+      bestRooms = st.rooms;
+      bestWaste = waste;
+    }
+  }
+
+  if (bestSum < 0) return [];
+
+  const picked: T[] = [];
+  let sum = bestSum;
+  while (sum > 0) {
+    const st = dp[sum];
+    if (!st || st.idx < 0) break;
+    picked.push(normalized[st.idx].it);
+    sum = st.prevSum;
+  }
+
+  // Giữ output sort giảm dần theo capacity cho dễ nhìn / ổn định.
+  return picked.sort((a, b) => Number((b as any).capacity || 0) - Number((a as any).capacity || 0));
+};
+
 /** Giữ nguyên phần phân bổ khác (phòng / xe) khi cập nhật từng loại. */
 const mergeAllocatedServices = async (bookingId: mongoose.Types.ObjectId, patch: Record<string, unknown>) => {
   const booking: any = await Booking.findById(bookingId).lean();
@@ -63,8 +156,7 @@ export const autoAllocateCarsForBooking = async (bookingId: string): Promise<All
     return { success: false, code: 'BOOKING_NOT_FOUND', message: 'Không tìm thấy booking' };
   }
 
-  const currentPaxCount = Array.isArray(booking.passengers) ? booking.passengers.length : 0;
-  const groupSize = currentPaxCount > 0 ? currentPaxCount : Number(booking.groupSize || 0);
+  const groupSize = getBookingPaxCount(booking);
   if (groupSize <= 0) {
     return { success: false, code: 'INVALID_GROUP_SIZE', message: 'groupSize không hợp lệ' };
   }
@@ -125,6 +217,7 @@ export const autoAllocateCarsForBooking = async (bookingId: string): Promise<All
 
       if (covered < groupSize) {
         await VehicleAllocation.deleteMany({ booking_id: booking._id });
+        await mergeAllocatedServices(booking._id, { cars: [] });
         return {
           success: false,
           code: 'NOT_ENOUGH_CAR',
@@ -163,6 +256,7 @@ export const autoAllocateCarsForBooking = async (bookingId: string): Promise<All
     const dayCapacity = insertedRows.reduce((sum, item) => sum + Number(item.capacity || 0), 0);
     if (dayCapacity < groupSize) {
       await VehicleAllocation.deleteMany({ booking_id: booking._id });
+      await mergeAllocatedServices(booking._id, { cars: [] });
       return {
         success: false,
         code: 'NOT_ENOUGH_CAR',
@@ -197,8 +291,7 @@ export const autoAllocateRoomsForBooking = async (bookingId: string): Promise<Al
     return { success: false, code: 'BOOKING_NOT_FOUND', message: 'Không tìm thấy booking' };
   }
 
-  const currentPaxCount = Array.isArray(booking.passengers) ? booking.passengers.length : 0;
-  const groupSize = currentPaxCount > 0 ? currentPaxCount : Number(booking.groupSize || 0);
+  const groupSize = getBookingPaxCount(booking);
   if (groupSize <= 0) {
     return { success: false, code: 'INVALID_GROUP_SIZE', message: 'groupSize không hợp lệ' };
   }
@@ -238,39 +331,21 @@ export const autoAllocateRoomsForBooking = async (bookingId: string): Promise<Al
       freeRooms.push(room);
     }
 
-    let pickedRooms: any[] = [];
-    const freeRoomsAsc = [...freeRooms].sort((a, b) => {
-      if (Number(a.max_occupancy) !== Number(b.max_occupancy))
-        return Number(a.max_occupancy) - Number(b.max_occupancy);
-      return String(a.room_number || '').localeCompare(String(b.room_number || ''));
-    });
-    const single = freeRoomsAsc.find((r) => Number(r.max_occupancy || 0) >= groupSize);
-    if (single) {
-      pickedRooms = [single];
-    } else {
-      let covered = 0;
-      const freeRoomsDesc = [...freeRooms].sort((a, b) => {
-        if (Number(a.max_occupancy) !== Number(b.max_occupancy))
-          return Number(b.max_occupancy) - Number(a.max_occupancy);
-        return String(a.room_number || '').localeCompare(String(b.room_number || ''));
-      });
-      for (const room of freeRoomsDesc) {
-        pickedRooms.push(room);
-        covered += Number(room.max_occupancy || 0);
-        if (covered >= groupSize) break;
-      }
-
-      if (covered < groupSize) {
-        await RoomAllocation.deleteMany({ booking_id: booking._id });
-        return {
-          success: false,
-          code: 'NOT_ENOUGH_ROOM',
-          message: `Không đủ phòng cho đêm ngày ${dayNo}`,
-          day_no: dayNo,
-          required: groupSize,
-          available: covered,
-        };
-      }
+    const freeRoomsWithCap = freeRooms.map((r) => ({ ...r, capacity: Number(r.max_occupancy || 0) }));
+    const pickedRooms = pickOptimizedCover<any>(freeRoomsWithCap, groupSize);
+    const covered = pickedRooms.reduce((sum, r) => sum + Number(r.max_occupancy || r.capacity || 0), 0);
+    const totalFreeCapacity = freeRooms.reduce((sum, r) => sum + Number(r.max_occupancy || 0), 0);
+    if (covered < groupSize) {
+      await RoomAllocation.deleteMany({ booking_id: booking._id });
+      await mergeAllocatedServices(booking._id, { rooms: [] });
+      return {
+        success: false,
+        code: totalFreeCapacity < groupSize ? 'NOT_ENOUGH_CAPACITY' : 'ROOM_MISSING_BY_DAY',
+        message: totalFreeCapacity < groupSize ? ROOM_MESSAGES.NOT_ENOUGH_CAPACITY : ROOM_MESSAGES.ROOM_MISSING_BY_DAY,
+        day_no: dayNo,
+        required: groupSize,
+        available: totalFreeCapacity,
+      };
     }
 
     const uniqueRooms = dedupeByRoomId(pickedRooms);
@@ -306,10 +381,11 @@ export const autoAllocateRoomsForBooking = async (bookingId: string): Promise<Al
     const nightCapacity = insertedRows.reduce((sum, item) => sum + Number(item.max_occupancy || 0), 0);
     if (nightCapacity < groupSize) {
       await RoomAllocation.deleteMany({ booking_id: booking._id });
+      await mergeAllocatedServices(booking._id, { rooms: [] });
       return {
         success: false,
-        code: 'NOT_ENOUGH_ROOM',
-        message: `Không đủ phòng cho đêm ngày ${dayNo} (xung đột phân bổ đồng thời)`,
+        code: 'ROOM_ALREADY_USED',
+        message: ROOM_MESSAGES.ROOM_ALREADY_USED,
         day_no: dayNo,
         required: groupSize,
         available: nightCapacity,

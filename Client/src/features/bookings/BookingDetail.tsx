@@ -249,11 +249,6 @@ const BookingDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
     },
     onError: (error: any) => {
-      const code = error?.response?.data?.code;
-      if (code === 'NOT_ENOUGH_CAR') {
-        message.error('Không đủ xe để phân bổ cho booking này.');
-        return;
-      }
       message.error(error?.response?.data?.message || 'Phân bổ xe thất bại!');
     },
   });
@@ -267,35 +262,7 @@ const BookingDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
     },
     onError: (error: any) => {
-      const code = error?.response?.data?.code;
-      if (code === 'NOT_ENOUGH_ROOM') {
-        message.error('Không đủ phòng để phân bổ cho booking này.');
-        return;
-      }
       message.error(error?.response?.data?.message || 'Phân bổ phòng thất bại!');
-    },
-  });
-
-  const autoAllocateAllServicesMutation = useMutation({
-    mutationFn: async () => {
-      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-services`, {}, getAuthHeader());
-    },
-    onSuccess: () => {
-      message.success('Đã phân bổ xe và phòng thành công!');
-      queryClient.invalidateQueries({ queryKey: ['booking', id] });
-    },
-    onError: (error: any) => {
-      const phase = error?.response?.data?.phase;
-      const code = error?.response?.data?.code;
-      if (phase === 'cars' && code === 'NOT_ENOUGH_CAR') {
-        message.error('Không đủ xe để phân bổ.');
-        return;
-      }
-      if (phase === 'rooms' && code === 'NOT_ENOUGH_ROOM') {
-        message.error('Xe đã phân bổ nhưng không đủ phòng.');
-        return;
-      }
-      message.error(error?.response?.data?.message || 'Phân bổ dịch vụ thất bại!');
     },
   });
 
@@ -585,18 +552,10 @@ const BookingDetail = () => {
                   type="primary"
                   ghost
                   size="small"
-                  loading={autoAllocateRoomsMutation.isPending || autoAllocateAllServicesMutation.isPending}
+                  loading={autoAllocateRoomsMutation.isPending}
                   onClick={() => autoAllocateRoomsMutation.mutate()}
                 >
                   Phân bổ phòng
-                </Button>
-                <Button
-                  type="primary"
-                  size="small"
-                  loading={autoAllocateAllServicesMutation.isPending}
-                  onClick={() => autoAllocateAllServicesMutation.mutate()}
-                >
-                  Phân bổ xe &amp; phòng
                 </Button>
               </Space>
             )}
