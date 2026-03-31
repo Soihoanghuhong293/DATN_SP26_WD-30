@@ -148,7 +148,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         customerName: values.customerName,
         phone: values.phone,
         email: values.email,
-        startDate: selectedDate, 
+        startDate: selectedDate,
         groupSize: values.groupSize,
         paymentMethod: values.paymentMethod,
         customer_note: values.customer_note,
@@ -156,15 +156,44 @@ const BookingForm: React.FC<BookingFormProps> = ({ visible, onClose, tour }) => 
         totalPrice: calculatedPrice * values.groupSize,
       };
 
-      await axios.post('http://localhost:5000/api/v1/bookings', payload);
-      message.success('Đặt tour thành công!');
-      form.resetFields();
-      setSelectedDate(null);
-      onClose();
+      // tạo đơn hàngg
+      const bookingRes = await axios.post('http://localhost:5000/api/v1/bookings', payload);
+      const newBooking = bookingRes.data.data;
+
+      if (!newBooking?._id) {
+        message.error('Không thể tạo đơn hàng, vui lòng thử lại.');
+        setLoading(false);
+        return;
+      }
+
+      // xư lí thanh toán
+      if (values.paymentMethod === 'later') {
+        // Thanh toán sau: chỉ cần báo thành công và đóng modal
+        message.success('Đặt tour thành công! Nhân viên sẽ liên hệ với bạn để xác nhận.');
+        form.resetFields();
+        setSelectedDate(null); 
+        onClose();
+        setLoading(false);
+      } else {
+        // thanh toán giả lập
+        message.loading('Đang khởi tạo thanh toán và chuyển hướng...', 0);
+        
+        const paymentRes = await axios.post(`http://localhost:5000/api/v1/bookings/${newBooking._id}/momo-mock-payment`, {
+          pay_type: values.paymentMethod, // 'full' or 'deposit'
+        });
+
+        const payUrl = paymentRes.data.payUrl;
+        if (payUrl) {
+          window.location.href = payUrl;
+        } else {
+          message.destroy();
+          message.error('Không thể lấy đường dẫn thanh toán. Vui lòng liên hệ hỗ trợ.');
+          setLoading(false);
+        }
+      }
     } catch (error: any) {
       console.error('Lỗi đặt tour:', error);
       message.error(error.response?.data?.message || 'Lỗi khi đặt tour!');
-    } finally {
       setLoading(false);
     }
   };

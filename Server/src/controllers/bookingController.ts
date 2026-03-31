@@ -422,7 +422,7 @@ export const getAllBookings = async (req: Request, res: Response) => {
 export const getBooking = async (req: Request, res: Response) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('tour_id', 'name duration_days') 
+      .populate('tour_id', 'name duration_days images')
       .populate('guide_id', 'name phone email')  
       .populate('user_id', 'name phone email');  
       
@@ -613,7 +613,7 @@ export const updateBooking = async (req: Request, res: Response) => {
     const currentUser = (req as any).user?.name || 'Admin';
 
     //  kiểm tra booking có tồn tại không
-    const booking = await Booking.findById(bookingId);
+    const booking: any = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
     }
@@ -658,8 +658,7 @@ export const updateBooking = async (req: Request, res: Response) => {
       });
     }
 
-    // Nếu có đổi trạng thái thanh toán (payment status)
-    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    const currentPaymentStatus = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
     const nextPaymentStatus =
       req.body.payment_status ||
       (req.body.status && ['deposit', 'paid', 'refunded'].includes(req.body.status) ? req.body.status : undefined);
@@ -734,7 +733,7 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     const bookingId = req.params.id;
     const { pay_type } = req.body || {};
 
-    const booking = await Booking.findById(bookingId);
+    const booking: any = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         status: 'fail',
@@ -743,9 +742,9 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     }
 
     const currentUser = (req as any).user?.name || 'Khách hàng';
-    const total = Number((booking as any).total_price || 0);
-    const method = String((booking as any).paymentMethod || '').trim() || 'full';
-    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    const total = Number(booking.total_price || 0);
+    const method = String(booking.paymentMethod || '').trim() || 'full';
+    const currentPaymentStatus = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
 
     // Không cho thanh toán lại nếu đã paid
     if (currentPaymentStatus === 'paid') {

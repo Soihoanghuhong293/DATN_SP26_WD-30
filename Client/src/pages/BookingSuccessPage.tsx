@@ -33,7 +33,7 @@ const BookingSuccessPage = () => {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [paymentGateway, setPaymentGateway] = useState('momo');
+  const [paymentGateway, setPaymentGateway] = useState<'bank' | 'momo'>('bank');
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -84,15 +84,11 @@ const BookingSuccessPage = () => {
       message.success('Đơn hàng đã thanh toán đủ.');
       return;
     }
-    if (paymentGateway !== 'momo') {
-      message.info('Hiện tại chỉ hỗ trợ mô phỏng thanh toán qua MoMo.');
-      return;
-    }
     if (!id) {
       message.error('Thiếu mã booking để chuyển trang thanh toán.');
       return;
     }
-    navigate(`/booking/payment/${id}`);
+    navigate(`/booking/payment/${id}?gateway=${encodeURIComponent(paymentGateway)}`);
   };
 
   return (
@@ -199,16 +195,20 @@ const BookingSuccessPage = () => {
               <Text type="danger" strong style={{ fontSize: 18 }}>{paymentAmount.toLocaleString()} ₫</Text>
             </div>
             
-            <Radio.Group onChange={(e) => setPaymentGateway(e.target.value)} value={paymentGateway} style={{ width: '100%' }}>
+            <Radio.Group
+              onChange={(e) => setPaymentGateway(e.target.value)}
+              value={paymentGateway}
+              style={{ width: '100%' }}
+            >
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Radio value="momo" style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12, width: '100%' }}>
+                <Radio value="bank" style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12, width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'center', fontWeight: 500 }}>
-                     <span style={{ color: '#a50064', marginRight: 8, fontWeight: 'bold' }}>MoMo</span> Ví điện tử MoMo
+                    <span style={{ color: '#096dd9', marginRight: 8, fontWeight: 'bold' }}>CK</span> Chuyển khoản ngân hàng (QR)
                   </div>
                 </Radio>
-                <Radio value="vnpay" disabled style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, width: '100%', background: '#fafafa' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#999' }}>
-                     <span>VNPAY (Đang bảo trì)</span>
+                <Radio value="momo" style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: 12, width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', fontWeight: 500 }}>
+                    <span style={{ color: '#a50064', marginRight: 8, fontWeight: 'bold' }}>MoMo</span> Ví điện tử MoMo (giả lập dev)
                   </div>
                 </Radio>
               </Space>
