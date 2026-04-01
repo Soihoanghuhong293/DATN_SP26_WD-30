@@ -34,7 +34,12 @@ export const sendMail = async (args: { to: string; subject: string; html: string
     port: cfg.port,
     secure: cfg.port === 465,
     auth: { user: cfg.user, pass: cfg.pass },
+    // Gmail/SMTP hay yêu cầu TLS 1.2+
+    tls: { minVersion: "TLSv1.2" },
   });
+
+  // Verify giúp báo lỗi cấu hình rõ ràng thay vì im lặng
+  await transporter.verify();
 
   await transporter.sendMail({
     from: `"${cfg.fromName}" <${cfg.fromEmail}>`,

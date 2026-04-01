@@ -653,6 +653,7 @@ export const updateBooking = async (req: Request, res: Response) => {
     const incomingGuideIdRaw = req.body?.guide_id;
     const incomingGuideId = incomingGuideIdRaw ? String(incomingGuideIdRaw) : '';
     const guideChanged = Boolean(incomingGuideId) && incomingGuideId !== oldGuideId;
+    let mail: any = guideChanged ? { attempted: true, sent: false, reason: '' } : { attempted: false, sent: false, reason: 'guide_id không thay đổi' };
 
     //  chuẩn bị dữ liệu update
     const updateData: any = { ...req.body };
@@ -735,7 +736,19 @@ export const updateBooking = async (req: Request, res: Response) => {
         const isGuideRole = (guideUser as any)?.role === 'guide' || (guideUser as any)?.role === 'hdv';
         const isActive = (guideUser as any)?.status !== 'inactive';
 
-        if (canSendMail() && toEmail && isGuideRole && isActive) {
+        if (!canSendMail()) {
+          mail.reason = 'SMTP chưa cấu hình';
+          console.warn('[mail] SMTP chưa cấu hình, bỏ qua gửi email phân công.');
+        } else if (!toEmail) {
+          mail.reason = 'HDV không có email';
+          console.warn('[mail] HDV không có email, bỏ qua gửi email phân công.');
+        } else if (!isGuideRole) {
+          mail.reason = 'User không phải role guide/hdv';
+          console.warn('[mail] User được phân công không phải role guide/hdv, bỏ qua gửi email.');
+        } else if (!isActive) {
+          mail.reason = 'Tài khoản HDV bị khóa';
+          console.warn('[mail] Tài khoản HDV bị khóa, bỏ qua gửi email.');
+        } else {
           await sendGuideAssignmentEmail({
             toEmail,
             guideName: (guideUser as any)?.name,
@@ -746,8 +759,13 @@ export const updateBooking = async (req: Request, res: Response) => {
             customerName: (updatedBooking as any)?.customer_name,
             groupSize: Number((updatedBooking as any)?.groupSize || 0),
           });
+          mail.sent = true;
+          mail.reason = '';
+          console.log(`[mail] Đã gửi email phân công đến: ${toEmail}`);
         }
       } catch (e) {
+        mail.reason = (e as any)?.message || 'Gửi email thất bại';
+        console.error('[mail] Gửi email phân công thất bại:', e);
         // Không chặn cập nhật booking nếu gửi email thất bại
       }
     }
@@ -765,7 +783,8 @@ export const updateBooking = async (req: Request, res: Response) => {
 
     res.status(200).json({
       status: 'success',
-      data: updatedBooking
+      data: updatedBooking,
+      mail
     });
   } catch (error: any) {
     res.status(400).json({
