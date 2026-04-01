@@ -5,6 +5,7 @@ import User from '../models/user.model';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { canSendMail } from '../services/mailer';
 import { sendGuideAssignmentEmail } from '../services/guideAssignmentEmail';
+import { sendGuideUnassignmentEmail } from '../services/guideUnassignmentEmail';
 import { autoAllocateCarsForBooking } from '../services/allocation.service';
 
 const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
@@ -695,8 +696,13 @@ export const updateBooking = async (req: Request, res: Response) => {
     const oldGuideId = normalizeId((booking as any)?.guide_id?.toString?.() || (booking as any)?.guide_id);
     const incomingGuideIdRaw = req.body?.guide_id;
     const incomingGuideId = normalizeId(incomingGuideIdRaw);
-    const guideChanged = Boolean(incomingGuideId) && incomingGuideId !== oldGuideId;
-    let mail: any = guideChanged ? { attempted: true, sent: false, reason: '' } : { attempted: false, sent: false, reason: 'guide_id không thay đổi' };
+    const guideFieldTouched = Object.prototype.hasOwnProperty.call(req.body || {}, 'guide_id');
+    const guideAssignedOrSwapped = Boolean(incomingGuideId) && incomingGuideId !== oldGuideId;
+    const guideRemoved = guideFieldTouched && !!oldGuideId && !incomingGuideId;
+
+    let mail: any = (guideAssignedOrSwapped || guideRemoved)
+      ? { attempted: true, sent: false, reason: '', unassigned: { attempted: false, sent: false, reason: '' } }
+      : { attempted: false, sent: false, reason: 'guide_id không thay đổi', unassigned: { attempted: false, sent: false, reason: '' } };
 
     //  chuẩn bị dữ liệu update
     const updateData: any = { ...req.body };
@@ -769,8 +775,8 @@ export const updateBooking = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
 
-    // Nếu phân công HDV mới -> gửi email thông báo cho HDV
-    if (guideChanged && updatedBooking) {
+    // Nếu phân công/đổi HDV -> gửi email cho HDV mới
+    if (guideAssignedOrSwapped && updatedBooking) {
       try {
         const lastSentGuideId = normalizeId((booking as any)?.assignment_email_last_sent_guide_id);
         if (lastSentGuideId && lastSentGuideId === incomingGuideId) {
@@ -827,6 +833,66 @@ export const updateBooking = async (req: Request, res: Response) => {
         mail.reason = (e as any)?.message || 'Gửi email thất bại';
         console.error('[mail] Gửi email phân công thất bại:', e);
         // Không chặn cập nhật booking nếu gửi email thất bại
+      }
+    }
+
+    // Nếu gỡ phân công hoặc đổi HDV -> gửi email cho HDV cũ (thông báo không còn phụ trách)
+    if ((guideRemoved || guideAssignedOrSwapped) && updatedBooking && oldGuideId) {
+      mail.unassigned.attempted = true;
+      try {
+        if (!canSendMail()) {
+          mail.unassigned.sent = false;
+          mail.unassigned.reason = 'SMTP chưa cấu hình';
+        } else {
+          const oldGuideUser = await User.findById(oldGuideId).select('name email role status');
+          const toEmail = String((oldGuideUser as any)?.email || '').trim();
+          const isGuideRole = (oldGuideUser as any)?.role === 'guide' || (oldGuideUser as any)?.role === 'hdv';
+          const isActive = (oldGuideUser as any)?.status !== 'inactive';
+
+          if (!toEmail) {
+            mail.unassigned.sent = false;
+            mail.unassigned.reason = 'HDV cũ không có email';
+          } else if (!isGuideRole) {
+            mail.unassigned.sent = false;
+            mail.unassigned.reason = 'User cũ không phải role guide/hdv';
+          } else if (!isActive) {
+            mail.unassigned.sent = false;
+            mail.unassigned.reason = 'Tài khoản HDV cũ bị khóa';
+          } else {
+            const tour = await Tour.findById((updatedBooking as any).tour_id).select('name duration_days');
+            await sendGuideUnassignmentEmail({
+              toEmail,
+              guideName: (oldGuideUser as any)?.name,
+              bookingId: String((updatedBooking as any)?._id || bookingId),
+              tourName: String((tour as any)?.name || (updatedBooking as any)?.tour_id?.name || 'Tour'),
+              startDate: (updatedBooking as any)?.startDate,
+              endDate: (updatedBooking as any)?.endDate,
+            });
+            mail.unassigned.sent = true;
+            mail.unassigned.reason = '';
+
+            // log vào booking.logs
+            await Booking.findByIdAndUpdate(
+              bookingId,
+              {
+                $push: {
+                  logs: {
+                    time: new Date(),
+                    user: currentUser,
+                    old: 'Phân công HDV',
+                    new: 'Đã gỡ phân công',
+                    note: `Đã gửi email thông báo gỡ phân công tới ${toEmail}`,
+                  },
+                },
+              },
+              { new: false }
+            );
+          }
+        }
+      } catch (e) {
+        mail.unassigned.sent = false;
+        mail.unassigned.reason = (e as any)?.message || 'Gửi email gỡ phân công thất bại';
+        console.error('[mail] Gửi email gỡ phân công thất bại:', e);
       }
     }
 
