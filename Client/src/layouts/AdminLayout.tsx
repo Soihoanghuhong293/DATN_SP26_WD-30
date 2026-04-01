@@ -6,7 +6,7 @@ import AdminHeader from "../components/layout/AdminHeader";
 const { Sider, Content } = Layout;
 
 const AdminLayout = () => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
   const role = localStorage.getItem("role");
 
   // ❌ chưa login

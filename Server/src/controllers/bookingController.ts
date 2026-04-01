@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
+import User from '../models/user.model';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { canSendMail } from '../services/mailer';
+import { sendGuideAssignmentEmail } from '../services/guideAssignmentEmail';
 import { autoAllocateCarsForBooking } from '../services/allocation.service';
 
 const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
@@ -474,6 +477,7 @@ export const createBooking = async (req: Request, res: Response) => {
       totalPrice,
       groupSize,
       paymentMethod,
+      guide_id,
     } = req.body;
 
     const normalizedCustomerName = customer_name || customerName;
@@ -593,6 +597,33 @@ export const createBooking = async (req: Request, res: Response) => {
 
     const newBooking = await Booking.create(newBookingData);
 
+    // Nếu admin tạo booking và đã phân công HDV ngay -> gửi email thông báo
+    try {
+      const assignedGuideId =
+        String((newBooking as any)?.guide_id || guide_id || "").trim();
+      if (assignedGuideId) {
+        const guideUser = await User.findById(assignedGuideId).select("name email role status");
+        const toEmail = String((guideUser as any)?.email || "").trim();
+        const isGuideRole = (guideUser as any)?.role === "guide" || (guideUser as any)?.role === "hdv";
+        const isActive = (guideUser as any)?.status !== "inactive";
+
+        if (canSendMail() && toEmail && isGuideRole && isActive) {
+          await sendGuideAssignmentEmail({
+            toEmail,
+            guideName: (guideUser as any)?.name,
+            bookingId: String((newBooking as any)?._id),
+            tourName: String((tour as any)?.name || "Tour"),
+            startDate: (newBooking as any)?.startDate,
+            endDate: (newBooking as any)?.endDate,
+            customerName: (newBooking as any)?.customer_name,
+            groupSize: Number((newBooking as any)?.groupSize || 0),
+          });
+        }
+      }
+    } catch (e) {
+      // Không chặn tạo booking nếu gửi email thất bại
+    }
+
     res.status(201).json({
       status: 'success',
       data: newBooking
@@ -617,6 +648,11 @@ export const updateBooking = async (req: Request, res: Response) => {
     if (!booking) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
     }
+
+    const oldGuideId = (booking as any)?.guide_id?.toString?.() || '';
+    const incomingGuideIdRaw = req.body?.guide_id;
+    const incomingGuideId = incomingGuideIdRaw ? String(incomingGuideIdRaw) : '';
+    const guideChanged = Boolean(incomingGuideId) && incomingGuideId !== oldGuideId;
 
     //  chuẩn bị dữ liệu update
     const updateData: any = { ...req.body };
@@ -688,6 +724,33 @@ export const updateBooking = async (req: Request, res: Response) => {
       },
       { new: true, runValidators: true }
     );
+
+    // Nếu phân công HDV mới -> gửi email thông báo cho HDV
+    if (guideChanged && updatedBooking) {
+      try {
+        const guideUser = await User.findById(incomingGuideId).select('name email role status');
+        const tour = await Tour.findById((updatedBooking as any).tour_id).select('name duration_days');
+        const toEmail = String((guideUser as any)?.email || '').trim();
+
+        const isGuideRole = (guideUser as any)?.role === 'guide' || (guideUser as any)?.role === 'hdv';
+        const isActive = (guideUser as any)?.status !== 'inactive';
+
+        if (canSendMail() && toEmail && isGuideRole && isActive) {
+          await sendGuideAssignmentEmail({
+            toEmail,
+            guideName: (guideUser as any)?.name,
+            bookingId: String((updatedBooking as any)?._id || bookingId),
+            tourName: String((tour as any)?.name || (updatedBooking as any)?.tour_id?.name || 'Tour'),
+            startDate: (updatedBooking as any)?.startDate,
+            endDate: (updatedBooking as any)?.endDate,
+            customerName: (updatedBooking as any)?.customer_name,
+            groupSize: Number((updatedBooking as any)?.groupSize || 0),
+          });
+        }
+      } catch (e) {
+        // Không chặn cập nhật booking nếu gửi email thất bại
+      }
+    }
 
     // Nếu người dùng cập nhật danh sách hành khách, tự động cập nhật phân bổ xe
     // để linh hoạt theo số khách thực tế.
