@@ -650,6 +650,10 @@ export const createBooking = async (req: Request, res: Response) => {
             endDate: (newBooking as any)?.endDate,
             customerName: (newBooking as any)?.customer_name,
             groupSize: Number((newBooking as any)?.groupSize || 0),
+            bookingStatus: String((newBooking as any)?.status || ''),
+            pickupLocation: String((newBooking as any)?.customer_address || ''),
+            departureTime: String((newBooking as any)?.departure_time || (newBooking as any)?.start_time || ''),
+            note: String((newBooking as any)?.customer_note || ''),
           });
           await markAssignmentEmailSent({
             bookingId: String((newBooking as any)?._id),
@@ -802,6 +806,10 @@ export const updateBooking = async (req: Request, res: Response) => {
             endDate: (updatedBooking as any)?.endDate,
             customerName: (updatedBooking as any)?.customer_name,
             groupSize: Number((updatedBooking as any)?.groupSize || 0),
+            bookingStatus: String((updatedBooking as any)?.status || ''),
+            pickupLocation: String((updatedBooking as any)?.customer_address || ''),
+            departureTime: String((updatedBooking as any)?.departure_time || (updatedBooking as any)?.start_time || ''),
+            note: String((updatedBooking as any)?.customer_note || ''),
           });
           mail.sent = true;
           mail.reason = '';
