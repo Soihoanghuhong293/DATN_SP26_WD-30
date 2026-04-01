@@ -16,6 +16,37 @@ const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 
   cancelled: 'unpaid',
 };
 
+const normalizeId = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
+
+const markAssignmentEmailSent = async (args: {
+  bookingId: string;
+  actorName: string;
+  toEmail: string;
+  guideId: string;
+}) => {
+  const now = new Date();
+  await Booking.findByIdAndUpdate(
+    args.bookingId,
+    {
+      $set: {
+        assignment_email_last_sent_at: now,
+        assignment_email_last_sent_to: args.toEmail,
+        assignment_email_last_sent_guide_id: args.guideId,
+      },
+      $push: {
+        logs: {
+          time: now,
+          user: args.actorName,
+          old: 'Phân công HDV',
+          new: 'Đã gửi email',
+          note: `Đã gửi email phân công tới ${args.toEmail}`,
+        },
+      },
+    },
+    { new: false }
+  );
+};
+
 // Lấy danh sách booking của HDV đang đăng nhập 
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
@@ -599,15 +630,17 @@ export const createBooking = async (req: Request, res: Response) => {
 
     // Nếu admin tạo booking và đã phân công HDV ngay -> gửi email thông báo
     try {
-      const assignedGuideId =
-        String((newBooking as any)?.guide_id || guide_id || "").trim();
+      const assignedGuideId = normalizeId((newBooking as any)?.guide_id || guide_id);
       if (assignedGuideId) {
         const guideUser = await User.findById(assignedGuideId).select("name email role status");
         const toEmail = String((guideUser as any)?.email || "").trim();
         const isGuideRole = (guideUser as any)?.role === "guide" || (guideUser as any)?.role === "hdv";
         const isActive = (guideUser as any)?.status !== "inactive";
 
-        if (canSendMail() && toEmail && isGuideRole && isActive) {
+        const lastSentGuideId = normalizeId((newBooking as any)?.assignment_email_last_sent_guide_id);
+        if (lastSentGuideId && lastSentGuideId === assignedGuideId) {
+          // chống gửi trùng
+        } else if (canSendMail() && toEmail && isGuideRole && isActive) {
           await sendGuideAssignmentEmail({
             toEmail,
             guideName: (guideUser as any)?.name,
@@ -617,6 +650,12 @@ export const createBooking = async (req: Request, res: Response) => {
             endDate: (newBooking as any)?.endDate,
             customerName: (newBooking as any)?.customer_name,
             groupSize: Number((newBooking as any)?.groupSize || 0),
+          });
+          await markAssignmentEmailSent({
+            bookingId: String((newBooking as any)?._id),
+            actorName: (req as any).user?.name || 'Admin',
+            toEmail,
+            guideId: assignedGuideId,
           });
         }
       }
@@ -649,9 +688,9 @@ export const updateBooking = async (req: Request, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
     }
 
-    const oldGuideId = (booking as any)?.guide_id?.toString?.() || '';
+    const oldGuideId = normalizeId((booking as any)?.guide_id?.toString?.() || (booking as any)?.guide_id);
     const incomingGuideIdRaw = req.body?.guide_id;
-    const incomingGuideId = incomingGuideIdRaw ? String(incomingGuideIdRaw) : '';
+    const incomingGuideId = normalizeId(incomingGuideIdRaw);
     const guideChanged = Boolean(incomingGuideId) && incomingGuideId !== oldGuideId;
     let mail: any = guideChanged ? { attempted: true, sent: false, reason: '' } : { attempted: false, sent: false, reason: 'guide_id không thay đổi' };
 
@@ -729,6 +768,11 @@ export const updateBooking = async (req: Request, res: Response) => {
     // Nếu phân công HDV mới -> gửi email thông báo cho HDV
     if (guideChanged && updatedBooking) {
       try {
+        const lastSentGuideId = normalizeId((booking as any)?.assignment_email_last_sent_guide_id);
+        if (lastSentGuideId && lastSentGuideId === incomingGuideId) {
+          mail.sent = false;
+          mail.reason = 'Đã gửi email phân công cho HDV này trước đó';
+        } else {
         const guideUser = await User.findById(incomingGuideId).select('name email role status');
         const tour = await Tour.findById((updatedBooking as any).tour_id).select('name duration_days');
         const toEmail = String((guideUser as any)?.email || '').trim();
@@ -762,6 +806,14 @@ export const updateBooking = async (req: Request, res: Response) => {
           mail.sent = true;
           mail.reason = '';
           console.log(`[mail] Đã gửi email phân công đến: ${toEmail}`);
+
+          await markAssignmentEmailSent({
+            bookingId,
+            actorName: currentUser,
+            toEmail,
+            guideId: incomingGuideId,
+          });
+        }
         }
       } catch (e) {
         mail.reason = (e as any)?.message || 'Gửi email thất bại';
