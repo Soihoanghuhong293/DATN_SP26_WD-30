@@ -31,6 +31,16 @@ import "./styles/DepartureCalendar.css";
 
 type PassengerGender = "male" | "female" | "other";
 
+type ScheduleTicketRef = {
+  _id: string;
+  name?: string;
+  ticket_type?: string;
+  application_mode?: "included_in_tour" | "optional_addon";
+  price_adult?: number;
+  price_child?: number;
+  status?: string;
+};
+
 type BookingFormValues = {
   customerName: string;
   phone: string;
@@ -38,6 +48,7 @@ type BookingFormValues = {
   address?: string;
   note?: string;
   paymentMethod: "full" | "deposit" | "later";
+  optionalTicketIds?: string[];
   adultPassengers?: Array<{
     fullName?: string;
     gender?: PassengerGender;
@@ -108,7 +119,38 @@ const BookingPage: React.FC = () => {
   const watchedPaymentMethod = Form.useWatch("paymentMethod", form);
   const watchedAdultPassengers = Form.useWatch("adultPassengers", form);
   const watchedChildPassengers = Form.useWatch("childPassengers", form);
+  const watchedOptionalTicketIds = Form.useWatch("optionalTicketIds", form);
   const lastSlotsWarnRef = useRef<number | null>(null);
+
+  const { includedTickets, optionalTickets } = useMemo(() => {
+    const schedule = (tour as any)?.schedule || [];
+    const byId = new Map<string, ScheduleTicketRef>();
+    for (const day of schedule) {
+      const ticks = (day as any)?.ticket_ids || [];
+      for (const t of ticks) {
+        if (!t || typeof t !== "object") continue;
+        if ((t as ScheduleTicketRef).status && (t as ScheduleTicketRef).status !== "active") continue;
+        const id = String((t as any)._id || (t as any).id || "");
+        if (!id) continue;
+        if (!byId.has(id)) {
+          byId.set(id, {
+            _id: id,
+            name: (t as any).name,
+            ticket_type: (t as any).ticket_type,
+            application_mode: (t as any).application_mode,
+            price_adult: Number((t as any).price_adult ?? 0),
+            price_child: Number((t as any).price_child ?? 0),
+            status: (t as any).status,
+          });
+        }
+      }
+    }
+    const all = Array.from(byId.values());
+    return {
+      includedTickets: all.filter((x) => x.application_mode === "included_in_tour"),
+      optionalTickets: all.filter((x) => x.application_mode === "optional_addon"),
+    };
+  }, [tour]);
 
   useEffect(() => {
     const fetchTourDetail = async () => {
@@ -310,6 +352,22 @@ const BookingPage: React.FC = () => {
     return { adults, children, groupSize, adultUnit, childUnit, total };
   }, [basePrices.adult, basePrices.child, calculatedAdultPrice, calculatedChildPrice, selectedDate, tour, watchedAdults, watchedChildren]);
 
+  const ticketsAddonTotal = useMemo(() => {
+    const adults = Number.isFinite(watchedAdults as any) ? Number(watchedAdults) : 1;
+    const children = Number.isFinite(watchedChildren as any) ? Number(watchedChildren) : 0;
+    const ids = Array.isArray(watchedOptionalTicketIds) ? watchedOptionalTicketIds : [];
+    const ticketById = new Map(optionalTickets.map((t) => [t._id, t]));
+    let sum = 0;
+    for (const raw of ids) {
+      const t = ticketById.get(String(raw));
+      if (!t) continue;
+      sum += adults * Number(t.price_adult || 0) + children * Number(t.price_child || 0);
+    }
+    return sum;
+  }, [optionalTickets, watchedAdults, watchedChildren, watchedOptionalTicketIds]);
+
+  const grandTotal = useMemo(() => Number(totals.total || 0) + Number(ticketsAddonTotal || 0), [totals.total, ticketsAddonTotal]);
+
   const submitButtonLabel = useMemo(() => {
     const adults = Number.isFinite(watchedAdults as any) ? Number(watchedAdults) : 0;
     const children = Number.isFinite(watchedChildren as any) ? Number(watchedChildren) : 0;
@@ -479,6 +537,7 @@ const BookingPage: React.FC = () => {
         paymentMethod: values.paymentMethod || "full",
         customer_note: values.note,
         totalPrice: totals.total,
+        optional_ticket_ids: Array.isArray(values.optionalTicketIds) ? values.optionalTicketIds : [],
         passengers,
       };
 
@@ -515,11 +574,16 @@ const BookingPage: React.FC = () => {
   };
 
   useEffect(() => {
-    form.setFieldsValue({ adults: 1, children: 0, termsAccepted: false, paymentMethod: "full" });
+    form.setFieldsValue({ adults: 1, children: 0, termsAccepted: false, paymentMethod: "full", optionalTicketIds: [] });
     syncAdultPassengers(1);
     syncChildPassengers(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!tour) return;
+    form.setFieldsValue({ optionalTicketIds: [] });
+  }, [tour, form]);
 
   // Đồng bộ số form khách với số chỗ khi chọn ngày hoặc slots thay đổi (tránh lỗi 16 form khi chỉ có 15 chỗ)
   useEffect(() => {
@@ -828,7 +892,7 @@ const BookingPage: React.FC = () => {
                         <Text>
                           Tổng tiền dự kiến:{" "}
                           <b style={{ color: "#f5222d" }}>
-                            {loadingPrice ? "..." : `${Number(totals.total).toLocaleString("vi-VN")}đ`}
+                            {loadingPrice ? "..." : `${Number(grandTotal).toLocaleString("vi-VN")}đ`}
                           </b>
                         </Text>
                       </div>
@@ -838,6 +902,66 @@ const BookingPage: React.FC = () => {
               )}
 
               <Divider style={{ margin: "16px 0" }} />
+
+              {(includedTickets.length > 0 || optionalTickets.length > 0) && (
+                <div style={{ marginBottom: 20 }}>
+                  <Title level={4} style={{ marginBottom: 12 }}>
+                    Vé theo lịch trình
+                  </Title>
+                  <Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+                    Vé <b>đã bao gồm</b> trong giá tour; vé <b>mua thêm</b> được tính theo số người lớn và trẻ em đã chọn.
+                  </Text>
+
+                  {includedTickets.length > 0 && (
+                    <Card size="small" style={{ borderRadius: 12, marginBottom: 12, background: "#f6ffed", borderColor: "#b7eb8f" }}>
+                      <Text strong style={{ display: "block", marginBottom: 8 }}>
+                        Đã bao gồm trong giá tour
+                      </Text>
+                      <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        {includedTickets.map((t) => (
+                          <li key={t._id}>
+                            <Text>
+                              {t.name || "Vé"}{" "}
+                              {t.ticket_type ? (
+                                <Text type="secondary">({t.ticket_type})</Text>
+                              ) : null}
+                            </Text>
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  )}
+
+                  {optionalTickets.length > 0 && (
+                    <Card size="small" style={{ borderRadius: 12, marginBottom: 12 }}>
+                      <Text strong style={{ display: "block", marginBottom: 8 }}>
+                        Vé mua thêm (tùy chọn)
+                      </Text>
+                      <Form.Item name="optionalTicketIds" style={{ marginBottom: 0 }}>
+                        <Checkbox.Group style={{ width: "100%" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {optionalTickets.map((t) => {
+                              const pa = Number(t.price_adult || 0);
+                              const pc = Number(t.price_child || 0);
+                              return (
+                                <Checkbox key={t._id} value={t._id}>
+                                  <span>
+                                    {t.name || "Vé"}{" "}
+                                    {t.ticket_type ? <Text type="secondary">({t.ticket_type})</Text> : null}
+                                    <Text type="secondary" style={{ marginLeft: 6 }}>
+                                      — NL: {pa.toLocaleString("vi-VN")}₫ · TE: {pc.toLocaleString("vi-VN")}₫ / khách
+                                    </Text>
+                                  </span>
+                                </Checkbox>
+                              );
+                            })}
+                          </div>
+                        </Checkbox.Group>
+                      </Form.Item>
+                    </Card>
+                  )}
+                </div>
+              )}
 
               <Title level={4} style={{ marginBottom: 12 }}>
                 Thông tin người lớn
@@ -1067,6 +1191,15 @@ const BookingPage: React.FC = () => {
               </div>
             </div>
 
+            {ticketsAddonTotal > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <Text>Phụ phí vé mua thêm</Text>
+                <Text style={{ fontWeight: 800, color: "#f5222d" }}>
+                  {Number(ticketsAddonTotal || 0).toLocaleString("vi-VN")} ₫
+                </Text>
+              </div>
+            )}
+
             <Divider style={{ margin: "12px 0" }} />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -1074,7 +1207,7 @@ const BookingPage: React.FC = () => {
                 Tổng tiền
               </Title>
               <Title level={4} style={{ margin: 0, color: "#f5222d" }}>
-                {Number(totals.total || 0).toLocaleString("vi-VN")}đ
+                {Number(grandTotal || 0).toLocaleString("vi-VN")}đ
               </Title>
             </div>
 
@@ -1102,7 +1235,7 @@ const BookingPage: React.FC = () => {
                 {(() => {
                   const method = watchedPaymentMethod || "full";
                   if (method === "later") return "0đ";
-                  const base = Number(totals.total || 0);
+                  const base = Number(grandTotal || 0);
                   const due = method === "deposit" ? Math.round(base * 0.3) : base;
                   return `${due.toLocaleString("vi-VN")}đ`;
                 })()}

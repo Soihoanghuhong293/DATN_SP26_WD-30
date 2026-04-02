@@ -6,6 +6,10 @@ const templatePopulate = [
   { path: 'provider_id', select: 'name status' },
   { path: 'schedule.lunch_restaurant_id', select: 'name phone capacity location status' },
   { path: 'schedule.dinner_restaurant_id', select: 'name phone capacity location status' },
+  {
+    path: 'schedule.ticket_ids',
+    select: 'name ticket_type application_mode price_adult price_child status',
+  },
 ] as const;
 
 export const getAllTourTemplates = async (req: Request, res: Response) => {

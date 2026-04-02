@@ -76,6 +76,10 @@ export const getAllTours = async (req: Request, res: Response) => {
       .populate('category_id')
       .populate({ path: 'schedule.lunch_restaurant_id', select: 'name location phone' })
       .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone' })
+      .populate({
+        path: 'schedule.ticket_ids',
+        select: 'name ticket_type application_mode price_adult price_child status',
+      })
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -99,7 +103,11 @@ export const getTour = async (req: Request, res: Response) => {
     const tour = await Tour.findById(req.params.id)
       .populate('category_id')
       .populate({ path: 'schedule.lunch_restaurant_id', select: 'name location phone capacity' })
-      .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone capacity' });
+      .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone capacity' })
+      .populate({
+        path: 'schedule.ticket_ids',
+        select: 'name ticket_type application_mode price_adult price_child status',
+      });
     if (!tour) return res.status(404).json({ message: 'Không tìm thấy tour' });
 
     res.status(200).json({

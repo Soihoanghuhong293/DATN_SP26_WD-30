@@ -2,8 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient, useQueries } from '@tanstack/react-query';
 import axios from 'axios';
-import { getCategoryTree, getProviders, getRestaurants } from '../../../services/api';
-import type { IRestaurant } from '../../../types/provider.types';
+import { getCategoryTree, getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
+import type { IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
   Space, Typography, message, Select, Divider, Spin, 
@@ -30,10 +30,26 @@ const mealRefId = (v: any): string | undefined => {
   return String(v);
 };
 
+const normalizeTicketIdsFromTemplate = (arr: unknown): string[] => {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((t) => (typeof t === 'object' && t != null && (t as any)._id != null ? String((t as any)._id) : String(t)))
+    .filter(Boolean);
+};
+
 /** Chuẩn hoá schedule từ template (hỗ trợ lunch/dinner và legacy restaurant_ids) */
 const normalizeScheduleFromTemplate = (sched: any[] | undefined) => {
   if (!Array.isArray(sched) || !sched.length) {
-    return [{ day: 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined }];
+    return [
+      {
+        day: 1,
+        title: '',
+        activities: [],
+        lunch_restaurant_id: undefined,
+        dinner_restaurant_id: undefined,
+        ticket_ids: [] as string[],
+      },
+    ];
   }
   return sched.map((s, idx) => {
     const legacy = Array.isArray(s.restaurant_ids) ? s.restaurant_ids : [];
@@ -47,6 +63,7 @@ const normalizeScheduleFromTemplate = (sched: any[] | undefined) => {
       activities: Array.isArray(s.activities) ? s.activities : [],
       lunch_restaurant_id: lunch,
       dinner_restaurant_id: dinner,
+      ticket_ids: normalizeTicketIdsFromTemplate(s.ticket_ids),
     };
   });
 };
@@ -116,6 +133,42 @@ const TourCreate = () => {
     });
   }, [restaurantQueries, normalizedSupplierIds, providers]);
 
+  const ticketQueries = useQueries({
+    queries: normalizedSupplierIds.map((pid) => ({
+      queryKey: ['provider-tickets', pid],
+      queryFn: () => getProviderTickets({ provider_id: pid }),
+      enabled: Boolean(pid),
+    })),
+  });
+
+  const ticketsLoading = ticketQueries.some((q) => q.isLoading);
+
+  const ticketOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [];
+    for (let i = 0; i < ticketQueries.length; i++) {
+      const pid = normalizedSupplierIds[i];
+      const list: IProviderTicket[] = ticketQueries[i]?.data?.data?.tickets ?? [];
+      const pname =
+        providers.find((p: any) => String(p.id || p._id) === String(pid))?.name?.trim() || '';
+      for (const t of list) {
+        if ((t.status || 'active') !== 'active') continue;
+        const tid = t.id || t._id;
+        if (!tid) continue;
+        const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+        opts.push({
+          value: String(tid),
+          label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pname ? ` (${pname})` : ''}`,
+        });
+      }
+    }
+    const seen = new Set<string>();
+    return opts.filter((o) => {
+      if (seen.has(o.value)) return false;
+      seen.add(o.value);
+      return true;
+    });
+  }, [ticketQueries, normalizedSupplierIds, providers]);
+
   const { data: tourTemplates = [] } = useQuery({
     queryKey: ['tour-templates'],
     queryFn: async () => {
@@ -163,6 +216,7 @@ const TourCreate = () => {
           ...s,
           lunch_restaurant_id: undefined,
           dinner_restaurant_id: undefined,
+          ticket_ids: [],
         })),
       });
     }
@@ -176,7 +230,14 @@ const TourCreate = () => {
       
       if (duration > currentSchedule.length) {
         for (let i = currentSchedule.length; i < duration; i++) {
-          newSchedule.push({ day: i + 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined });
+          newSchedule.push({
+            day: i + 1,
+            title: '',
+            activities: [],
+            lunch_restaurant_id: undefined,
+            dinner_restaurant_id: undefined,
+            ticket_ids: [],
+          });
         }
       } else if (duration < currentSchedule.length) {
         newSchedule = newSchedule.slice(0, duration);
@@ -312,7 +373,16 @@ const TourCreate = () => {
           initialValues={{ 
             status: 'draft', 
             duration_days: 1,
-            schedule: [{ day: 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined }],
+            schedule: [
+              {
+                day: 1,
+                title: '',
+                activities: [],
+                lunch_restaurant_id: undefined,
+                dinner_restaurant_id: undefined,
+                ticket_ids: [],
+              },
+            ],
             prices: DEFAULT_PRICE_CATEGORIES
           }}
         >
@@ -450,6 +520,36 @@ const TourCreate = () => {
                                   optionFilterProp="label"
                                   notFoundContent={
                                     normalizedSupplierIds.length ? 'Chưa có nhà hàng — khai báo tại Nhà cung cấp' : null
+                                  }
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={24}>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'ticket_ids']}
+                                label={<span className="font-medium text-gray-600">Vé trong ngày</span>}
+                                style={{ marginBottom: 0 }}
+                                tooltip="Danh sách vé theo các NCC đã chọn. [Bao gồm] = trong giá tour; [Mua thêm] = phụ thu khi khách chọn."
+                              >
+                                <Select
+                                  mode="multiple"
+                                  allowClear
+                                  showSearch
+                                  className="rounded-lg"
+                                  placeholder={
+                                    normalizedSupplierIds.length
+                                      ? 'Chọn vé (có thể nhiều vé)'
+                                      : 'Chọn ít nhất 1 nhà cung cấp bên phải'
+                                  }
+                                  disabled={!normalizedSupplierIds.length}
+                                  loading={ticketsLoading}
+                                  options={ticketOptions}
+                                  optionFilterProp="label"
+                                  notFoundContent={
+                                    normalizedSupplierIds.length
+                                      ? 'Các NCC đã chọn chưa có vé — thêm tại Nhà cung cấp'
+                                      : null
                                   }
                                 />
                               </Form.Item>

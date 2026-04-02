@@ -567,6 +567,21 @@ const TourDetailPage = () => {
                         </div>
                       );
                     })()}
+                    {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
+                      <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                        <b>Vé:</b>{' '}
+                        {(item as any).ticket_ids
+                          .map((tk: any) => {
+                            if (typeof tk === 'object' && tk?.name) {
+                              const mode =
+                                tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
+                              return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
+                            }
+                            return String(tk);
+                          })
+                          .join('; ')}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}

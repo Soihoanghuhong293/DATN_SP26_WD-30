@@ -178,7 +178,20 @@ const BookingEdit = () => {
             const meals = [lunchName ? `- Trưa: ${lunchName}` : '', dinnerName ? `- Tối: ${dinnerName}` : '']
               .filter(Boolean)
               .join('\n');
-            return `[Ngày ${day.day}] ${day.title}\n${acts}${meals ? `\n${meals}` : ''}`;
+            const ticketLines =
+              Array.isArray(day.ticket_ids) && day.ticket_ids.length > 0
+                ? day.ticket_ids
+                    .map((tk: any) => {
+                      if (typeof tk === 'object' && tk?.name) {
+                        const m = tk.application_mode === 'included_in_tour' ? 'bao gồm trong tour' : 'mua thêm';
+                        return `- Vé: ${tk.name}${tk.ticket_type ? ` (${tk.ticket_type})` : ''} [[${m}]]`;
+                      }
+                      return '';
+                    })
+                    .filter(Boolean)
+                    .join('\n')
+                : '';
+            return `[Ngày ${day.day}] ${day.title}\n${acts}${meals ? `\n${meals}` : ''}${ticketLines ? `\n${ticketLines}` : ''}`;
           })
           .join('\n\n');
       } else {

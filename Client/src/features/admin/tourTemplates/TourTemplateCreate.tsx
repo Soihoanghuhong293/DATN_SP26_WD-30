@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Button, Card, Col, Form, Input, InputNumber, message, Row, Select, Space, Typography, Upload } from 'antd';
-import { getProviders, getRestaurants } from '../../../services/api';
-import type { IProvider, IRestaurant } from '../../../types/provider.types';
+import { getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
+import type { IProvider, IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { ArrowLeftOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
@@ -53,6 +53,34 @@ export default function TourTemplateCreate() {
   });
   const restaurants: IRestaurant[] = restaurantsRes?.data?.restaurants ?? [];
 
+  const { data: ticketsRes, isLoading: isTicketsLoading } = useQuery({
+    queryKey: ['provider-tickets', providerId],
+    queryFn: () => getProviderTickets({ provider_id: providerId }),
+    enabled: Boolean(providerId),
+  });
+  const providerTickets: IProviderTicket[] = ticketsRes?.data?.tickets ?? [];
+
+  const selectedProviderName = useMemo(() => {
+    const p = providers.find((x) => String(x.id || x._id) === String(providerId));
+    return p?.name?.trim() || '';
+  }, [providers, providerId]);
+
+  const ticketOptions = useMemo(
+    () =>
+      providerTickets
+        .filter((t) => (t.status || 'active') === 'active')
+        .map((t) => {
+          const tid = t.id || t._id || '';
+          const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+          return {
+            value: tid,
+            label: `${t.name} — ${t.ticket_type} [${modeLabel}]${selectedProviderName ? ` (${selectedProviderName})` : ''}`,
+          };
+        })
+        .filter((o) => o.value),
+    [providerTickets, selectedProviderName]
+  );
+
   const restaurantOptions = useMemo(
     () =>
       restaurants.map((r) => ({
@@ -97,7 +125,14 @@ export default function TourTemplateCreate() {
         let next = [...currentSchedule];
         if (duration > currentSchedule.length) {
           for (let i = currentSchedule.length; i < duration; i++) {
-            next.push({ day: i + 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined });
+            next.push({
+              day: i + 1,
+              title: '',
+              activities: [],
+              lunch_restaurant_id: undefined,
+              dinner_restaurant_id: undefined,
+              ticket_ids: [],
+            });
           }
         } else if (duration < currentSchedule.length) {
           next = next.slice(0, duration);
@@ -150,7 +185,9 @@ export default function TourTemplateCreate() {
           onValuesChange={handleValuesChange}
           initialValues={{
             duration_days: 1,
-            schedule: [{ day: 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined }],
+            schedule: [
+              { day: 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined, ticket_ids: [] },
+            ],
           }}
         >
           <Row gutter={24}>
@@ -183,8 +220,8 @@ export default function TourTemplateCreate() {
 
                 <Form.Item
                   name="provider_id"
-                  label="Nhà cung cấp (để chọn nhà hàng trong lịch trình)"
-                  tooltip="Chọn NCC rồi mỗi ngày có thể chọn nhà hàng buổi trưa và buổi tối (đã khai báo cho NCC đó)."
+                  label="Nhà cung cấp (nhà hàng & vé trong lịch trình)"
+                  tooltip="Chọn NCC: mỗi ngày chọn nhà hàng trưa/tối và vé (khai báo tại chi tiết NCC)."
                 >
                   <Select
                     allowClear
@@ -204,6 +241,7 @@ export default function TourTemplateCreate() {
                           ...s,
                           lunch_restaurant_id: undefined,
                           dinner_restaurant_id: undefined,
+                          ticket_ids: [],
                         })),
                       });
                     }}
@@ -320,6 +358,26 @@ export default function TourTemplateCreate() {
                                   loading={isRestaurantsLoading}
                                   options={restaurantOptions}
                                   notFoundContent={providerId ? 'Chưa có nhà hàng — thêm tại NCC' : null}
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={24}>
+                              <Form.Item {...restField} name={[name, 'ticket_ids']} style={{ marginBottom: 0 }} label="Vé trong ngày">
+                                <Select
+                                  mode="multiple"
+                                  allowClear
+                                  showSearch
+                                  className="rounded-lg w-full"
+                                  optionFilterProp="label"
+                                  placeholder={
+                                    providerId
+                                      ? 'Chọn vé (có thể nhiều vé) — ví dụ Bà Nà, show…'
+                                      : 'Chọn nhà cung cấp trước'
+                                  }
+                                  disabled={!providerId}
+                                  loading={isTicketsLoading}
+                                  options={ticketOptions}
+                                  notFoundContent={providerId ? 'Chưa có vé — thêm trong chi tiết NCC' : null}
                                 />
                               </Form.Item>
                             </Col>

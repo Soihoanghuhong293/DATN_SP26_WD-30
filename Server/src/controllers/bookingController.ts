@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
+import ProviderTicket from '../models/ProviderTicket';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { autoAllocateCarsForBooking, autoAllocateRoomsForBooking } from '../services/allocation.service';
 import VehicleAllocation from '../models/VehicleAllocation';
@@ -493,7 +494,10 @@ export const createBooking = async (req: Request, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'Thiếu thông tin khách hàng' });
     }
 
-    const tour = await Tour.findById(tour_id);
+    const tour = await Tour.findById(tour_id).populate({
+      path: 'schedule.ticket_ids',
+      select: 'application_mode status price_adult price_child name',
+    });
     if (!tour) {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
     }
@@ -546,6 +550,77 @@ export const createBooking = async (req: Request, res: Response) => {
       });
     }
 
+    const scheduleForTickets = Array.isArray((tour as any).schedule) ? (tour as any).schedule : [];
+    const allowedOptionalTicketIds = new Set<string>();
+    for (const day of scheduleForTickets) {
+      const ticks = day?.ticket_ids || [];
+      for (const t of ticks) {
+        if (!t || typeof t !== 'object') continue;
+        if ((t as any).status && (t as any).status !== 'active') continue;
+        const tid = (t as any)._id?.toString?.();
+        if (tid && (t as any).application_mode === 'optional_addon') {
+          allowedOptionalTicketIds.add(tid);
+        }
+      }
+    }
+
+    const rawOptional = req.body.optional_ticket_ids ?? req.body.optionalTicketIds;
+    const selectedOptionalIds: string[] = Array.isArray(rawOptional)
+      ? [...new Set(rawOptional.map((x: any) => String(x)))]
+      : [];
+
+    for (const tid of selectedOptionalIds) {
+      if (!allowedOptionalTicketIds.has(tid)) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Có vé được chọn không áp dụng cho tour này hoặc không thuộc loại mua thêm.',
+        });
+      }
+    }
+
+    const passengersBody = req.body.passengers || req.body.guests || [];
+    let adultsCount = 0;
+    let childrenCount = 0;
+    if (Array.isArray(passengersBody) && passengersBody.length > 0) {
+      for (const p of passengersBody) {
+        const typ = String((p as any)?.type || '');
+        if (typ.includes('Trẻ em')) childrenCount += 1;
+        else adultsCount += 1;
+      }
+    } else {
+      adultsCount = Math.max(1, Number(groupSize) || 0);
+    }
+
+    let optionalTicketsAddon = 0;
+    if (selectedOptionalIds.length > 0) {
+      const ticketDocs = await ProviderTicket.find({
+        _id: { $in: selectedOptionalIds },
+        status: 'active',
+        application_mode: 'optional_addon',
+      });
+      if (ticketDocs.length !== selectedOptionalIds.length) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Một hoặc nhiều vé không tồn tại hoặc không còn áp dụng.',
+        });
+      }
+      for (const ticket of ticketDocs) {
+        const id = ticket._id.toString();
+        if (!allowedOptionalTicketIds.has(id)) {
+          return res.status(400).json({
+            status: 'fail',
+            message: 'Vé được chọn không nằm trong lịch tour.',
+          });
+        }
+        const pa = Number(ticket.price_adult || 0);
+        const pc = Number(ticket.price_child || 0);
+        optionalTicketsAddon += adultsCount * pa + childrenCount * pc;
+      }
+    }
+
+    const tourOnlyTotal = Number(normalizedTotalPrice ?? 0);
+    const finalTotalPrice = tourOnlyTotal + optionalTicketsAddon;
+
     const incomingStatus = req.body?.status;
     const normalizedPaymentStatus =
       req.body?.payment_status ||
@@ -572,7 +647,9 @@ export const createBooking = async (req: Request, res: Response) => {
       customer_email: normalizedCustomerEmail,
       customer_address: normalizedCustomerAddress,
       customer_note: normalizedCustomerNote,
-      total_price: normalizedTotalPrice ?? 0,
+      total_price: finalTotalPrice,
+      optional_ticket_ids: selectedOptionalIds,
+      optional_tickets_total: optionalTicketsAddon,
       paymentMethod: paymentMethod || req.body.payment_method || 'later',
       status: normalizedBookingStatus,
       payment_status: normalizedPaymentStatus,
