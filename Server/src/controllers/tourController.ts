@@ -193,11 +193,6 @@ export const updateTour = async (req: Request, res: Response) => {
       
     }
 
-    // không cho sửa itinerary
-    if (req.body?.schedule) {
-      return res.status(400).json({ status: 'fail', message: 'Không được sửa itinerary (schedule)' });
-    }
-
     // không sửa khi có booking
     const hasBooking = await Booking.exists({ tour_id: req.params.id, status: { $ne: 'cancelled' } });
     if (hasBooking) {
@@ -215,30 +210,58 @@ export const updateTour = async (req: Request, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'Giá tour phải lớn hơn 0' });
     }
 
-    // validate ngày không trùng (nếu update departure_schedule)
-    if (req.body?.departure_schedule) {
+    // validate & cập nhật lịch khởi hành (nhiều ngày)
+    if (req.body?.departure_schedule !== undefined) {
       const ds = Array.isArray(req.body.departure_schedule) ? req.body.departure_schedule : [];
-      const dateStr = normalizeDateStr(ds?.[0]?.date);
-      const slots = Number(ds?.[0]?.slots || 0);
-      if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành không hợp lệ (YYYY-MM-DD)' });
+      const normalized: { date: string; slots: number }[] = [];
+      for (const row of ds) {
+        const dateStr = normalizeDateStr(row?.date);
+        const slots = Number(row?.slots || 0);
+        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành không hợp lệ (YYYY-MM-DD)' });
+        }
+        if (slots <= 0) {
+          return res.status(400).json({ status: 'fail', message: 'Số chỗ phải lớn hơn 0' });
+        }
+        normalized.push({ date: dateStr, slots });
       }
-      if (slots <= 0) {
-        return res.status(400).json({ status: 'fail', message: 'Số chỗ phải lớn hơn 0' });
+      const seen = new Set<string>();
+      for (const row of normalized) {
+        if (seen.has(row.date)) {
+          return res.status(400).json({ status: 'fail', message: `Ngày ${row.date} bị trùng trong danh sách khởi hành` });
+        }
+        seen.add(row.date);
+        const existed = await Tour.findOne({
+          _id: { $ne: tour._id },
+          name: tour.name,
+          'departure_schedule.date': row.date,
+        });
+        if (existed) {
+          return res.status(400).json({
+            status: 'fail',
+            message: `Ngày ${row.date} bị trùng với instance tour khác cùng tên`,
+          });
+        }
       }
-      const existed = await Tour.findOne({
-        _id: { $ne: tour._id },
-        name: tour.name,
-        'departure_schedule.date': dateStr,
-      });
-      if (existed) {
-        return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành bị trùng với instance khác' });
-      }
-      (tour as any).departure_schedule = [{ date: dateStr, slots }];
+      (tour as any).departure_schedule = normalized;
     }
 
     // apply other fields (allow-list)
-    const allowed = ['name', 'description', 'category_id', 'images', 'policies', 'suppliers', 'price', 'status', 'duration_days', 'seasonalPrices', 'template_id'];
+    const allowed = [
+      'name',
+      'description',
+      'category_id',
+      'images',
+      'policies',
+      'suppliers',
+      'price',
+      'prices',
+      'status',
+      'duration_days',
+      'seasonalPrices',
+      'template_id',
+      'schedule',
+    ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) (tour as any)[key] = req.body[key];
     }

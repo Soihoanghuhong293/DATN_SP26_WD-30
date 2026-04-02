@@ -2,19 +2,17 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { getProvider, getProviders } from '../../../services/api';
+import { getProviders } from '../../../services/api';
 import { 
   Button, Card, Descriptions, Spin, Tabs, Tag, 
   Timeline, Image, Table, Typography, Space, Popconfirm, message, 
   Breadcrumb, Row, Col, ConfigProvider, Divider, Modal, Select,
-  Form, DatePicker, InputNumber
+  Form, DatePicker, InputNumber, Empty
 } from 'antd';
 import { 
-  ArrowLeftOutlined, 
   EditOutlined, 
   DeleteOutlined, 
   CalendarOutlined,
-  DollarOutlined,
   EnvironmentOutlined,
   ClockCircleOutlined,
   UsergroupAddOutlined,
@@ -24,15 +22,86 @@ import {
   ShopOutlined,
   PhoneOutlined,
   MailOutlined,
-  ContactsOutlined,
-  FileTextOutlined,
   SwapOutlined,
   PlusOutlined,
-  MinusCircleOutlined
+  MinusCircleOutlined,
+  FileTextOutlined,
+  TagsOutlined,
+  CoffeeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
+
+function priceTierAmount(p: any): number {
+  const v = p?.price ?? p?.amount ?? p?.value;
+  return typeof v === 'number' && !Number.isNaN(v) ? v : Number(v || 0);
+}
+
+function formatMoney(n: number) {
+  return `${Number(n || 0).toLocaleString('vi-VN')} đ`;
+}
+
+function RestaurantLine({ label, r }: { label: string; r: any }) {
+  if (!r || typeof r !== 'object') {
+    return (
+      <div style={{ marginBottom: 6 }}>
+        <Text type="secondary">{label}: </Text>
+        <Text>Chưa gán</Text>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginBottom: 8, padding: 8, background: '#fafafa', borderRadius: 8 }}>
+      <Text strong>{label}: </Text>
+      <Text>{r.name || '—'}</Text>
+      {(r.phone || r.location) && (
+        <div style={{ marginTop: 4, fontSize: 13 }}>
+          {r.phone && (
+            <div>
+              <PhoneOutlined style={{ marginRight: 6 }} />
+              {r.phone}
+            </div>
+          )}
+          {r.location && (
+            <div style={{ marginTop: 2 }}>
+              <EnvironmentOutlined style={{ marginRight: 6 }} />
+              {r.location}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TicketRow({ t }: { t: any }) {
+  if (!t || typeof t !== 'object') return null;
+  const mode = t.application_mode === 'included_in_tour' ? 'included_in_tour' : 'optional_addon';
+  const pa = Number(t.price_adult ?? 0);
+  const pc = Number(t.price_child ?? 0);
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+      <TagsOutlined style={{ marginTop: 4, color: '#6366f1' }} />
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <Text strong>{t.name || 'Vé'}</Text>
+        {t.ticket_type ? (
+          <Text type="secondary" style={{ marginLeft: 6 }}>
+            ({t.ticket_type})
+          </Text>
+        ) : null}
+        <div style={{ marginTop: 4, fontSize: 13 }}>
+          <Tag color={mode === 'included_in_tour' ? 'green' : 'blue'} style={{ marginRight: 0 }}>
+            {mode === 'included_in_tour' ? 'Đã bao gồm' : 'Mua thêm'}
+          </Tag>
+          <Text type="secondary" style={{ marginLeft: 8 }}>
+            NL {formatMoney(pa)} · TE {formatMoney(pc)}
+          </Text>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const TourDetail = () => {
   const { id } = useParams();
@@ -48,7 +117,11 @@ const TourDetail = () => {
     queryKey: ['tour', id],
     queryFn: async () => {
       const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`);
-      return res.data.data || res.data.data.tour;
+      const raw = res.data?.data;
+      if (raw && typeof raw === 'object' && 'tour' in raw && (raw as any).tour) {
+        return (raw as any).tour;
+      }
+      return raw ?? null;
     },
     enabled: !!id,
   });
@@ -139,38 +212,115 @@ const TourDetail = () => {
 
   // --- RENDER CONTENT COMPONENTS ---
 
-  // Tab 1: Tổng quan (Chia 2 cột: Nội dung chính & Sidebar thông tin)
+  const coverSrc = (tour as any).image || tour.images?.[0] || 'https://placehold.co/100x100';
+
   const OverviewTab = () => (
-    <Row gutter={24}>
-      {/* CỘT TRÁI: Nội dung chi tiết */}
-      <Col xs={24} lg={16}>
-        <Card title="Mô tả chi tiết" bordered={true} className="saas-card mb-6">
-          <div style={{ whiteSpace: 'pre-line', lineHeight: '1.6', color: '#374151' }}>
-            {tour.description || "Chưa có mô tả cho tour này."}
-          </div>
-        </Card>
+    <>
+      <Card title="Mô tả & giới thiệu tour" bordered className="saas-card" style={{ marginBottom: 24 }}>
+        <div style={{ whiteSpace: 'pre-line', lineHeight: 1.75, color: '#374151', fontSize: 15 }}>
+          {tour.description?.trim() ? tour.description : 'Chưa có mô tả cho tour này.'}
+        </div>
+      </Card>
 
-        <Card title="Thư viện ảnh" bordered={true} className="saas-card">
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
-              {/* Ảnh đại diện */}
-              {tour.image && (
-                 <Image src={tour.image} style={{ borderRadius: 8, height: 120, objectFit: 'cover', width: '100%' }} />
-              )}
-              {/* Gallery */}
-              {tour.images?.map((img: string, idx: number) => (
-                 <Image key={idx} src={img} style={{ borderRadius: 8, height: 120, objectFit: 'cover', width: '100%' }} />
+      <Card title="Thư viện ảnh" bordered className="saas-card" style={{ marginBottom: 24 }}>
+        {tour.images?.length ? (
+          <Image.PreviewGroup>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: 12,
+              }}
+            >
+              {tour.images.map((img: string, idx: number) => (
+                <Image
+                  key={idx}
+                  src={img}
+                  alt={`${tour.name} ${idx + 1}`}
+                  style={{ borderRadius: 8, height: 120, objectFit: 'cover', width: '100%' }}
+                />
               ))}
-           </div>
-        </Card>
-      </Col>
+            </div>
+          </Image.PreviewGroup>
+        ) : (
+          <Empty description="Chưa có ảnh trong thư viện" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+      </Card>
 
-      {/* CỘT PHẢI: Thông tin quan trọng (Sidebar) */}
-      <Col xs={24} lg={8}>
+      <Card title="Thông tin nhanh" bordered className="saas-card" style={{ marginBottom: 24 }}>
+        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small" bordered>
+          <Descriptions.Item label="Slug (URL)">{(tour as any).slug || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Giá niêm yết">{formatMoney(Number(tour.price || 0))}</Descriptions.Item>
+          <Descriptions.Item label="Thời lượng">{tour.duration_days ?? '—'} ngày</Descriptions.Item>
+          <Descriptions.Item label="Danh mục">{tour.category_id?.name || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Ngày tạo">
+            {tour.created_at ? dayjs(tour.created_at).format('DD/MM/YYYY HH:mm') : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Cập nhật">
+            {(tour as any).updated_at ? dayjs((tour as any).updated_at).format('DD/MM/YYYY HH:mm') : '—'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Tour template">
+            {(tour as any).template_id ? (
+              <Link
+                to={`/admin/tour-templates/${(tour as any).template_id?._id || (tour as any).template_id}/edit`}
+              >
+                Mở template
+              </Link>
+            ) : (
+              '—'
+            )}
+          </Descriptions.Item>
+          <Descriptions.Item label="Số khách / đoàn tối đa">
+            {(tour as any).maxGroupSize != null ? `${(tour as any).maxGroupSize} người` : '—'}
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      <Row gutter={24}>
+        <Col xs={24} lg={14}>
+          <Card title="Bảng giá theo đối tượng" bordered className="saas-card" style={{ marginBottom: 24 }}>
+            {Array.isArray(tour.prices) && tour.prices.length > 0 ? (
+              <Table
+                dataSource={tour.prices}
+                pagination={false}
+                rowKey={(row: any, i) => String(row?.name || i)}
+                size="small"
+                columns={[
+                  { title: 'Đối tượng', dataIndex: 'name', key: 'name', render: (t: string) => <Text strong>{t}</Text> },
+                  {
+                    title: 'Giá',
+                    key: 'amount',
+                    align: 'right',
+                    render: (_: unknown, row: any) => <Text>{formatMoney(priceTierAmount(row))}</Text>,
+                  },
+                ]}
+              />
+            ) : (
+              <Text type="secondary">Chưa cấu hình bậc giá chi tiết — chỉ có giá niêm yết.</Text>
+            )}
+          </Card>
+
+          <Card title="Điều khoản & chính sách" bordered className="saas-card">
+            {Array.isArray(tour.policies) && tour.policies.length > 0 ? (
+              <ul style={{ paddingLeft: 20, color: '#374151', margin: 0 }}>
+                {tour.policies.map((pol: string, i: number) => (
+                  <li key={i} style={{ marginBottom: 8 }}>
+                    {pol}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Text type="secondary">Chưa nhập chính sách.</Text>
+            )}
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={10}>
         <Card bordered={true} className="saas-card mb-6" style={{ backgroundColor: '#f9fafb' }}>
             <div style={{ marginBottom: 20 }}>
                 <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '1px' }}>GIÁ CƠ BẢN</Text>
                 <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>
-                    {tour.price?.toLocaleString()} ₫
+                    {formatMoney(Number(tour.price || 0))}
                 </div>
             </div>
             
@@ -182,16 +332,12 @@ const TourDetail = () => {
                     <Text strong>{tour.duration_days} ngày</Text>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space><UsergroupAddOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Số khách tối đa</Text></Space>
-                    <Text strong>{tour.maxGroupSize || 20} người</Text>
+                    <Space><UsergroupAddOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Khách tối đa</Text></Space>
+                    <Text strong>{(tour as any).maxGroupSize != null ? `${(tour as any).maxGroupSize}` : '—'}</Text>
                 </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Space><EnvironmentOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Danh mục</Text></Space>
-                    <Tag color="blue" style={{ margin: 0 }}>{tour.category_id?.name || 'General'}</Tag>
-                </div>
-                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space><CalendarOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Ngày tạo</Text></Space>
-                    <Text>{dayjs(tour.created_at).format('DD/MM/YYYY')}</Text>
+                    <Tag color="blue" style={{ margin: 0 }}>{tour.category_id?.name || '—'}</Tag>
                 </div>
             </Space>
         </Card>
@@ -208,14 +354,14 @@ const TourDetail = () => {
           className="saas-card mb-6"
         >
           <Table
-            dataSource={tour.departure_schedule}
-            rowKey="date"
+            dataSource={tour.departure_schedule || []}
+            rowKey={(r: any, i) => String(r?.date ?? i)}
             pagination={false}
             size="small"
             locale={{ emptyText: 'Chưa có lịch khởi hành cụ thể.' }}
             columns={[
-                { title: 'Ngày', dataIndex: 'date', key: 'date', render: (date) => <Text strong>{dayjs(date).format('DD/MM/YYYY')}</Text> },
-                { title: 'Số chỗ', dataIndex: 'slots', key: 'slots', align: 'right', render: (slots) => <Tag color="blue">{slots}</Tag> }
+                { title: 'Ngày', dataIndex: 'date', key: 'date', render: (date: string) => <Text strong>{date ? dayjs(date).format('DD/MM/YYYY') : '—'}</Text> },
+                { title: 'Số chỗ', dataIndex: 'slots', key: 'slots', align: 'right', render: (slots: number) => <Tag color="blue">{slots}</Tag> }
             ]}
           />
         </Card>
@@ -295,68 +441,162 @@ const TourDetail = () => {
                     <StopOutlined style={{ fontSize: 24, color: '#f59e0b' }} />
                 )}
                 <div>
-                    <div style={{ fontWeight: 600 }}>{tour.status === 'active' ? 'Đang hoạt động' : 'Bản nháp'}</div>
+                    <div style={{ fontWeight: 600 }}>
+                      {tour.status === 'active' ? 'Đang hoạt động' : tour.status === 'hidden' ? 'Đã ẩn' : 'Bản nháp'}
+                    </div>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {tour.status === 'active' ? 'Tour này đang hiển thị công khai.' : 'Chỉ admin mới thấy tour này.'}
+                        {tour.status === 'active'
+                          ? 'Tour hiển thị công khai (theo API).'
+                          : tour.status === 'hidden'
+                            ? 'Tour ẩn khỏi danh sách công khai.'
+                            : 'Chỉ admin thấy khi ở trạng thái nháp.'}
                     </Text>
                 </div>
              </div>
         </Card>
       </Col>
     </Row>
+    </>
   );
 
-  // Tab 2: Lịch trình
-  const ScheduleTab = () => (
-    <Card bordered={true} className="saas-card">
-      <Timeline 
-        mode="left" 
-        items={tour.schedule?.map((item: any) => ({
+  const ScheduleTab = () => {
+    const days = Array.isArray(tour.schedule) ? tour.schedule : [];
+    if (!days.length) {
+      return (
+        <Card bordered className="saas-card">
+          <Empty description="Chưa có lịch trình chi tiết theo ngày" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </Card>
+      );
+    }
+    return (
+      <Card bordered className="saas-card">
+        <Timeline
+          mode="left"
+          items={days.map((item: any) => ({
             label: <span style={{ fontWeight: 600, color: '#6b7280' }}>Ngày {item.day}</span>,
             children: (
-                <div style={{ marginBottom: 24, paddingBottom: 12, borderBottom: '1px solid #f3f4f6' }}>
-                    <Text strong style={{ fontSize: 16, color: '#111827' }}>{item.title}</Text>
-                    <ul style={{ paddingLeft: 20, marginTop: 8, color: '#4b5563' }}>
-                        {item.activities?.map((act: string, i: number) => (
-                            <li key={i} style={{ marginBottom: 4 }}>{act}</li>
-                        ))}
-                    </ul>
-                </div>
-            ),
-            color: 'gray'
-        }))} 
-      />
-    </Card>
-  );
-
-  // Tab 3: Chính sách & Giá
-  const PolicyTab = () => (
-    <Row gutter={24}>
-       <Col span={12}>
-          <Card title="Cấu hình giá" bordered={true} className="saas-card">
-             <Table
-                dataSource={tour.prices}
-                pagination={false}
-                rowKey="name"
-                size="small"
-                columns={[
-                    { title: 'Đối tượng', dataIndex: 'name', key: 'name', render: (t) => <Text strong>{t}</Text> },
-                    { title: 'Giá áp dụng', dataIndex: 'price', key: 'price', align: 'right', render: (p) => p?.toLocaleString() + ' đ' },
-                ]}
-             />
-          </Card>
-       </Col>
-       <Col span={12}>
-          <Card title="Điều khoản & Chính sách" bordered={true} className="saas-card">
-              <ul style={{ paddingLeft: 20, color: '#374151' }}>
-                  {tour.policies?.map((pol: string, i: number) => (
-                      <li key={i} style={{ marginBottom: 8 }}>{pol}</li>
+              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #f3f4f6' }}>
+                <Text strong style={{ fontSize: 16, color: '#111827' }}>
+                  {item.title || '—'}
+                </Text>
+                <ul style={{ paddingLeft: 20, marginTop: 8, color: '#4b5563' }}>
+                  {item.activities?.map((act: string, i: number) => (
+                    <li key={i} style={{ marginBottom: 4 }}>
+                      {act}
+                    </li>
                   ))}
-              </ul>
+                </ul>
+
+                <Divider orientation="left" plain style={{ margin: '12px 0 8px' }}>
+                  <Space>
+                    <CoffeeOutlined />
+                    Nhà hàng
+                  </Space>
+                </Divider>
+                <RestaurantLine label="Trưa" r={item.lunch_restaurant_id} />
+                <RestaurantLine label="Tối" r={item.dinner_restaurant_id} />
+
+                <Divider orientation="left" plain style={{ margin: '12px 0 8px' }}>
+                  <Space>
+                    <TagsOutlined />
+                    Vé
+                  </Space>
+                </Divider>
+                {Array.isArray(item.ticket_ids) && item.ticket_ids.length > 0 ? (
+                  item.ticket_ids.map((tk: any, idx: number) => (
+                    <TicketRow key={tk?._id || tk?.id || idx} t={typeof tk === 'object' ? tk : null} />
+                  ))
+                ) : (
+                  <Text type="secondary">Chưa gán vé cho ngày này.</Text>
+                )}
+              </div>
+            ),
+            color: 'gray',
+          }))}
+        />
+      </Card>
+    );
+  };
+
+  const PolicyTab = () => {
+    const seasonal = Array.isArray((tour as any).seasonalPrices) ? (tour as any).seasonalPrices : [];
+    return (
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={12}>
+          <Card title="Giá niêm yết & bậc giá" bordered className="saas-card">
+            <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
+              <Descriptions.Item label="Giá tour (cơ sở)">{formatMoney(Number(tour.price || 0))}</Descriptions.Item>
+            </Descriptions>
+            <Table
+              dataSource={tour.prices || []}
+              pagination={false}
+              rowKey={(row: any, i) => String(row?.name ?? i)}
+              size="small"
+              locale={{ emptyText: 'Chưa có bậc giá chi tiết' }}
+              columns={[
+                { title: 'Đối tượng', dataIndex: 'name', key: 'name', render: (t: string) => <Text strong>{t || '—'}</Text> },
+                {
+                  title: 'Giá',
+                  key: 'amount',
+                  align: 'right',
+                  render: (_: unknown, row: any) => formatMoney(priceTierAmount(row)),
+                },
+              ]}
+            />
           </Card>
-       </Col>
-    </Row>
-  );
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="Điều khoản & chính sách" bordered className="saas-card">
+            {Array.isArray(tour.policies) && tour.policies.length > 0 ? (
+              <ul style={{ paddingLeft: 20, color: '#374151', margin: 0 }}>
+                {tour.policies.map((pol: string, i: number) => (
+                  <li key={i} style={{ marginBottom: 8 }}>
+                    {pol}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty description="Chưa có chính sách" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            )}
+          </Card>
+        </Col>
+        <Col span={24}>
+          <Card title="Giá theo khoảng thời gian (seasonalPrices)" bordered className="saas-card">
+            {seasonal.length > 0 ? (
+              seasonal.map((block: any, idx: number) => (
+                <div key={idx} style={{ marginBottom: idx < seasonal.length - 1 ? 24 : 0 }}>
+                  <Text strong>{block.title || `Gói ${idx + 1}`}</Text>
+                  <div style={{ marginTop: 8, marginBottom: 8 }}>
+                    <Text type="secondary">
+                      {block.startDate ? dayjs(block.startDate).format('DD/MM/YYYY') : '—'} —{' '}
+                      {block.endDate ? dayjs(block.endDate).format('DD/MM/YYYY') : '—'}
+                    </Text>
+                  </div>
+                  <Table
+                    dataSource={block.prices || []}
+                    pagination={false}
+                    size="small"
+                    rowKey={(row: any, i) => String(row?.name ?? i)}
+                    columns={[
+                      { title: 'Đối tượng', dataIndex: 'name', key: 'name' },
+                      {
+                        title: 'Giá',
+                        key: 'amount',
+                        align: 'right',
+                        render: (_: unknown, row: any) => formatMoney(priceTierAmount(row)),
+                      },
+                    ]}
+                  />
+                </div>
+              ))
+            ) : (
+              <Text type="secondary">Chưa cấu hình giá theo mùa.</Text>
+            )}
+          </Card>
+        </Col>
+      </Row>
+    );
+  };
 
   // --- MAIN RENDER ---
   return (
@@ -402,7 +642,7 @@ const TourDetail = () => {
                     border: '1px solid #e5e7eb', flexShrink: 0 
                 }}>
                     <img 
-                        src={tour.image || "https://placehold.co/100x100"} 
+                        src={coverSrc} 
                         alt="Thumbnail" 
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -412,8 +652,15 @@ const TourDetail = () => {
                     <Space size="small">
                         <Text type="secondary">ID: {tour._id}</Text>
                         <Divider type="vertical" />
-                        <Tag color={tour.status === 'active' ? 'success' : 'warning'} bordered={false}>
-                    {tour.status === 'active' ? 'Đang hoạt động' : 'Bản nháp'}
+                        <Tag
+                          color={tour.status === 'active' ? 'success' : tour.status === 'hidden' ? 'default' : 'warning'}
+                          bordered={false}
+                        >
+                          {tour.status === 'active'
+                            ? 'Đang hoạt động'
+                            : tour.status === 'hidden'
+                              ? 'Đã ẩn'
+                              : 'Bản nháp'}
                         </Tag>
                     </Space>
                 </div>
