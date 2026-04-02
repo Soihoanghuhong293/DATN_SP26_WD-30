@@ -1,10 +1,17 @@
 import { Request, Response } from 'express';
 import TourTemplate from '../models/TourTemplate';
 
+const templatePopulate = [
+  { path: 'category_id' },
+  { path: 'provider_id', select: 'name status' },
+  { path: 'schedule.lunch_restaurant_id', select: 'name phone capacity location status' },
+  { path: 'schedule.dinner_restaurant_id', select: 'name phone capacity location status' },
+] as const;
+
 export const getAllTourTemplates = async (req: Request, res: Response) => {
   try {
     const templates = await TourTemplate.find()
-      .populate('category_id')
+      .populate(templatePopulate as any)
       .sort({ created_at: -1 });
 
     res.status(200).json({
@@ -19,7 +26,7 @@ export const getAllTourTemplates = async (req: Request, res: Response) => {
 
 export const getTourTemplate = async (req: Request, res: Response) => {
   try {
-    const template = await TourTemplate.findById(req.params.id).populate('category_id');
+    const template = await TourTemplate.findById(req.params.id).populate(templatePopulate as any);
     if (!template) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy template' });
     }

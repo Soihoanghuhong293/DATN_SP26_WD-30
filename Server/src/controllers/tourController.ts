@@ -74,6 +74,8 @@ export const getAllTours = async (req: Request, res: Response) => {
     // .populate('category_id') để lấy luôn thông tin danh mục thay vì chỉ hiện ID
     const tours = await Tour.find(filter)
       .populate('category_id')
+      .populate({ path: 'schedule.lunch_restaurant_id', select: 'name location phone' })
+      .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone' })
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -94,7 +96,10 @@ export const getAllTours = async (req: Request, res: Response) => {
 //  Lấy chi tiết 1 Tour
 export const getTour = async (req: Request, res: Response) => {
   try {
-    const tour = await Tour.findById(req.params.id).populate('category_id');
+    const tour = await Tour.findById(req.params.id)
+      .populate('category_id')
+      .populate({ path: 'schedule.lunch_restaurant_id', select: 'name location phone capacity' })
+      .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone capacity' });
     if (!tour) return res.status(404).json({ message: 'Không tìm thấy tour' });
 
     res.status(200).json({

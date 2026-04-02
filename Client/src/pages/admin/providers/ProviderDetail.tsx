@@ -18,6 +18,8 @@ import {
   Input,
   InputNumber,
   Select,
+  Row,
+  Col,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -33,6 +35,7 @@ import {
   CalendarOutlined,
   CarOutlined,
   BankOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import {
   getProvider,
@@ -49,8 +52,19 @@ import {
   getRestaurants,
   createRestaurant,
   deleteRestaurant,
+  getProviderTickets,
+  createProviderTicket,
+  deleteProviderTicket,
 } from '../../../services/api';
-import type { IProvider, IVehicle, IHotel, IRoom, IRestaurant } from '../../../types/provider.types';
+import type {
+  IProvider,
+  IVehicle,
+  IHotel,
+  IRoom,
+  IRestaurant,
+  IProviderTicket,
+  TicketApplicationMode,
+} from '../../../types/provider.types';
 
 const { Title, Text } = Typography;
 
@@ -64,6 +78,14 @@ const formatDateTime = (value?: string) => {
   return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(d);
 };
 
+const formatVnd = (n?: number) => {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  return `${new Intl.NumberFormat('vi-VN').format(Number(n))} đ`;
+};
+
+const applicationModeLabel = (m?: TicketApplicationMode) =>
+  m === 'included_in_tour' ? 'Bao gồm trong tour' : 'Khách mua thêm';
+
 const ProviderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -76,6 +98,8 @@ const ProviderDetail = () => {
   const [roomForm] = Form.useForm();
   const [restaurantModalOpen, setRestaurantModalOpen] = useState(false);
   const [restaurantForm] = Form.useForm();
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [ticketForm] = Form.useForm();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['provider', id],
@@ -112,6 +136,14 @@ const ProviderDetail = () => {
   const hotels: IHotel[] = hotelsData?.data?.hotels || [];
   const rooms: IRoom[] = roomsData?.data?.rooms || [];
   const restaurants: IRestaurant[] = restaurantsData?.data?.restaurants || [];
+
+  const { data: ticketsData, isLoading: isTicketsLoading } = useQuery({
+    queryKey: ['provider-tickets', id],
+    queryFn: () => getProviderTickets({ provider_id: id }),
+    enabled: Boolean(id),
+  });
+
+  const tickets: IProviderTicket[] = ticketsData?.data?.tickets || [];
 
   const provider: IProvider | undefined = data?.data?.provider;
 
@@ -220,6 +252,37 @@ const ProviderDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['restaurants', id] });
     },
     onError: () => message.error('Xoá nhà hàng thất bại'),
+  });
+
+  const { mutate: mutateCreateTicket, isPending: isCreatingTicket } = useMutation({
+    mutationFn: (values: {
+      name: string;
+      ticket_type: string;
+      price_adult: number;
+      price_child: number;
+      application_mode: TicketApplicationMode;
+      status: 'active' | 'inactive';
+    }) =>
+      createProviderTicket({
+        ...values,
+        provider_id: provider?.id || provider?._id,
+      }),
+    onSuccess: () => {
+      message.success('Đã thêm vé');
+      queryClient.invalidateQueries({ queryKey: ['provider-tickets', id] });
+      setTicketModalOpen(false);
+      ticketForm.resetFields();
+    },
+    onError: () => message.error('Thêm vé thất bại'),
+  });
+
+  const { mutate: mutateDeleteTicket, isPending: isDeletingTicket } = useMutation({
+    mutationFn: (ticketId: string) => deleteProviderTicket(ticketId),
+    onSuccess: () => {
+      message.success('Đã xoá vé');
+      queryClient.invalidateQueries({ queryKey: ['provider-tickets', id] });
+    },
+    onError: () => message.error('Xoá vé thất bại'),
   });
 
   if (isLoading) {
@@ -541,6 +604,72 @@ const ProviderDetail = () => {
         />
       </Card>
 
+      <Card
+        title={
+          <Space>
+            <IdcardOutlined />
+            <span>Danh sách vé</span>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button type="primary" size="small" onClick={() => setTicketModalOpen(true)}>
+            Thêm vé
+          </Button>
+        }
+      >
+        <Table
+          loading={isTicketsLoading}
+          dataSource={tickets}
+          rowKey={(t) => t.id || t._id || t.name}
+          size="small"
+          pagination={false}
+          locale={{ emptyText: 'Chưa khai báo vé' }}
+          columns={[
+            { title: 'Tên vé', dataIndex: 'name', render: (v) => <Text strong>{v}</Text> },
+            { title: 'Loại vé', dataIndex: 'ticket_type', ellipsis: true, render: (v) => v || '—' },
+            { title: 'Giá NL', dataIndex: 'price_adult', width: 120, render: (v) => formatVnd(v) },
+            { title: 'Giá trẻ em', dataIndex: 'price_child', width: 120, render: (v) => formatVnd(v) },
+            {
+              title: 'Áp dụng',
+              dataIndex: 'application_mode',
+              width: 200,
+              render: (m: TicketApplicationMode) => (
+                <Tag color={m === 'included_in_tour' ? 'blue' : 'orange'}>{applicationModeLabel(m)}</Tag>
+              ),
+            },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'status',
+              width: 120,
+              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
+            },
+            {
+              title: '',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm
+                  title="Xoá vé này?"
+                  okText="Xoá"
+                  cancelText="Huỷ"
+                  onConfirm={() => mutateDeleteTicket(record.id || record._id || '')}
+                >
+                  <Button danger size="small" loading={isDeletingTicket}>
+                    Xoá
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+        />
+        <div style={{ marginTop: 8 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Bao gồm trong tour: vé đã trong giá tour — hệ thống có thể tự cấp theo số khách. Khách mua thêm: khách tick
+            khi đặt chỗ, tính phụ thu.
+          </Text>
+        </div>
+      </Card>
+
       <Card>
         <Descriptions column={{ xs: 1, sm: 2 }} size="small">
           <Descriptions.Item label={<><CalendarOutlined /> Ngày tạo</>}>
@@ -707,6 +836,78 @@ const ProviderDetail = () => {
           </Form.Item>
           <Form.Item name="location" label="Địa điểm">
             <Input.TextArea rows={2} placeholder="Địa điểm/địa chỉ" />
+          </Form.Item>
+          <Form.Item name="status" label="Trạng thái">
+            <Select
+              options={[
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Ngưng' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Thêm vé"
+        open={ticketModalOpen}
+        onOk={() => {
+          ticketForm
+            .validateFields()
+            .then((values) => mutateCreateTicket(values))
+            .catch(() => undefined);
+        }}
+        onCancel={() => {
+          setTicketModalOpen(false);
+          ticketForm.resetFields();
+        }}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={isCreatingTicket}
+        destroyOnClose
+        width={520}
+      >
+        <Form
+          form={ticketForm}
+          layout="vertical"
+          initialValues={{
+            status: 'active',
+            application_mode: 'optional_addon' as TicketApplicationMode,
+            price_adult: 0,
+            price_child: 0,
+          }}
+        >
+          <Form.Item name="name" label="Tên vé" rules={[{ required: true, message: 'Nhập tên vé' }]}>
+            <Input placeholder="VD: Vé Bà Nà Hills" />
+          </Form.Item>
+          <Form.Item name="ticket_type" label="Loại vé" rules={[{ required: true, message: 'Nhập loại vé' }]}>
+            <Input placeholder="VD: Vé tham quan chính, Vé trò chơi…" />
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="price_adult" label="Giá người lớn (VNĐ)" rules={[{ required: true }]}>
+                <InputNumber min={0} className="w-full" placeholder="0" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="price_child" label="Giá trẻ em (VNĐ)" rules={[{ required: true }]}>
+                <InputNumber min={0} className="w-full" placeholder="0" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="application_mode" label="Áp dụng khi" rules={[{ required: true }]}>
+            <Select
+              options={[
+                {
+                  value: 'included_in_tour',
+                  label: 'Bao gồm trong tour — đã trong giá tour, không cần chọn, auto theo số khách',
+                },
+                {
+                  value: 'optional_addon',
+                  label: 'Khách mua thêm (optional) — tick khi booking, tính thêm tiền',
+                },
+              ]}
+            />
           </Form.Item>
           <Form.Item name="status" label="Trạng thái">
             <Select

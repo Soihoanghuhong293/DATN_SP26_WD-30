@@ -164,9 +164,23 @@ const BookingEdit = () => {
 
     if (changedValues.tour_id && selectedTour) {
       if (selectedTour.schedule?.length > 0) {
-        fieldsToUpdate.schedule_detail = selectedTour.schedule.map((day: any) => 
-          `[Ngày ${day.day}] ${day.title}\n${day.activities ? day.activities.map((act: string) => `- ${act}`).join('\n') : ''}`
-        ).join('\n\n');
+        fieldsToUpdate.schedule_detail = selectedTour.schedule
+          .map((day: any) => {
+            const acts = day.activities ? day.activities.map((act: string) => `- ${act}`).join('\n') : '';
+            const lunchName =
+              typeof day.lunch_restaurant_id === 'object' && day.lunch_restaurant_id?.name
+                ? day.lunch_restaurant_id.name
+                : '';
+            const dinnerName =
+              typeof day.dinner_restaurant_id === 'object' && day.dinner_restaurant_id?.name
+                ? day.dinner_restaurant_id.name
+                : '';
+            const meals = [lunchName ? `- Trưa: ${lunchName}` : '', dinnerName ? `- Tối: ${dinnerName}` : '']
+              .filter(Boolean)
+              .join('\n');
+            return `[Ngày ${day.day}] ${day.title}\n${acts}${meals ? `\n${meals}` : ''}`;
+          })
+          .join('\n\n');
       } else {
         fieldsToUpdate.schedule_detail = ''; 
       }

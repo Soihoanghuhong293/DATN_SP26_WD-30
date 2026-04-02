@@ -547,6 +547,26 @@ const TourDetailPage = () => {
                         </li>
                       ))}
                     </ul>
+                    {(() => {
+                      const day = item as any;
+                      const lunch = day.lunch_restaurant_id?.name;
+                      const dinner = day.dinner_restaurant_id?.name;
+                      if (!lunch && !dinner) return null;
+                      return (
+                        <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                          {lunch ? (
+                            <div>
+                              <b>Buổi trưa:</b> {lunch}
+                            </div>
+                          ) : null}
+                          {dinner ? (
+                            <div>
+                              <b>Buổi tối:</b> {dinner}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}

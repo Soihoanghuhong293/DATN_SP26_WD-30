@@ -19,6 +19,8 @@ export const ENDPOINTS = {
   roomById: (id: string) => `/rooms/${id}`,
   restaurants: '/restaurants',
   restaurantById: (id: string) => `/restaurants/${id}`,
+  providerTickets: '/provider-tickets',
+  providerTicketById: (id: string) => `/provider-tickets/${id}`,
 } as const;
 
 

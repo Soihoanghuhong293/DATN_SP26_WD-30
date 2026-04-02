@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Button, Card, Col, Form, Input, InputNumber, message, Row, Select, Space, Spin, Typography, Upload } from 'antd';
+import { getProviders, getRestaurants } from '../../../services/api';
+import type { IProvider, IRestaurant } from '../../../types/provider.types';
 import { ArrowLeftOutlined, MinusCircleOutlined, PlusOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
@@ -14,6 +16,32 @@ type CategoryNode = {
   id?: string;
   name: string;
   children?: CategoryNode[];
+};
+
+const mealRefId = (v: any): string | undefined => {
+  if (v == null || v === '') return undefined;
+  if (typeof v === 'object' && v != null && v._id != null) return String(v._id);
+  return String(v);
+};
+
+const normalizeScheduleForForm = (sched: any[] | undefined) => {
+  if (!Array.isArray(sched)) {
+    return [{ day: 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined }];
+  }
+  return sched.map((s, idx) => {
+    const legacy = Array.isArray(s.restaurant_ids) ? s.restaurant_ids : [];
+    let lunch = mealRefId(s.lunch_restaurant_id);
+    let dinner = mealRefId(s.dinner_restaurant_id);
+    if (!lunch && legacy[0]) lunch = mealRefId(legacy[0]);
+    if (!dinner && legacy[1]) dinner = mealRefId(legacy[1]);
+    return {
+      day: typeof s.day === 'number' ? s.day : idx + 1,
+      title: s.title ?? '',
+      activities: Array.isArray(s.activities) ? s.activities : [],
+      lunch_restaurant_id: lunch,
+      dinner_restaurant_id: dinner,
+    };
+  });
 };
 
 const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string; label: string }[] => {
@@ -33,10 +61,35 @@ const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string;
 
 export default function TourTemplateEdit() {
   const [form] = Form.useForm();
+  const providerId = Form.useWatch('provider_id', form);
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
+
+  const { data: providersRes, isLoading: isProvidersLoading } = useQuery({
+    queryKey: ['providers', { status: 'active' }],
+    queryFn: () => getProviders({ status: 'active' }),
+  });
+  const providers: IProvider[] = providersRes?.data?.providers ?? [];
+
+  const { data: restaurantsRes, isLoading: isRestaurantsLoading } = useQuery({
+    queryKey: ['restaurants', providerId],
+    queryFn: () => getRestaurants({ provider_id: providerId }),
+    enabled: Boolean(providerId),
+  });
+  const restaurants: IRestaurant[] = restaurantsRes?.data?.restaurants ?? [];
+
+  const restaurantOptions = useMemo(
+    () =>
+      restaurants
+        .map((r) => ({
+          value: r.id || r._id || '',
+          label: `${r.name}${r.location ? ` — ${r.location}` : ''}${r.capacity ? ` (${r.capacity} chỗ)` : ''}`,
+        }))
+        .filter((o) => o.value),
+    [restaurants]
+  );
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -65,6 +118,8 @@ export default function TourTemplateEdit() {
     form.setFieldsValue({
       ...template,
       category_id: template.category_id?._id || template.category_id,
+      provider_id: template.provider_id?._id || template.provider_id,
+      schedule: normalizeScheduleForForm(template.schedule),
     });
 
     const existingImages = Array.isArray(template.images) ? template.images : [];
@@ -86,7 +141,7 @@ export default function TourTemplateEdit() {
         let next = [...currentSchedule];
         if (duration > currentSchedule.length) {
           for (let i = currentSchedule.length; i < duration; i++) {
-            next.push({ day: i + 1, title: '', activities: [] });
+            next.push({ day: i + 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined });
           }
         } else if (duration < currentSchedule.length) {
           next = next.slice(0, duration);
@@ -186,6 +241,37 @@ export default function TourTemplateEdit() {
                   </Col>
                 </Row>
 
+                <Form.Item
+                  name="provider_id"
+                  label="Nhà cung cấp (để chọn nhà hàng trong lịch trình)"
+                  tooltip="Chọn NCC rồi mỗi ngày có thể chọn nhà hàng buổi trưa và buổi tối (đã khai báo cho NCC đó)."
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    size="large"
+                    placeholder="Chọn nhà cung cấp..."
+                    loading={isProvidersLoading}
+                    optionFilterProp="label"
+                    options={providers
+                      .map((p) => ({
+                        value: p.id || p._id || '',
+                        label: p.name,
+                      }))
+                      .filter((o) => o.value)}
+                    onChange={() => {
+                      const sched = form.getFieldValue('schedule') || [];
+                      form.setFieldsValue({
+                        schedule: sched.map((s: any) => ({
+                          ...s,
+                          lunch_restaurant_id: undefined,
+                          dinner_restaurant_id: undefined,
+                        })),
+                      });
+                    }}
+                  />
+                </Form.Item>
+
                 <Form.Item name="description" label="Mô tả">
                   <TextArea rows={4} className="rounded-lg" />
                 </Form.Item>
@@ -258,15 +344,49 @@ export default function TourTemplateEdit() {
                           <Form.Item {...restField} name={[name, 'day']} hidden>
                             <InputNumber />
                           </Form.Item>
-                          <Row gutter={16}>
-                            <Col span={8}>
+                          <Row gutter={[16, 12]}>
+                            <Col xs={24} md={8}>
                               <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                                 <Input className="rounded-lg" placeholder="Tiêu đề" />
                               </Form.Item>
                             </Col>
-                            <Col span={16}>
+                            <Col xs={24} md={16}>
                               <Form.Item {...restField} name={[name, 'activities']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                                 <Select mode="tags" open={false} className="rounded-lg" placeholder="Nhập hoạt động & Enter" />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item {...restField} name={[name, 'lunch_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi trưa">
+                                <Select
+                                  allowClear
+                                  className="rounded-lg w-full"
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder={
+                                    providerId ? 'Chọn nhà hàng trưa' : 'Chọn nhà cung cấp trước'
+                                  }
+                                  disabled={!providerId}
+                                  loading={isRestaurantsLoading}
+                                  options={restaurantOptions}
+                                  notFoundContent={providerId ? 'Chưa có nhà hàng — thêm tại NCC' : null}
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item {...restField} name={[name, 'dinner_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi tối">
+                                <Select
+                                  allowClear
+                                  className="rounded-lg w-full"
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder={
+                                    providerId ? 'Chọn nhà hàng tối' : 'Chọn nhà cung cấp trước'
+                                  }
+                                  disabled={!providerId}
+                                  loading={isRestaurantsLoading}
+                                  options={restaurantOptions}
+                                  notFoundContent={providerId ? 'Chưa có nhà hàng — thêm tại NCC' : null}
+                                />
                               </Form.Item>
                             </Col>
                           </Row>

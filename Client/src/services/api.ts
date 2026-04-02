@@ -1,7 +1,16 @@
 import axios from 'axios';
 import type { ApiResponse, ICategory, ITour, ToursListResponse } from '../types/tour.types';
 import type { IGuide, IGuideCreateRequest, IGuideUpdateRequest, IGuideRatingRequest, ITourHistoryRequest } from '../types/guide.types';
-import type { CreateProviderPayload, IProvider, IVehicle, IHotel, IRoom, IRestaurant } from '../types/provider.types';
+import type {
+  CreateProviderPayload,
+  IProvider,
+  IVehicle,
+  IHotel,
+  IRoom,
+  IRestaurant,
+  IProviderTicket,
+  TicketApplicationMode,
+} from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
 
 const baseURL =
@@ -327,6 +336,38 @@ export async function createRestaurant(payload: UpsertRestaurantPayload) {
 
 export async function deleteRestaurant(id: string) {
   const res = await api.delete(ENDPOINTS.restaurantById(id));
+  return res.data;
+}
+
+// ===== VÉ (theo nhà cung cấp) =====
+
+export type GetProviderTicketsParams = { provider_id?: string };
+
+export async function getProviderTickets(params: GetProviderTicketsParams = {}) {
+  const res = await api.get<ApiResponse<{ tickets: IProviderTicket[] }> & { results?: number }>(
+    ENDPOINTS.providerTickets,
+    { params }
+  );
+  return res.data;
+}
+
+export type UpsertProviderTicketPayload = {
+  name: string;
+  ticket_type: string;
+  price_adult: number;
+  price_child: number;
+  application_mode: TicketApplicationMode;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createProviderTicket(payload: UpsertProviderTicketPayload) {
+  const res = await api.post<ApiResponse<{ ticket: IProviderTicket }>>(ENDPOINTS.providerTickets, payload);
+  return res.data;
+}
+
+export async function deleteProviderTicket(id: string) {
+  const res = await api.delete(ENDPOINTS.providerTicketById(id));
   return res.data;
 }
 

@@ -63,6 +63,22 @@ export interface IRestaurant {
   updated_at?: string;
 }
 
+export type TicketApplicationMode = 'included_in_tour' | 'optional_addon';
+
+export interface IProviderTicket {
+  id?: string;
+  _id?: string;
+  name: string;
+  ticket_type: string;
+  price_adult: number;
+  price_child: number;
+  application_mode: TicketApplicationMode;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface CreateProviderPayload {
   name: string;
   description?: string;
