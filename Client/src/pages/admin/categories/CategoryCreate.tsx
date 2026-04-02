@@ -1,9 +1,10 @@
 import { Button, Card, Form, Input, Select, Space, Typography, message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
-import { createCategory, getCategories } from '../../../services/api';
+import { createCategory, getCategoryTree } from '../../../services/api';
 import { useNavigate } from 'react-router-dom';
 import type { ICategory } from '../../../types/tour.types';
+import { flattenCategoryTree } from '../../../utils/categoryTree';
 
 const { Title, Text } = Typography;
 
@@ -20,9 +21,10 @@ const CategoryCreate = () => {
 
   const { data: categoriesRes, isLoading: isLoadingCategories } = useQuery({
     queryKey: ['categories', { status: 'active' }],
-    queryFn: () => getCategories({ status: 'active' }),
+    queryFn: () => getCategoryTree({ status: 'active' }),
   });
   const categories: ICategory[] = categoriesRes?.data?.categories ?? [];
+  const categoryOptions = flattenCategoryTree(categories, { includePath: true });
 
   const { mutate, isPending } = useMutation({
     mutationFn: (payload: FormValues) => createCategory(payload),
@@ -72,7 +74,9 @@ const CategoryCreate = () => {
               allowClear
               loading={isLoadingCategories}
               placeholder="(Không chọn) = danh mục gốc"
-              options={categories.map((c) => ({ value: c.id || c._id, label: c.name }))}
+              optionFilterProp="label"
+              showSearch
+              options={categoryOptions.map((o) => ({ value: o.value, label: o.label }))}
             />
           </Form.Item>
 

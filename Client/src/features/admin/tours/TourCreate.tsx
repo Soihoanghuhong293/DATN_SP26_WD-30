@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { getProviders } from '../../../services/api';
+import { getCategoryTree, getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
   Space, Typography, message, Select, Divider, Spin, 
@@ -23,27 +23,8 @@ const DEFAULT_PRICE_CATEGORIES = [
   { name: 'Trẻ em (0-10 tuổi)', price: 0 }
 ];
 
-type CategoryNode = {
-  _id?: string;
-  id?: string;
-  name: string;
-  children?: CategoryNode[];
-};
-
-const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string; label: string }[] => {
-  const res: { value: string; label: string }[] = [];
-  for (const n of nodes) {
-    const value = (n._id || n.id || '') as string;
-    if (value) {
-      const prefix = level > 0 ? `${'— '.repeat(level)}` : '';
-      res.push({ value, label: `${prefix}${n.name}` });
-    }
-    if (Array.isArray(n.children) && n.children.length) {
-      res.push(...flattenCategoryTree(n.children, level + 1));
-    }
-  }
-  return res;
-};
+import type { ICategory } from '../../../types/tour.types';
+import { flattenCategoryTree as flattenTree } from '../../../utils/categoryTree';
 
 const TourCreate = () => {
   const [form] = Form.useForm();
@@ -54,16 +35,12 @@ const TourCreate = () => {
   const [rawTourName, setRawTourName] = useState<string>('');
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<any>(null);
 
-  const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/categories/tree');
-      const data = res.data?.data?.categories || res.data?.data || res.data;
-      return Array.isArray(data) ? data : []; 
-    }
+  const { data: categoryRes, isLoading: isCategoriesLoading } = useQuery({
+    queryKey: ['categories', { tree: true }],
+    queryFn: () => getCategoryTree({ status: 'active' }),
   });
-
-  const categoryOptions = useMemo(() => flattenCategoryTree(categories as CategoryNode[]), [categories]);
+  const categories: ICategory[] = (categoryRes as any)?.data?.categories ?? [];
+  const categoryOptions = useMemo(() => flattenTree(categories, { includePath: true }), [categories]);
 
   const { data: providersData, isLoading: isProvidersLoading } = useQuery({
     queryKey: ['providers'],
@@ -237,7 +214,7 @@ const TourCreate = () => {
             className="btn-primary-vigo font-medium rounded-lg px-6"
           >
             XÁC NHẬN TẠO
-          </Button>A
+          </Button>
         </div>
 
         <Form
