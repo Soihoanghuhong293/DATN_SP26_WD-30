@@ -6,6 +6,7 @@ export interface ICategory extends Document {
   id: string;
   name: string;
   description?: string;
+  parent_id?: mongoose.Types.ObjectId | null;
   status: CategoryStatus;
   created_at: Date;
   update_at: Date;
@@ -15,6 +16,7 @@ const CategorySchema: Schema = new Schema(
   {
     name: { type: String, required: true, trim: true, unique: true },
     description: { type: String, default: '', trim: true },
+    parent_id: { type: Schema.Types.ObjectId, ref: 'Category', default: null, index: true },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   {

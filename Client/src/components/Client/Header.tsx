@@ -10,7 +10,7 @@ const Header = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isLogin, setIsLogin] = useState(false); 
+  const [isLogin, setIsLogin] = useState<boolean>(() => !!localStorage.getItem("token")); 
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,15 +23,23 @@ const Header = () => {
   // Đồng bộ khi đổi route: sau khi đăng nhập từ /login về /, MainLayout không remount
   // nên phải đọc lại token (trước đây chỉ chạy một lần lúc vào /login nên luôn "chưa đăng nhập").
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLogin(!!token);
+    // Sync trạng thái login khi đổi route (sau login thường navigate("/"))
+    setIsLogin(!!localStorage.getItem("token"));
   }, [location.pathname]);
+
+  useEffect(() => {
+    // Sync ngay sau login/logout (cùng tab) qua custom event
+    const onAuthChanged = () => setIsLogin(!!localStorage.getItem("token"));
+    window.addEventListener("auth:changed", onAuthChanged);
+    return () => window.removeEventListener("auth:changed", onAuthChanged);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     setIsLogin(false);
     setMobileMenuOpen(false); 
+    window.dispatchEvent(new Event("auth:changed"));
     navigate("/login");
   };
 

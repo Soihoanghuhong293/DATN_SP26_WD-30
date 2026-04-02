@@ -141,11 +141,15 @@ const BookingList = () => {
         const displayEndDate = record.endDate
           ? dayjs(record.endDate)
           : dayjs(record.startDate).add(Math.max(0, durationDays - 1), 'day');
+        const departureLabel = record.startDate ? dayjs(record.startDate).format('DD/MM/YYYY') : '';
+        const adminDisplayName = record.tour_id?.name
+          ? `${record.tour_id.name}${departureLabel ? ` (${departureLabel})` : ''}`
+          : 'Tour đã bị xóa';
         return (
           <div>
-            <Tooltip title={record.tour_id?.name}>
+            <Tooltip title={adminDisplayName}>
               <div className="font-bold truncate max-w-[200px]">
-                {record.tour_id?.name || 'Tour đã bị xóa'}
+                {adminDisplayName}
               </div>
             </Tooltip>
             <div className="text-xs text-gray-500 mt-1">

@@ -27,6 +27,11 @@ export interface IBooking extends Document {
 
   paymentMethod?: string;
 
+  // reporting / payment breakdown
+  deposit_amount?: number;
+  paid_amount?: number;
+  remaining_amount?: number;
+
   guests: Array<{
     full_name: string;
     gender: string;
@@ -166,6 +171,10 @@ const BookingSchema: Schema = new Schema(
       type: String,
       default: "offline",
     },
+
+    deposit_amount: { type: Number, default: 0 },
+    paid_amount: { type: Number, default: 0 },
+    remaining_amount: { type: Number, default: 0 },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

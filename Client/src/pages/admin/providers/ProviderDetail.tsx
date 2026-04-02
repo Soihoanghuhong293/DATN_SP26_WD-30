@@ -46,8 +46,11 @@ import {
   getRooms,
   createRoom,
   deleteRoom,
+  getRestaurants,
+  createRestaurant,
+  deleteRestaurant,
 } from '../../../services/api';
-import type { IProvider, IVehicle, IHotel, IRoom } from '../../../types/provider.types';
+import type { IProvider, IVehicle, IHotel, IRoom, IRestaurant } from '../../../types/provider.types';
 
 const { Title, Text } = Typography;
 
@@ -71,6 +74,8 @@ const ProviderDetail = () => {
   const [hotelForm] = Form.useForm();
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [roomForm] = Form.useForm();
+  const [restaurantModalOpen, setRestaurantModalOpen] = useState(false);
+  const [restaurantForm] = Form.useForm();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['provider', id],
@@ -98,8 +103,15 @@ const ProviderDetail = () => {
     enabled: Boolean(id),
   });
 
+  const { data: restaurantsData, isLoading: isRestaurantsLoading } = useQuery({
+    queryKey: ['restaurants', id],
+    queryFn: () => getRestaurants({ provider_id: id }),
+    enabled: Boolean(id),
+  });
+
   const hotels: IHotel[] = hotelsData?.data?.hotels || [];
   const rooms: IRoom[] = roomsData?.data?.rooms || [];
+  const restaurants: IRestaurant[] = restaurantsData?.data?.restaurants || [];
 
   const provider: IProvider | undefined = data?.data?.provider;
 
@@ -184,6 +196,30 @@ const ProviderDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['rooms', id] });
     },
     onError: () => message.error('Xoá phòng thất bại'),
+  });
+
+  const { mutate: mutateCreateRestaurant, isPending: isCreatingRestaurant } = useMutation({
+    mutationFn: (values: { name: string; phone?: string; capacity: number; location?: string; status: 'active' | 'inactive' }) =>
+      createRestaurant({
+        ...values,
+        provider_id: provider?.id || provider?._id,
+      }),
+    onSuccess: () => {
+      message.success('Đã thêm nhà hàng');
+      queryClient.invalidateQueries({ queryKey: ['restaurants', id] });
+      setRestaurantModalOpen(false);
+      restaurantForm.resetFields();
+    },
+    onError: () => message.error('Thêm nhà hàng thất bại'),
+  });
+
+  const { mutate: mutateDeleteRestaurant, isPending: isDeletingRestaurant } = useMutation({
+    mutationFn: (restaurantId: string) => deleteRestaurant(restaurantId),
+    onSuccess: () => {
+      message.success('Đã xoá nhà hàng');
+      queryClient.invalidateQueries({ queryKey: ['restaurants', id] });
+    },
+    onError: () => message.error('Xoá nhà hàng thất bại'),
   });
 
   if (isLoading) {
@@ -453,6 +489,58 @@ const ProviderDetail = () => {
         />
       </Card>
 
+      <Card
+        title={
+          <Space>
+            <BankOutlined />
+            <span>Danh sách nhà hàng</span>
+          </Space>
+        }
+        style={{ marginBottom: 16 }}
+        extra={
+          <Button type="primary" size="small" onClick={() => setRestaurantModalOpen(true)}>
+            Thêm nhà hàng
+          </Button>
+        }
+      >
+        <Table
+          loading={isRestaurantsLoading}
+          dataSource={restaurants}
+          rowKey={(r) => r.id || r._id || r.name}
+          size="small"
+          pagination={false}
+          locale={{ emptyText: 'Chưa khai báo nhà hàng' }}
+          columns={[
+            { title: 'Tên nhà hàng', dataIndex: 'name', render: (v) => <Text strong>{v}</Text> },
+            { title: 'SĐT', dataIndex: 'phone', width: 140, render: (v) => v || '—' },
+            { title: 'Sức chứa', dataIndex: 'capacity', width: 110, render: (v) => v ?? '—' },
+            { title: 'Địa điểm', dataIndex: 'location', ellipsis: true, render: (v) => v || '—' },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'status',
+              width: 120,
+              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
+            },
+            {
+              title: '',
+              width: 80,
+              render: (_, record) => (
+                <Popconfirm
+                  title="Xoá nhà hàng này?"
+                  okText="Xoá"
+                  cancelText="Huỷ"
+                  onConfirm={() => mutateDeleteRestaurant(record.id || record._id || '')}
+                >
+                  <Button danger size="small" loading={isDeletingRestaurant}>
+                    Xoá
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+        />
+      </Card>
+
       <Card>
         <Descriptions column={{ xs: 1, sm: 2 }} size="small">
           <Descriptions.Item label={<><CalendarOutlined /> Ngày tạo</>}>
@@ -579,6 +667,48 @@ const ProviderDetail = () => {
             <InputNumber min={1} className="w-full" />
           </Form.Item>
           <Form.Item name="status" label="Trạng thái" initialValue="active">
+            <Select
+              options={[
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Ngưng' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Thêm nhà hàng"
+        open={restaurantModalOpen}
+        onOk={() => {
+          restaurantForm
+            .validateFields()
+            .then((values) => mutateCreateRestaurant(values))
+            .catch(() => undefined);
+        }}
+        onCancel={() => {
+          setRestaurantModalOpen(false);
+          restaurantForm.resetFields();
+        }}
+        okText="Lưu"
+        cancelText="Huỷ"
+        confirmLoading={isCreatingRestaurant}
+        destroyOnClose
+      >
+        <Form form={restaurantForm} layout="vertical" initialValues={{ status: 'active', capacity: 50 }}>
+          <Form.Item name="name" label="Tên nhà hàng" rules={[{ required: true, message: 'Nhập tên nhà hàng' }]}>
+            <Input placeholder="VD: Nhà hàng ABC" />
+          </Form.Item>
+          <Form.Item name="phone" label="SĐT">
+            <Input placeholder="VD: 0901234567" />
+          </Form.Item>
+          <Form.Item name="capacity" label="Sức chứa" rules={[{ required: true, message: 'Nhập sức chứa' }]}>
+            <InputNumber min={1} className="w-full" />
+          </Form.Item>
+          <Form.Item name="location" label="Địa điểm">
+            <Input.TextArea rows={2} placeholder="Địa điểm/địa chỉ" />
+          </Form.Item>
+          <Form.Item name="status" label="Trạng thái">
             <Select
               options={[
                 { value: 'active', label: 'Hoạt động' },

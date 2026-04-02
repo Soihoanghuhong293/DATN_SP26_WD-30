@@ -1,7 +1,10 @@
 import { Button, Card, Form, Input, Select, Space, Typography, message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
-import { createCategory } from '../../../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { createCategory, getCategoryTree } from '../../../services/api';
 import { useNavigate } from 'react-router-dom';
+import type { ICategory } from '../../../types/tour.types';
+import { flattenCategoryTree } from '../../../utils/categoryTree';
 
 const { Title, Text } = Typography;
 
@@ -9,11 +12,19 @@ type FormValues = {
   name: string;
   description?: string;
   status: 'active' | 'inactive';
+  parent_id?: string | null;
 };
 
 const CategoryCreate = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm<FormValues>();
+
+  const { data: categoriesRes, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories', { status: 'active' }],
+    queryFn: () => getCategoryTree({ status: 'active' }),
+  });
+  const categories: ICategory[] = categoriesRes?.data?.categories ?? [];
+  const categoryOptions = flattenCategoryTree(categories, { includePath: true });
 
   const { mutate, isPending } = useMutation({
     mutationFn: (payload: FormValues) => createCategory(payload),
@@ -56,6 +67,17 @@ const CategoryCreate = () => {
 
           <Form.Item label="Mô tả" name="description">
             <Input.TextArea rows={3} placeholder="Mô tả chi tiết về danh mục..." />
+          </Form.Item>
+
+          <Form.Item label="Danh mục cha" name="parent_id">
+            <Select
+              allowClear
+              loading={isLoadingCategories}
+              placeholder="(Không chọn) = danh mục gốc"
+              optionFilterProp="label"
+              showSearch
+              options={categoryOptions.map((o) => ({ value: o.value, label: o.label }))}
+            />
           </Form.Item>
 
           <Form.Item label="Trạng thái" name="status" style={{ maxWidth: 240 }}>

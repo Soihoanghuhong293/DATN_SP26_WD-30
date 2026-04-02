@@ -3,10 +3,11 @@ import { Button, Input, Select, Space, Table, Tag, Typography, Popconfirm, messa
 import type { ColumnsType } from 'antd/es/table';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deleteCategory, getCategories } from '../../../services/api';
+import { deleteCategory, getCategoryTree } from '../../../services/api';
 import type { ICategory } from '../../../types/tour.types';
 import AdminPageHeader from '../../../components/admin/AdminPageHeader';
 import AdminListCard from '../../../components/admin/AdminListCard';
+import { buildCategoryIndex, getCategoryId } from '../../../utils/categoryTree';
 
 const { Title, Text } = Typography;
 
@@ -36,7 +37,7 @@ const CategoryList = () => {
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['categories', { search, status }],
-    queryFn: () => getCategories({ search: search || undefined, status }),
+    queryFn: () => getCategoryTree({ search: search || undefined, status }),
   });
 
   const { mutate: mutateDelete, isPending: isDeleting } = useMutation({
@@ -48,7 +49,8 @@ const CategoryList = () => {
     onError: () => message.error('Xoá danh mục thất bại'),
   });
 
-  const categories = data?.data?.categories ?? [];
+  const categories = (data?.data?.categories ?? []) as ICategory[];
+  const categoryIndex = useMemo(() => buildCategoryIndex(categories), [categories]);
 
   const columns: ColumnsType<ICategory> = useMemo(
     () => [
@@ -60,7 +62,7 @@ const CategoryList = () => {
           <div>
             <div style={{ fontWeight: 600, marginBottom: 2 }}>{value}</div>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              ID: {record.id || record._id}
+              ID: {getCategoryId(record)}
             </Text>
           </div>
         ),
@@ -73,6 +75,18 @@ const CategoryList = () => {
         render: (value: string) => (
           <Text type="secondary">{value?.trim() ? value : '-'}</Text>
         ),
+      },
+      {
+        title: 'Danh mục cha',
+        dataIndex: 'parent_id',
+        key: 'parent_id',
+        width: 260,
+        render: (value: any) => {
+          const parentId = value ? String(value) : '';
+          if (!parentId) return <Text type="secondary">—</Text>;
+          const parentPath = categoryIndex.pathById.get(parentId);
+          return <Text type="secondary">{parentPath || parentId}</Text>;
+        },
       },
       {
         title: 'Trạng thái',
@@ -96,7 +110,7 @@ const CategoryList = () => {
           <Space>
             <Button
               onClick={() =>
-                navigate(`/admin/categories/edit/${record.id || record._id}`)
+                navigate(`/admin/categories/edit/${getCategoryId(record)}`)
               }
             >
               Sửa
@@ -105,9 +119,9 @@ const CategoryList = () => {
               title="Xoá danh mục này?"
               okText="Xoá"
               cancelText="Huỷ"
-              onConfirm={() => mutateDelete(record.id || record._id || '')}
+              onConfirm={() => mutateDelete(getCategoryId(record))}
             >
-              <Button danger loading={isDeleting} disabled={!record.id && !record._id}>
+              <Button danger loading={isDeleting} disabled={!getCategoryId(record)}>
                 Xoá
               </Button>
             </Popconfirm>
@@ -115,7 +129,7 @@ const CategoryList = () => {
         ),
       },
     ],
-    [isDeleting, mutateDelete, navigate]
+    [categoryIndex.pathById, isDeleting, mutateDelete, navigate]
   );
 
   return (
@@ -174,13 +188,11 @@ const CategoryList = () => {
         >
           <Table<ICategory>
             loading={isLoading}
-            rowKey={(r) => r.id || r._id || Math.random().toString(16)}
+            rowKey={(r) => getCategoryId(r) || Math.random().toString(16)}
             dataSource={categories}
             columns={columns}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: false,
-            }}
+            pagination={false}
+            expandable={{ defaultExpandAllRows: true }}
           />
         </AdminListCard>
       )}

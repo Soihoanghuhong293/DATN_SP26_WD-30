@@ -50,6 +50,19 @@ export interface IRoom {
   updated_at?: string;
 }
 
+export interface IRestaurant {
+  id?: string;
+  _id?: string;
+  name: string;
+  phone?: string;
+  capacity: number;
+  location?: string;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface CreateProviderPayload {
   name: string;
   description?: string;

@@ -2,6 +2,7 @@ export const ENDPOINTS = {
   tours: '/tours',
   tourById: (id: string) => `/tours/${id}`,
   categories: '/categories',
+  categoryTree: '/categories/tree',
   categoryById: (id: string) => `/categories/${id}`,
   guides: '/guides',
   guideById: (id: string) => `/guides/${id}`,
@@ -16,6 +17,8 @@ export const ENDPOINTS = {
   hotelById: (id: string) => `/hotels/${id}`,
   rooms: '/rooms',
   roomById: (id: string) => `/rooms/${id}`,
+  restaurants: '/restaurants',
+  restaurantById: (id: string) => `/restaurants/${id}`,
 } as const;
 
 

@@ -29,6 +29,23 @@ import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
 import "./styles/SchedulePicker.css";
 
+/** Chuẩn hoá date từ API/schedule (trùng logic normalizedSchedule) → YYYY-MM-DD */
+function normalizeDepartureDateRaw(raw: string): string {
+  if (!raw) return "";
+  const trimmed = String(raw).trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("T")) return trimmed.split("T")[0];
+  const slash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const dd = slash[1].padStart(2, "0");
+    const mm = slash[2].padStart(2, "0");
+    const yyyy = slash[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const parsed = dayjs(trimmed);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : "";
+}
+
 const TourDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -40,6 +57,16 @@ const TourDetailPage = () => {
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
+  const [groupInstances, setGroupInstances] = useState<any[]>([]);
+
+  const normalizeGroupName = (name?: string) => {
+    const n = String(name || "").trim();
+    if (!n) return "";
+    return n
+      .replace(/\s*\(\s*\d{1,2}\/\d{1,2}\/\d{4}\s*\)\s*$/i, "")
+      .replace(/\s*\(\s*copy\s*\)\s*$/i, "")
+      .trim();
+  };
 
   useEffect(() => {
     const fetchTourDetail = async () => {
@@ -74,6 +101,28 @@ const TourDetailPage = () => {
     fetchTourDetail();
   }, [id]);
 
+  // Fetch all tour instances cùng tên để gộp lịch khởi hành (khách hàng chỉ thấy 1 tour)
+  useEffect(() => {
+    const fetchInstancesByName = async () => {
+      const groupKey = normalizeGroupName(tour?.name);
+      if (!groupKey) return;
+      try {
+        // Lấy rộng (limit lớn) rồi lọc theo tên gốc ở client để tránh miss do search/status
+        const res = await axios.get('http://localhost:5000/api/v1/tours', {
+          params: { page: 1, limit: 2000 },
+        });
+        const arr = res.data?.data || [];
+        const instances = Array.isArray(arr)
+          ? arr.filter((t: any) => normalizeGroupName(String(t?.name || "")) === groupKey)
+          : [];
+        setGroupInstances(instances);
+      } catch (e) {
+        // ignore, fallback to single tour
+      }
+    };
+    fetchInstancesByName();
+  }, [tour?.name]);
+
   useEffect(() => {
     const fetchHolidayRules = async () => {
       try {
@@ -91,7 +140,48 @@ const TourDetailPage = () => {
     return Array.isArray(imgs) ? imgs : [];
   }, [tour]);
 
-  const departureSchedule = useMemo(() => (tour as any)?.departure_schedule || [], [tour]);
+  const departureSchedule = useMemo(() => {
+    // gộp departure_schedule của tất cả instances cùng tên
+    const base = (tour as any)?.departure_schedule || [];
+    const instances = Array.isArray(groupInstances) && groupInstances.length ? groupInstances : [];
+    if (!instances.length) return base;
+    const merged: any[] = [];
+    for (const inst of instances) {
+      const sch = inst?.departure_schedule || [];
+      for (const s of sch) {
+        merged.push(s);
+      }
+    }
+    return merged.length ? merged : base;
+  }, [tour, groupInstances]);
+
+  const { tourIdByDate, priceByDate } = useMemo(() => {
+    const idMap: Record<string, string> = {};
+    const priceMap: Record<string, number> = {};
+
+    const applyInstance = (inst: any) => {
+      const pid = inst?.id || inst?._id;
+      if (!pid) return;
+      const instPrice = Number((inst as any)?.price ?? 0);
+      const sch = inst?.departure_schedule || [];
+      for (const row of sch) {
+        const raw = row?.date ? String(row.date).trim() : "";
+        const d = normalizeDepartureDateRaw(raw);
+        if (!d) continue;
+        idMap[d] = String(pid);
+        priceMap[d] = instPrice;
+      }
+    };
+
+    const instances = Array.isArray(groupInstances) && groupInstances.length ? groupInstances : [];
+    if (instances.length) {
+      for (const inst of instances) applyInstance(inst);
+    } else if (tour) {
+      applyInstance(tour);
+    }
+
+    return { tourIdByDate: idMap, priceByDate: priceMap };
+  }, [groupInstances, tour]);
 
   const normalizedSchedule = useMemo(() => {
     const arr = Array.isArray(departureSchedule) ? departureSchedule : [];
@@ -172,7 +262,12 @@ const TourDetailPage = () => {
   };
 
   const getPriceForDate = (dateStr: string) => {
-    const basePrice = (tour as any)?.price || 0;
+    const mapped =
+      dateStr && Object.prototype.hasOwnProperty.call(priceByDate, dateStr)
+        ? Number(priceByDate[dateStr])
+        : NaN;
+    const basePrice =
+      dateStr && !Number.isNaN(mapped) ? mapped : Number((tour as any)?.price ?? 0) || 0;
     if (!dateStr) return basePrice;
     const targetTime = new Date(`${dateStr}T12:00:00Z`).getTime();
 
@@ -220,7 +315,9 @@ const TourDetailPage = () => {
 
   const handleBookNow = () => {
     const date = selectedDepartureDate || defaultDepartureDate;
-    const basePath = `/order/booking/${(tour as any)?.id || (tour as any)?._id || id}`;
+    const fallbackId = (tour as any)?.id || (tour as any)?._id || id;
+    const instanceId = date && tourIdByDate[date] ? tourIdByDate[date] : fallbackId;
+    const basePath = `/order/booking/${instanceId}`;
     navigate(date ? `${basePath}?date=${encodeURIComponent(date)}` : basePath);
   };
 
@@ -421,7 +518,9 @@ const TourDetailPage = () => {
               <DollarOutlined />
               <div>
                 <p>Giá từ</p>
-                <b style={{ color: "#d90429" }}>{tour.price?.toLocaleString()}đ / khách</b>
+                <b style={{ color: "#d90429" }}>
+                  {getPriceForDate(selectedDepartureDate || defaultDepartureDate || "").toLocaleString()}đ / khách
+                </b>
               </div>
             </div>
 

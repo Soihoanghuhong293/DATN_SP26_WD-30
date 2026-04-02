@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { ApiResponse, ICategory, ITour, ToursListResponse } from '../types/tour.types';
 import type { IGuide, IGuideCreateRequest, IGuideUpdateRequest, IGuideRatingRequest, ITourHistoryRequest } from '../types/guide.types';
-import type { CreateProviderPayload, IProvider, IVehicle, IHotel, IRoom } from '../types/provider.types';
+import type { CreateProviderPayload, IProvider, IVehicle, IHotel, IRoom, IRestaurant } from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
 
 const baseURL =
@@ -70,6 +70,14 @@ export async function getCategories(params: GetCategoriesParams = {}) {
   return res.data;
 }
 
+export async function getCategoryTree(params: GetCategoriesParams = {}) {
+  const res = await api.get<ApiResponse<{ categories: ICategory[] }> & { results?: number }>(
+    ENDPOINTS.categoryTree,
+    { params }
+  );
+  return res.data;
+}
+
 export async function getCategory(id: string) {
   const res = await api.get<ApiResponse<{ category: ICategory }>>(ENDPOINTS.categoryById(id));
   return res.data;
@@ -79,6 +87,7 @@ export type CreateCategoryPayload = {
   name: string;
   description?: string;
   status?: 'active' | 'inactive';
+  parent_id?: string | null;
 };
 
 export async function createCategory(payload: CreateCategoryPayload) {
@@ -288,6 +297,36 @@ export async function createRoom(payload: UpsertRoomPayload) {
 
 export async function deleteRoom(id: string) {
   const res = await api.delete(ENDPOINTS.roomById(id));
+  return res.data;
+}
+
+// ===== RESTAURANTS (theo nhà cung cấp) =====
+
+export type GetRestaurantsParams = { provider_id?: string };
+
+export async function getRestaurants(params: GetRestaurantsParams = {}) {
+  const res = await api.get<ApiResponse<{ restaurants: IRestaurant[] }> & { results?: number }>(ENDPOINTS.restaurants, {
+    params,
+  });
+  return res.data;
+}
+
+export type UpsertRestaurantPayload = {
+  name: string;
+  phone?: string;
+  capacity: number;
+  location?: string;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createRestaurant(payload: UpsertRestaurantPayload) {
+  const res = await api.post<ApiResponse<{ restaurant: IRestaurant }>>(ENDPOINTS.restaurants, payload);
+  return res.data;
+}
+
+export async function deleteRestaurant(id: string) {
+  const res = await api.delete(ENDPOINTS.restaurantById(id));
   return res.data;
 }
 
