@@ -78,36 +78,37 @@ const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string;
 
 export default function TourTemplateEdit() {
   const [form] = Form.useForm();
-  const providerId = Form.useWatch('provider_id', form);
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
 
-  const { data: providersRes, isLoading: isProvidersLoading } = useQuery({
+  const { data: providersRes } = useQuery({
     queryKey: ['providers', { status: 'active' }],
     queryFn: () => getProviders({ status: 'active' }),
   });
   const providers: IProvider[] = providersRes?.data?.providers ?? [];
 
   const { data: restaurantsRes, isLoading: isRestaurantsLoading } = useQuery({
-    queryKey: ['restaurants', providerId],
-    queryFn: () => getRestaurants({ provider_id: providerId }),
-    enabled: Boolean(providerId),
+    queryKey: ['restaurants', 'all'],
+    queryFn: () => getRestaurants({}),
   });
   const restaurants: IRestaurant[] = restaurantsRes?.data?.restaurants ?? [];
 
   const { data: ticketsRes, isLoading: isTicketsLoading } = useQuery({
-    queryKey: ['provider-tickets', providerId],
-    queryFn: () => getProviderTickets({ provider_id: providerId }),
-    enabled: Boolean(providerId),
+    queryKey: ['provider-tickets', 'all'],
+    queryFn: () => getProviderTickets({}),
   });
   const providerTickets: IProviderTicket[] = ticketsRes?.data?.tickets ?? [];
 
-  const selectedProviderName = useMemo(() => {
-    const p = providers.find((x) => String(x.id || x._id) === String(providerId));
-    return p?.name?.trim() || '';
-  }, [providers, providerId]);
+  const providerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of providers) {
+      const pid = String(p.id || p._id || '');
+      if (pid) m.set(pid, p.name?.trim() || '');
+    }
+    return m;
+  }, [providers]);
 
   const ticketOptions = useMemo(
     () =>
@@ -116,24 +117,28 @@ export default function TourTemplateEdit() {
         .map((t) => {
           const tid = t.id || t._id || '';
           const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+          const pn = providerNameById.get(String(t.provider_id || '')) || '';
           return {
             value: tid,
-            label: `${t.name} — ${t.ticket_type} [${modeLabel}]${selectedProviderName ? ` (${selectedProviderName})` : ''}`,
+            label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pn ? ` (${pn})` : ''}`,
           };
         })
         .filter((o) => o.value),
-    [providerTickets, selectedProviderName]
+    [providerTickets, providerNameById]
   );
 
   const restaurantOptions = useMemo(
     () =>
       restaurants
-        .map((r) => ({
-          value: r.id || r._id || '',
-          label: `${r.name}${r.location ? ` — ${r.location}` : ''}${r.capacity ? ` (${r.capacity} chỗ)` : ''}`,
-        }))
+        .map((r) => {
+          const pn = providerNameById.get(String(r.provider_id || '')) || '';
+          return {
+            value: r.id || r._id || '',
+            label: `${r.name}${r.location ? ` — ${r.location}` : ''}${r.capacity ? ` (${r.capacity} chỗ)` : ''}${pn ? ` (${pn})` : ''}`,
+          };
+        })
         .filter((o) => o.value),
-    [restaurants]
+    [restaurants, providerNameById]
   );
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
@@ -160,10 +165,10 @@ export default function TourTemplateEdit() {
 
   useEffect(() => {
     if (!template) return;
+    const { provider_id: _omitProvider, ...templateFields } = template as Record<string, unknown>;
     form.setFieldsValue({
-      ...template,
+      ...templateFields,
       category_id: template.category_id?._id || template.category_id,
-      provider_id: template.provider_id?._id || template.provider_id,
       schedule: normalizeScheduleForForm(template.schedule),
     });
 
@@ -222,7 +227,7 @@ export default function TourTemplateEdit() {
   });
 
   const onFinish = (values: any) => {
-    const payload = { ...values };
+    const payload = { ...values, provider_id: null };
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)
@@ -292,38 +297,6 @@ export default function TourTemplateEdit() {
                     </Form.Item>
                   </Col>
                 </Row>
-
-                <Form.Item
-                  name="provider_id"
-                  label="Nhà cung cấp (nhà hàng & vé trong lịch trình)"
-                  tooltip="Chọn NCC rồi mỗi ngày chọn nhà hàng trưa/tối và vé (khai báo tại chi tiết NCC)."
-                >
-                  <Select
-                    allowClear
-                    showSearch
-                    size="large"
-                    placeholder="Chọn nhà cung cấp..."
-                    loading={isProvidersLoading}
-                    optionFilterProp="label"
-                    options={providers
-                      .map((p) => ({
-                        value: p.id || p._id || '',
-                        label: p.name,
-                      }))
-                      .filter((o) => o.value)}
-                    onChange={() => {
-                      const sched = form.getFieldValue('schedule') || [];
-                      form.setFieldsValue({
-                        schedule: sched.map((s: any) => ({
-                          ...s,
-                          lunch_restaurant_id: undefined,
-                          dinner_restaurant_id: undefined,
-                          ticket_ids: [],
-                        })),
-                      });
-                    }}
-                  />
-                </Form.Item>
 
                 <Form.Item name="description" label="Mô tả">
                   <TextArea rows={4} className="rounded-lg" />
@@ -415,13 +388,10 @@ export default function TourTemplateEdit() {
                                   className="rounded-lg w-full"
                                   showSearch
                                   optionFilterProp="label"
-                                  placeholder={
-                                    providerId ? 'Chọn nhà hàng trưa' : 'Chọn nhà cung cấp trước'
-                                  }
-                                  disabled={!providerId}
+                                  placeholder="Chọn nhà hàng trưa"
                                   loading={isRestaurantsLoading}
                                   options={restaurantOptions}
-                                  notFoundContent={providerId ? 'Chưa có nhà hàng — thêm tại NCC' : null}
+                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
                                 />
                               </Form.Item>
                             </Col>
@@ -432,13 +402,10 @@ export default function TourTemplateEdit() {
                                   className="rounded-lg w-full"
                                   showSearch
                                   optionFilterProp="label"
-                                  placeholder={
-                                    providerId ? 'Chọn nhà hàng tối' : 'Chọn nhà cung cấp trước'
-                                  }
-                                  disabled={!providerId}
+                                  placeholder="Chọn nhà hàng tối"
                                   loading={isRestaurantsLoading}
                                   options={restaurantOptions}
-                                  notFoundContent={providerId ? 'Chưa có nhà hàng — thêm tại NCC' : null}
+                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
                                 />
                               </Form.Item>
                             </Col>
@@ -450,15 +417,10 @@ export default function TourTemplateEdit() {
                                   className="rounded-lg w-full"
                                   showSearch
                                   optionFilterProp="label"
-                                  placeholder={
-                                    providerId
-                                      ? 'Chọn một hoặc nhiều vé — khai báo tại Nhà cung cấp'
-                                      : 'Chọn nhà cung cấp trước'
-                                  }
-                                  disabled={!providerId}
+                                  placeholder="Chọn một hoặc nhiều vé — khai báo tại Nhà cung cấp"
                                   loading={isTicketsLoading}
                                   options={ticketOptions}
-                                  notFoundContent={providerId ? 'Chưa có vé — thêm trong chi tiết NCC' : null}
+                                  notFoundContent="Chưa có vé — thêm trong chi tiết NCC"
                                 />
                               </Form.Item>
                             </Col>
