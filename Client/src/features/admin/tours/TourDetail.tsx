@@ -42,6 +42,26 @@ function formatMoney(n: number) {
   return `${Number(n || 0).toLocaleString('vi-VN')} đ`;
 }
 
+/** Chỗ tối đa mỗi đợt = `departure_schedule[].slots` (model Tour không có maxGroupSize). */
+function maxGuestsFromDepartureSchedule(
+  departureSchedule: unknown
+): { compact: string; detail: string } | null {
+  if (!Array.isArray(departureSchedule) || departureSchedule.length === 0) return null;
+  const slots = departureSchedule
+    .map((row: any) => Number(row?.slots))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (slots.length === 0) return null;
+  const lo = Math.min(...slots);
+  const hi = Math.max(...slots);
+  if (lo === hi) {
+    return { compact: `${lo} người`, detail: `${lo} người / đợt khởi hành` };
+  }
+  return {
+    compact: `${lo}–${hi} người`,
+    detail: `${lo}–${hi} người / đợt (khác nhau theo ngày)`,
+  };
+}
+
 function RestaurantLine({ label, r }: { label: string; r: any }) {
   if (!r || typeof r !== 'object') {
     return (
@@ -116,7 +136,9 @@ const TourDetail = () => {
   const { data: tour, isLoading } = useQuery({
     queryKey: ['tour', id],
     queryFn: async () => {
-      const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`);
+      const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
       const raw = res.data?.data;
       if (raw && typeof raw === 'object' && 'tour' in raw && (raw as any).tour) {
         return (raw as any).tour;
@@ -249,7 +271,6 @@ const TourDetail = () => {
 
       <Card title="Thông tin nhanh" bordered className="saas-card" style={{ marginBottom: 24 }}>
         <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small" bordered>
-          <Descriptions.Item label="Slug (URL)">{(tour as any).slug || '—'}</Descriptions.Item>
           <Descriptions.Item label="Giá niêm yết">{formatMoney(Number(tour.price || 0))}</Descriptions.Item>
           <Descriptions.Item label="Thời lượng">{tour.duration_days ?? '—'} ngày</Descriptions.Item>
           <Descriptions.Item label="Danh mục">{tour.category_id?.name || '—'}</Descriptions.Item>
@@ -271,7 +292,7 @@ const TourDetail = () => {
             )}
           </Descriptions.Item>
           <Descriptions.Item label="Số khách / đoàn tối đa">
-            {(tour as any).maxGroupSize != null ? `${(tour as any).maxGroupSize} người` : '—'}
+            {maxGuestsFromDepartureSchedule(tour.departure_schedule)?.detail ?? '—'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -333,7 +354,9 @@ const TourDetail = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Space><UsergroupAddOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Khách tối đa</Text></Space>
-                    <Text strong>{(tour as any).maxGroupSize != null ? `${(tour as any).maxGroupSize}` : '—'}</Text>
+                    <Text strong>
+                      {maxGuestsFromDepartureSchedule(tour.departure_schedule)?.compact ?? '—'}
+                    </Text>
                 </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Space><EnvironmentOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Danh mục</Text></Space>

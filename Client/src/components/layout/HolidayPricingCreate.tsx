@@ -17,7 +17,9 @@ const HolidayPricingCreate = () => {
   useEffect(() => {
     const fetchTours = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/v1/tours?limit=100');
+        const res = await axios.get('http://localhost:5000/api/v1/tours?limit=100', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
         //  chỉnh cấu trúc dữ liệu tùy vào api tour
         const toursData = res.data?.data?.tours || res.data?.data || [];
         setTours(toursData);

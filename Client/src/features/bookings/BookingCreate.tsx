@@ -40,11 +40,14 @@ const BookingCreate = () => {
   });
 
   const { data: tours, isLoading: isToursLoading } = useQuery({
-    queryKey: ['tours'],
+    queryKey: ['tours', 'bookable-active'],
     queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/tours', getAuthHeader());
+      const res = await axios.get('http://localhost:5000/api/v1/tours', {
+        ...getAuthHeader(),
+        params: { status: 'active' },
+      });
       return res.data?.data || [];
-    }
+    },
   });
 
   const { data: usersData, isLoading: isUsersLoading } = useQuery({

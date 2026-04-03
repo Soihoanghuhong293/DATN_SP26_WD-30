@@ -1,16 +1,17 @@
 import express from 'express';
 import * as tourController from '../controllers/tourController';
+import { optionalProtect } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
 router
   .route('/')
-  .get(tourController.getAllTours)
+  .get(optionalProtect, tourController.getAllTours)
   .post(tourController.createTour);
 
 router
   .route('/:id')
-  .get(tourController.getTour)
+  .get(optionalProtect, tourController.getTour)
   .put(tourController.updateTour)   
   .delete(tourController.deleteTour);
 

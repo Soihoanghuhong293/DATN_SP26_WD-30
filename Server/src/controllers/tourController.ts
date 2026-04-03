@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Tour from '../models/Tour';
 import Booking from '../models/Booking';
 import TourTemplate from '../models/TourTemplate';
+import type { AuthRequest } from '../middlewares/auth.middleware';
 
 const normalizeDateStr = (value: any) => {
   if (!value) return '';
@@ -30,12 +31,16 @@ export const getAllTours = async (req: Request, res: Response) => {
     const skip = (pageNum - 1) * limitNum;
 
     const normalizedStatus = status === 'inactive' ? 'hidden' : status;
+    const isAdmin = (req as AuthRequest).user?.role === 'admin';
 
     const escapeRegExp = (value: string) =>
       value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const filter: Record<string, any> = {};
-    if (normalizedStatus && normalizedStatus.trim() !== '') {
+    // Khách & API công khai: chỉ thấy tour đang hoạt động (không cho lọc draft/hidden qua query).
+    if (!isAdmin) {
+      filter.status = 'active';
+    } else if (normalizedStatus && normalizedStatus.trim() !== '') {
       filter.status = normalizedStatus;
     }
     if (category_id && category_id.trim() !== '') {
@@ -109,6 +114,11 @@ export const getTour = async (req: Request, res: Response) => {
         select: 'name ticket_type application_mode price_adult price_child status',
       });
     if (!tour) return res.status(404).json({ message: 'Không tìm thấy tour' });
+
+    const isAdmin = (req as AuthRequest).user?.role === 'admin';
+    if (!isAdmin && tour.status !== 'active') {
+      return res.status(404).json({ message: 'Không tìm thấy tour' });
+    }
 
     res.status(200).json({
       status: 'success',
@@ -193,10 +203,21 @@ export const updateTour = async (req: Request, res: Response) => {
       
     }
 
-    // không sửa khi có booking
     const hasBooking = await Booking.exists({ tour_id: req.params.id, status: { $ne: 'cancelled' } });
+
+    // Đã có booking: chỉ cho phần “nội dung hiển thị / trạng thái bán” để tránh phá lịch trình & giá đã chốt với khách.
     if (hasBooking) {
-      return res.status(409).json({ status: 'fail', message: 'Tour đã có booking, không thể chỉnh sửa' });
+      const safeKeys = ['status', 'description', 'images', 'policies'] as const;
+      for (const key of safeKeys) {
+        if (req.body[key] !== undefined) (tour as any)[key] = req.body[key];
+      }
+      await tour.save();
+      return res.status(200).json({
+        status: 'success',
+        data: tour,
+        notice:
+          'Tour đã có đơn đặt: chỉ lưu trạng thái, mô tả, ảnh và chính sách. Để sửa lịch trình, giá, NCC… cần không còn booking (hoặc hủy các đơn tương ứng).',
+      });
     }
 
     // validate template tồn tại (nếu có)

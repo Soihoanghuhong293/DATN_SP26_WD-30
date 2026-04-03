@@ -178,7 +178,9 @@ const TourEdit = () => {
   const { data: tour, isLoading: isTourLoading } = useQuery({
     queryKey: ['tour', id],
     queryFn: async () => {
-      const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`);
+      const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
       const raw = res.data?.data;
       if (raw && typeof raw === 'object' && 'tour' in raw && (raw as any).tour) return (raw as any).tour;
       return raw ?? null;
@@ -217,10 +219,17 @@ const TourEdit = () => {
 
   const mutation = useMutation({
     mutationFn: async (values: any) => {
-      return await axios.put(`http://localhost:5000/api/v1/tours/${id}`, values);
+      return await axios.put(`http://localhost:5000/api/v1/tours/${id}`, values, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
     },
-    onSuccess: () => {
-      message.success('Cập nhật tour thành công!');
+    onSuccess: (res) => {
+      const notice = res?.data?.notice;
+      if (notice) {
+        message.warning(notice);
+      } else {
+        message.success('Cập nhật tour thành công!');
+      }
       queryClient.invalidateQueries({ queryKey: ['tours'] }); 
       queryClient.invalidateQueries({ queryKey: ['tour', id] }); 
       navigate('/admin/tours'); 

@@ -502,6 +502,13 @@ export const createBooking = async (req: Request, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
     }
 
+    if ((tour as any).status !== 'active') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Tour không mở bán hoặc đang tạm dừng. Chỉ tour đang hoạt động mới được đặt.',
+      });
+    }
+
     // Validate số chỗ còn lại cho ngày khởi hành
     const departureSchedule = (tour as any).departure_schedule || [];
     const startDateStr = new Date(startDate).toISOString().split('T')[0]; // YYYY-MM-DD

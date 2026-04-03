@@ -151,9 +151,19 @@ const mergeAllocatedServices = async (bookingId: mongoose.Types.ObjectId, patch:
 };
 
 export const autoAllocateCarsForBooking = async (bookingId: string): Promise<AllocateCarsResult> => {
-  const booking: any = await Booking.findById(bookingId).populate('tour_id', 'duration_days suppliers');
+  const booking: any = await Booking.findById(bookingId).populate('tour_id', 'duration_days suppliers status');
   if (!booking) {
     return { success: false, code: 'BOOKING_NOT_FOUND', message: 'Không tìm thấy booking' };
+  }
+
+  const tourStatus =
+    booking.tour_id && typeof booking.tour_id === 'object' ? (booking.tour_id as { status?: string }).status : null;
+  if (tourStatus !== 'active') {
+    return {
+      success: false,
+      code: 'TOUR_NOT_ACTIVE',
+      message: 'Chỉ có thể phân bổ xe/phòng khi tour đang hoạt động',
+    };
   }
 
   const groupSize = getBookingPaxCount(booking);
@@ -286,9 +296,19 @@ export const autoAllocateCarsForBooking = async (bookingId: string): Promise<All
 };
 
 export const autoAllocateRoomsForBooking = async (bookingId: string): Promise<AllocateRoomsResult> => {
-  const booking: any = await Booking.findById(bookingId).populate('tour_id', 'duration_days suppliers');
+  const booking: any = await Booking.findById(bookingId).populate('tour_id', 'duration_days suppliers status');
   if (!booking) {
     return { success: false, code: 'BOOKING_NOT_FOUND', message: 'Không tìm thấy booking' };
+  }
+
+  const tourStatus =
+    booking.tour_id && typeof booking.tour_id === 'object' ? (booking.tour_id as { status?: string }).status : null;
+  if (tourStatus !== 'active') {
+    return {
+      success: false,
+      code: 'TOUR_NOT_ACTIVE',
+      message: 'Chỉ có thể phân bổ xe/phòng khi tour đang hoạt động',
+    };
   }
 
   const groupSize = getBookingPaxCount(booking);
