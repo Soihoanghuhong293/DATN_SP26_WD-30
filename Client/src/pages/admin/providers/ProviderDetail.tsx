@@ -21,6 +21,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import {
   ArrowLeftOutlined,
   DeleteOutlined,
@@ -70,6 +71,15 @@ const { Title, Text } = Typography;
 
 const statusColor = (status?: string) => (status === 'active' ? 'green' : 'red');
 const statusLabel = (status?: string) => (status === 'active' ? 'Hoạt động' : 'Không hoạt động');
+
+const renderActiveInactiveTag = (value?: 'active' | 'inactive' | string) => {
+  const inactive = value === 'inactive';
+  return (
+    <Tag color={inactive ? 'error' : 'success'} bordered={false}>
+      {inactive ? 'Ngưng' : 'Hoạt động'}
+    </Tag>
+  );
+};
 
 const formatDateTime = (value?: string) => {
   if (!value) return '-';
@@ -304,6 +314,139 @@ const ProviderDetail = () => {
     );
   }
 
+  const subTableProps: Partial<TableProps<any>> = {
+    size: 'small',
+    pagination: false,
+    tableLayout: 'fixed',
+    scroll: { x: true },
+  };
+
+  const vehicleColumns: ColumnsType<IVehicle> = [
+    { title: 'Biển số', dataIndex: 'plate', width: '33%', ellipsis: true, render: (v) => <Text strong>{v}</Text> },
+    { title: 'Số chỗ', dataIndex: 'capacity', width: '33%', align: 'right', render: (v) => v ?? '—' },
+    { title: 'Trạng thái', dataIndex: 'status', width: '34%', align: 'center', render: (v) => renderActiveInactiveTag(v) },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Popconfirm title="Xoá xe này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => mutateDeleteVehicle(record.id || record._id || '')}>
+          <Button danger size="small" loading={isDeletingVehicle}>
+            Xoá
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
+  const hotelColumns: ColumnsType<IHotel> = [
+    { title: 'Tên khách sạn', dataIndex: 'name', width: '33%', ellipsis: true, render: (v) => <Text strong>{v}</Text> },
+    { title: 'Địa chỉ', dataIndex: 'address', width: '33%', ellipsis: true, render: (v) => v || '—' },
+    { title: 'Trạng thái', dataIndex: 'status', width: '34%', align: 'center', render: (v) => renderActiveInactiveTag(v) },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Popconfirm
+          title="Xoá khách sạn và toàn bộ phòng?"
+          okText="Xoá"
+          cancelText="Huỷ"
+          onConfirm={() => mutateDeleteHotel(record.id || record._id || '')}
+        >
+          <Button danger size="small" loading={isDeletingHotel}>
+            Xoá
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
+  const roomColumns: ColumnsType<IRoom> = [
+    {
+      title: 'Khách sạn',
+      key: 'hotel',
+      width: '25%',
+      ellipsis: true,
+      render: (_, record) => {
+        const h = record.hotel_id as any;
+        const name = typeof h === 'object' && h?.name ? h.name : '—';
+        return <Text>{name}</Text>;
+      },
+    },
+    { title: 'Số phòng', dataIndex: 'room_number', width: '25%', ellipsis: true, render: (v) => <Text strong>{v}</Text> },
+    { title: 'Sức chứa', dataIndex: 'max_occupancy', width: '25%', align: 'right', render: (v) => v ?? 2 },
+    { title: 'Trạng thái', dataIndex: 'status', width: '25%', align: 'center', render: (v) => renderActiveInactiveTag(v) },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Popconfirm title="Xoá phòng này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => mutateDeleteRoom(record.id || record._id || '')}>
+          <Button danger size="small" loading={isDeletingRoom}>
+            Xoá
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
+  const restaurantColumns: ColumnsType<IRestaurant> = [
+    { title: 'Tên nhà hàng', dataIndex: 'name', width: '20%', ellipsis: true, render: (v) => <Text strong>{v}</Text> },
+    { title: 'SĐT', dataIndex: 'phone', width: '20%', ellipsis: true, render: (v) => v || '—' },
+    { title: 'Sức chứa', dataIndex: 'capacity', width: '20%', align: 'right', render: (v) => v ?? '—' },
+    { title: 'Địa điểm', dataIndex: 'location', width: '20%', ellipsis: true, render: (v) => v || '—' },
+    { title: 'Trạng thái', dataIndex: 'status', width: '20%', align: 'center', render: (v) => renderActiveInactiveTag(v) },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Popconfirm title="Xoá nhà hàng này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => mutateDeleteRestaurant(record.id || record._id || '')}>
+          <Button danger size="small" loading={isDeletingRestaurant}>
+            Xoá
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
+  const ticketColumns: ColumnsType<IProviderTicket> = [
+    { title: 'Tên vé', dataIndex: 'name', width: '18%', ellipsis: true, render: (v) => <Text strong>{v}</Text> },
+    { title: 'Loại vé', dataIndex: 'ticket_type', width: '18%', ellipsis: true, render: (v) => v || '—' },
+    { title: 'Giá NL', dataIndex: 'price_adult', width: '18%', align: 'right', render: (v) => formatVnd(v) },
+    { title: 'Giá TE', dataIndex: 'price_child', width: '18%', align: 'right', render: (v) => formatVnd(v) },
+    {
+      title: 'Áp dụng',
+      dataIndex: 'application_mode',
+      width: '18%',
+      align: 'center',
+      render: (m: TicketApplicationMode) => (
+        <Tag color={m === 'included_in_tour' ? 'blue' : 'orange'} bordered={false}>
+          {applicationModeLabel(m)}
+        </Tag>
+      ),
+    },
+    { title: 'Trạng thái', dataIndex: 'status', width: '10%', align: 'center', render: (v) => renderActiveInactiveTag(v) },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, record) => (
+        <Popconfirm title="Xoá vé này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => mutateDeleteTicket(record.id || record._id || '')}>
+          <Button danger size="small" loading={isDeletingTicket}>
+            Xoá
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
   return (
     <div>
       <Breadcrumb
@@ -409,35 +552,9 @@ const ProviderDetail = () => {
           loading={isVehiclesLoading}
           dataSource={vehicles}
           rowKey={(v) => v.id || v._id || v.plate}
-          size="small"
-          pagination={false}
           locale={{ emptyText: 'Chưa khai báo xe cho nhà cung cấp này' }}
-          columns={[
-            { title: 'Biển số', dataIndex: 'plate', render: (v) => <Text strong>{v}</Text> },
-            { title: 'Số chỗ', dataIndex: 'capacity', width: 100 },
-            {
-              title: 'Trạng thái',
-              dataIndex: 'status',
-              width: 120,
-              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
-            },
-            {
-              title: '',
-              width: 80,
-              render: (_, record) => (
-                <Popconfirm
-                  title="Xoá xe này?"
-                  okText="Xoá"
-                  cancelText="Huỷ"
-                  onConfirm={() => mutateDeleteVehicle(record.id || record._id || '')}
-                >
-                  <Button danger size="small" loading={isDeletingVehicle}>
-                    Xoá
-                  </Button>
-                </Popconfirm>
-              ),
-            },
-          ]}
+          columns={vehicleColumns}
+          {...subTableProps}
         />
       </Card>
 
@@ -459,35 +576,9 @@ const ProviderDetail = () => {
           loading={isHotelsLoading}
           dataSource={hotels}
           rowKey={(h) => h.id || h._id || h.name}
-          size="small"
-          pagination={false}
           locale={{ emptyText: 'Chưa khai báo khách sạn' }}
-          columns={[
-            { title: 'Tên khách sạn', dataIndex: 'name', render: (v) => <Text strong>{v}</Text> },
-            { title: 'Địa chỉ', dataIndex: 'address', ellipsis: true, render: (v) => v || '—' },
-            {
-              title: 'Trạng thái',
-              dataIndex: 'status',
-              width: 120,
-              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
-            },
-            {
-              title: '',
-              width: 80,
-              render: (_, record) => (
-                <Popconfirm
-                  title="Xoá khách sạn và toàn bộ phòng?"
-                  okText="Xoá"
-                  cancelText="Huỷ"
-                  onConfirm={() => mutateDeleteHotel(record.id || record._id || '')}
-                >
-                  <Button danger size="small" loading={isDeletingHotel}>
-                    Xoá
-                  </Button>
-                </Popconfirm>
-              ),
-            },
-          ]}
+          columns={hotelColumns}
+          {...subTableProps}
         />
       </Card>
 
@@ -517,38 +608,9 @@ const ProviderDetail = () => {
           loading={isRoomsLoading}
           dataSource={rooms}
           rowKey={(r) => r.id || r._id || `${r.room_number}`}
-          size="small"
-          pagination={false}
           locale={{ emptyText: 'Chưa có phòng — thêm khách sạn rồi khai báo số phòng' }}
-          columns={[
-            {
-              title: 'Khách sạn',
-              render: (_, record) => {
-                const h = record.hotel_id as any;
-                const name = typeof h === 'object' && h?.name ? h.name : '—';
-                return <Text>{name}</Text>;
-              },
-            },
-            { title: 'Số phòng', dataIndex: 'room_number', render: (v) => <Text strong>{v}</Text> },
-            { title: 'Sức chứa (người/phòng)', dataIndex: 'max_occupancy', width: 160, render: (v) => v ?? 2 },
-            {
-              title: 'Trạng thái',
-              dataIndex: 'status',
-              width: 120,
-              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
-            },
-            {
-              title: '',
-              width: 80,
-              render: (_, record) => (
-                <Popconfirm title="Xoá phòng này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => mutateDeleteRoom(record.id || record._id || '')}>
-                  <Button danger size="small" loading={isDeletingRoom}>
-                    Xoá
-                  </Button>
-                </Popconfirm>
-              ),
-            },
-          ]}
+          columns={roomColumns}
+          {...subTableProps}
         />
       </Card>
 
@@ -570,37 +632,9 @@ const ProviderDetail = () => {
           loading={isRestaurantsLoading}
           dataSource={restaurants}
           rowKey={(r) => r.id || r._id || r.name}
-          size="small"
-          pagination={false}
           locale={{ emptyText: 'Chưa khai báo nhà hàng' }}
-          columns={[
-            { title: 'Tên nhà hàng', dataIndex: 'name', render: (v) => <Text strong>{v}</Text> },
-            { title: 'SĐT', dataIndex: 'phone', width: 140, render: (v) => v || '—' },
-            { title: 'Sức chứa', dataIndex: 'capacity', width: 110, render: (v) => v ?? '—' },
-            { title: 'Địa điểm', dataIndex: 'location', ellipsis: true, render: (v) => v || '—' },
-            {
-              title: 'Trạng thái',
-              dataIndex: 'status',
-              width: 120,
-              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
-            },
-            {
-              title: '',
-              width: 80,
-              render: (_, record) => (
-                <Popconfirm
-                  title="Xoá nhà hàng này?"
-                  okText="Xoá"
-                  cancelText="Huỷ"
-                  onConfirm={() => mutateDeleteRestaurant(record.id || record._id || '')}
-                >
-                  <Button danger size="small" loading={isDeletingRestaurant}>
-                    Xoá
-                  </Button>
-                </Popconfirm>
-              ),
-            },
-          ]}
+          columns={restaurantColumns}
+          {...subTableProps}
         />
       </Card>
 
@@ -622,45 +656,9 @@ const ProviderDetail = () => {
           loading={isTicketsLoading}
           dataSource={tickets}
           rowKey={(t) => t.id || t._id || t.name}
-          size="small"
-          pagination={false}
           locale={{ emptyText: 'Chưa khai báo vé' }}
-          columns={[
-            { title: 'Tên vé', dataIndex: 'name', render: (v) => <Text strong>{v}</Text> },
-            { title: 'Loại vé', dataIndex: 'ticket_type', ellipsis: true, render: (v) => v || '—' },
-            { title: 'Giá NL', dataIndex: 'price_adult', width: 120, render: (v) => formatVnd(v) },
-            { title: 'Giá trẻ em', dataIndex: 'price_child', width: 120, render: (v) => formatVnd(v) },
-            {
-              title: 'Áp dụng',
-              dataIndex: 'application_mode',
-              width: 200,
-              render: (m: TicketApplicationMode) => (
-                <Tag color={m === 'included_in_tour' ? 'blue' : 'orange'}>{applicationModeLabel(m)}</Tag>
-              ),
-            },
-            {
-              title: 'Trạng thái',
-              dataIndex: 'status',
-              width: 120,
-              render: (v) => <Tag color={v === 'inactive' ? 'red' : 'green'}>{v === 'inactive' ? 'Ngưng' : 'Hoạt động'}</Tag>,
-            },
-            {
-              title: '',
-              width: 80,
-              render: (_, record) => (
-                <Popconfirm
-                  title="Xoá vé này?"
-                  okText="Xoá"
-                  cancelText="Huỷ"
-                  onConfirm={() => mutateDeleteTicket(record.id || record._id || '')}
-                >
-                  <Button danger size="small" loading={isDeletingTicket}>
-                    Xoá
-                  </Button>
-                </Popconfirm>
-              ),
-            },
-          ]}
+          columns={ticketColumns}
+          {...subTableProps}
         />
         <div style={{ marginTop: 8 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>
