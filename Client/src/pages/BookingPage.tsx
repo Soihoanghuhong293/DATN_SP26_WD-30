@@ -541,7 +541,10 @@ const BookingPage: React.FC = () => {
         passengers,
       };
 
-      const res = await axios.post("http://localhost:5000/api/v1/bookings", payload);
+      const token = localStorage.getItem("token");
+      const res = await axios.post("http://localhost:5000/api/v1/bookings", payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const created = (res.data && (res.data.data || res.data)) || null;
       const bookingId = created?._id || created?.id;
 

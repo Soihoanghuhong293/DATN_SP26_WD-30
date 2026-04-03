@@ -43,7 +43,7 @@ export const restrictToGuide = (req: AuthRequest, res: Response, next: NextFunct
   next();
 };
 
-/** Gắn req.user nếu có Bearer token hợp lệ; không token / token lỗi thì bỏ qua (dùng cho API public có nhánh admin). */
+/** Gắn req.user nếu có Bearer token hợp lệ; không token / token lỗi thì bỏ qua. */
 export const optionalProtect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     let token: string | undefined;
@@ -62,3 +62,5 @@ export const optionalProtect = async (req: AuthRequest, res: Response, next: Nex
     next();
   }
 };
+
+export const protectOptional = optionalProtect;

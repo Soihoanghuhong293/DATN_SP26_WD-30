@@ -22,6 +22,8 @@ const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 
 
 const normalizeId = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const markAssignmentEmailSent = async (args: {
   bookingId: string;
   actorName: string;
@@ -106,6 +108,98 @@ export const getMyBookingDetail = async (req: AuthRequest, res: Response) => {
          ...log,
          time: log.time ? new Date(log.time).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : ''
        })).reverse();
+    }
+
+    res.status(200).json({ status: 'success', data: formattedBooking });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+/** Khách đăng nhập: danh sách booking */
+export const getMyBookingsForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+    const role = String((req.user as any)?.role || 'user');
+    if (role !== 'user') {
+      return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới xem được mục này' });
+    }
+
+    const emailRaw = String((req.user as any)?.email || '').trim();
+    const statusParam = typeof req.query.status === 'string' ? req.query.status : '';
+
+    if (emailRaw) {
+      const emailRegex = new RegExp(`^${escapeRegex(emailRaw)}$`, 'i');
+      await Booking.updateMany(
+        {
+          $or: [{ user_id: null }, { user_id: { $exists: false } }],
+          customer_email: emailRegex,
+        },
+        { $set: { user_id: userId } }
+      );
+    }
+
+    const query: Record<string, unknown> = { user_id: userId };
+    if (statusParam && ['pending', 'confirmed', 'cancelled'].includes(statusParam)) {
+      query.status = statusParam;
+    }
+
+    const bookings = await Booking.find(query)
+      .populate({ path: 'tour_id', select: 'name images duration_days price slug' })
+      .sort({ created_at: -1 });
+
+    res.status(200).json({ status: 'success', results: bookings.length, data: bookings });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+/** Khách đăng nhập: chi tiết một booking */
+export const getMyBookingDetailForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+    const role = String((req.user as any)?.role || 'user');
+    if (role !== 'user') {
+      return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới xem được mục này' });
+    }
+
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const booking: any = await Booking.findById(bookingId)
+      .populate({ path: 'tour_id', select: 'name images duration_days price schedule slug' })
+      .populate({ path: 'user_id', select: 'name email phone' });
+
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const uid = booking.user_id?._id?.toString?.() ?? booking.user_id?.toString?.();
+    const emailRaw = String((req.user as any)?.email || '').trim();
+    const emailRegex = emailRaw ? new RegExp(`^${escapeRegex(emailRaw)}$`, 'i') : null;
+    const bookingEmail = String(booking.customer_email || '').trim();
+
+    const ownsByUser = uid && uid === userId.toString();
+    const ownsByEmail = Boolean(emailRegex && bookingEmail && emailRegex.test(bookingEmail));
+    if (!ownsByUser && !ownsByEmail) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền xem đơn này' });
+    }
+
+    if (!ownsByUser && ownsByEmail) {
+      booking.user_id = userId;
+      await booking.save();
+    }
+
+    const formattedBooking: any = booking.toObject();
+    if (formattedBooking.logs) {
+      formattedBooking.logs = formattedBooking.logs.map((log: any) => ({
+        ...log,
+        time: log.time ? new Date(log.time).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '',
+      })).reverse();
     }
 
     res.status(200).json({ status: 'success', data: formattedBooking });
@@ -496,7 +590,7 @@ export const getBooking = async (req: Request, res: Response) => {
 };
 
 // tạo đơn đặt tour mới
-export const createBooking = async (req: Request, res: Response) => {
+export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const {
       tour_id,
@@ -704,6 +798,11 @@ export const createBooking = async (req: Request, res: Response) => {
     // mặc định trạng thái giai đoạn tour là "sắp khởi hành"
     if (!newBookingData.tour_stage) {
       newBookingData.tour_stage = 'scheduled';
+    }
+
+    const authUser = req.user;
+    if (authUser && String((authUser as any).role) === 'user') {
+      newBookingData.user_id = (authUser as any)._id;
     }
 
     // tự động tạo lịch sử đầu tiên
