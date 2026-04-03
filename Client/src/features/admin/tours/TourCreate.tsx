@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient, useQueries } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { getCategoryTree, getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
 import type { IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
-  Space, Typography, message, Select, Divider, Spin, 
+  Space, Typography, message, Select, Divider, 
   DatePicker, Upload
 } from 'antd';
 import { 
@@ -35,6 +35,81 @@ const normalizeTicketIdsFromTemplate = (arr: unknown): string[] => {
   return arr
     .map((t) => (typeof t === 'object' && t != null && (t as any)._id != null ? String((t as any)._id) : String(t)))
     .filter(Boolean);
+};
+
+/** Options dự phòng từ API populate — tránh Select hiển thị raw ObjectId khi query NCC chưa kịp tải. */
+const buildPickerExtrasFromTemplateSchedule = (sched: any[] | undefined) => {
+  const restaurants: { value: string; label: string }[] = [];
+  const tickets: { value: string; label: string }[] = [];
+  const seenR = new Set<string>();
+  const seenT = new Set<string>();
+  if (!Array.isArray(sched)) return { restaurants, tickets };
+  const pushRest = (r: any) => {
+    if (r == null || typeof r !== 'object') return;
+    const id = r._id ?? r.id;
+    if (id == null || !r.name) return;
+    const value = String(id);
+    if (seenR.has(value)) return;
+    seenR.add(value);
+    restaurants.push({ value, label: String(r.name) });
+  };
+  const pushTicket = (t: any) => {
+    if (t == null || typeof t !== 'object') return;
+    const id = t._id ?? t.id;
+    if (id == null || !t.name) return;
+    const value = String(id);
+    if (seenT.has(value)) return;
+    seenT.add(value);
+    const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+    tickets.push({
+      value,
+      label: `${t.name} — ${t.ticket_type} [${modeLabel}]`,
+    });
+  };
+  for (const s of sched) {
+    pushRest(s?.lunch_restaurant_id);
+    pushRest(s?.dinner_restaurant_id);
+    if (Array.isArray(s?.ticket_ids)) for (const x of s.ticket_ids) pushTicket(x);
+  }
+  return { restaurants, tickets };
+};
+
+/** NCC gửi lên API: suy ra từ nhà hàng / vé đã chọn trong lịch. */
+const deriveSupplierIdsFromSchedule = (
+  schedule: any[] | undefined,
+  restaurants: IRestaurant[],
+  tickets: IProviderTicket[]
+): string[] => {
+  const ids = new Set<string>();
+  const restById = new Map<string, IRestaurant>();
+  for (const r of restaurants) {
+    const id = r.id || r._id;
+    if (id) restById.set(String(id), r);
+  }
+  const ticketById = new Map<string, IProviderTicket>();
+  for (const t of tickets) {
+    const id = t.id || t._id;
+    if (id) ticketById.set(String(id), t);
+  }
+  for (const day of schedule || []) {
+    for (const key of ['lunch_restaurant_id', 'dinner_restaurant_id'] as const) {
+      const rid = day?.[key];
+      if (rid == null || rid === '') continue;
+      const r = restById.get(String(rid));
+      const pid = r?.provider_id;
+      if (pid != null && pid !== '') ids.add(String(pid));
+    }
+    const tids = day?.ticket_ids;
+    if (Array.isArray(tids)) {
+      for (const tid of tids) {
+        if (tid == null || tid === '') continue;
+        const t = ticketById.get(String(tid));
+        const pid = t?.provider_id;
+        if (pid != null && pid !== '') ids.add(String(pid));
+      }
+    }
+  }
+  return [...ids];
 };
 
 /** Chuẩn hoá schedule từ template (hỗ trợ lunch/dinner và legacy restaurant_ids) */
@@ -73,9 +148,12 @@ import { flattenCategoryTree as flattenTree } from '../../../utils/categoryTree'
 
 const TourCreate = () => {
   const [form] = Form.useForm();
-  const supplierIdsRaw = Form.useWatch('suppliers', form);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [templatePickerExtras, setTemplatePickerExtras] = useState<{
+    restaurants: { value: string; label: string }[];
+    tickets: { value: string; label: string }[];
+  }>({ restaurants: [], tickets: [] });
   const [imageFileList, setImageFileList] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
   const [rawTourName, setRawTourName] = useState<string>('');
@@ -88,86 +166,77 @@ const TourCreate = () => {
   const categories: ICategory[] = (categoryRes as any)?.data?.categories ?? [];
   const categoryOptions = useMemo(() => flattenTree(categories, { includePath: true }), [categories]);
 
-  const { data: providersData, isLoading: isProvidersLoading } = useQuery({
+  const { data: providersData } = useQuery({
     queryKey: ['providers'],
     queryFn: () => getProviders({ status: 'active' }),
   });
   const providers = providersData?.data?.providers ?? [];
 
-  const normalizedSupplierIds = useMemo(
-    () => (Array.isArray(supplierIdsRaw) ? supplierIdsRaw : []).map(String).filter(Boolean),
-    [supplierIdsRaw]
-  );
-
-  const restaurantQueries = useQueries({
-    queries: normalizedSupplierIds.map((pid) => ({
-      queryKey: ['restaurants', pid],
-      queryFn: () => getRestaurants({ provider_id: pid }),
-      enabled: Boolean(pid),
-    })),
+  const { data: restaurantsRes, isLoading: restaurantsLoading } = useQuery({
+    queryKey: ['restaurants', 'all'],
+    queryFn: () => getRestaurants({}),
   });
+  const allRestaurants: IRestaurant[] = restaurantsRes?.data?.restaurants ?? [];
 
-  const restaurantsLoading = restaurantQueries.some((q) => q.isLoading);
+  const { data: ticketsRes, isLoading: ticketsLoading } = useQuery({
+    queryKey: ['provider-tickets', 'all'],
+    queryFn: () => getProviderTickets({}),
+  });
+  const allTickets: IProviderTicket[] = ticketsRes?.data?.tickets ?? [];
 
   const restaurantOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [];
-    for (let i = 0; i < restaurantQueries.length; i++) {
-      const pid = normalizedSupplierIds[i];
-      const list: IRestaurant[] = restaurantQueries[i]?.data?.data?.restaurants ?? [];
+    for (const r of allRestaurants) {
+      const rid = r.id || r._id;
+      if (!rid) continue;
       const pname =
-        providers.find((p: any) => String(p.id || p._id) === String(pid))?.name?.trim() || '';
-      for (const r of list) {
-        const rid = r.id || r._id;
-        if (!rid) continue;
-        opts.push({
-          value: String(rid),
-          label: pname ? `${r.name} (${pname})` : r.name,
-        });
-      }
+        providers.find((p: any) => String(p.id || p._id) === String(r.provider_id))?.name?.trim() || '';
+      opts.push({
+        value: String(rid),
+        label: pname ? `${r.name} (${pname})` : r.name,
+      });
     }
     const seen = new Set<string>();
-    return opts.filter((o) => {
+    const merged = opts.filter((o) => {
       if (seen.has(o.value)) return false;
       seen.add(o.value);
       return true;
     });
-  }, [restaurantQueries, normalizedSupplierIds, providers]);
-
-  const ticketQueries = useQueries({
-    queries: normalizedSupplierIds.map((pid) => ({
-      queryKey: ['provider-tickets', pid],
-      queryFn: () => getProviderTickets({ provider_id: pid }),
-      enabled: Boolean(pid),
-    })),
-  });
-
-  const ticketsLoading = ticketQueries.some((q) => q.isLoading);
+    for (const ex of templatePickerExtras.restaurants) {
+      if (seen.has(ex.value)) continue;
+      seen.add(ex.value);
+      merged.push(ex);
+    }
+    return merged;
+  }, [allRestaurants, providers, templatePickerExtras.restaurants]);
 
   const ticketOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [];
-    for (let i = 0; i < ticketQueries.length; i++) {
-      const pid = normalizedSupplierIds[i];
-      const list: IProviderTicket[] = ticketQueries[i]?.data?.data?.tickets ?? [];
+    for (const t of allTickets) {
+      if ((t.status || 'active') !== 'active') continue;
+      const tid = t.id || t._id;
+      if (!tid) continue;
       const pname =
-        providers.find((p: any) => String(p.id || p._id) === String(pid))?.name?.trim() || '';
-      for (const t of list) {
-        if ((t.status || 'active') !== 'active') continue;
-        const tid = t.id || t._id;
-        if (!tid) continue;
-        const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
-        opts.push({
-          value: String(tid),
-          label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pname ? ` (${pname})` : ''}`,
-        });
-      }
+        providers.find((p: any) => String(p.id || p._id) === String(t.provider_id))?.name?.trim() || '';
+      const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+      opts.push({
+        value: String(tid),
+        label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pname ? ` (${pname})` : ''}`,
+      });
     }
     const seen = new Set<string>();
-    return opts.filter((o) => {
+    const merged = opts.filter((o) => {
       if (seen.has(o.value)) return false;
       seen.add(o.value);
       return true;
     });
-  }, [ticketQueries, normalizedSupplierIds, providers]);
+    for (const ex of templatePickerExtras.tickets) {
+      if (seen.has(ex.value)) continue;
+      seen.add(ex.value);
+      merged.push(ex);
+    }
+    return merged;
+  }, [allTickets, providers, templatePickerExtras.tickets]);
 
   const { data: tourTemplates = [] } = useQuery({
     queryKey: ['tour-templates'],
@@ -209,18 +278,6 @@ const TourCreate = () => {
       form.setFieldsValue({ prices: updatedPrices });
     }
 
-    if (changedValues.suppliers !== undefined) {
-      const currentSchedule = form.getFieldValue('schedule') || [];
-      form.setFieldsValue({
-        schedule: currentSchedule.map((s: any) => ({
-          ...s,
-          lunch_restaurant_id: undefined,
-          dinner_restaurant_id: undefined,
-          ticket_ids: [],
-        })),
-      });
-    }
-
     // Tự động sinh lịch trình dựa trên số ngày
     if (changedValues.duration_days !== undefined) {
       const duration = changedValues.duration_days || 1;
@@ -255,13 +312,7 @@ const TourCreate = () => {
       const tpl = res.data?.data || res.data;
       if (!tpl) return;
 
-      const tplSuppliers = Array.isArray(tpl.suppliers) ? tpl.suppliers.map(String) : [];
-      const tplPid = tpl.provider_id?._id || tpl.provider_id;
-      const mergedSuppliers = [...tplSuppliers];
-      if (tplPid) {
-        const s = String(tplPid);
-        if (!mergedSuppliers.includes(s)) mergedSuppliers.push(s);
-      }
+      setTemplatePickerExtras(buildPickerExtrasFromTemplateSchedule(tpl.schedule));
 
       // Không đụng departure_schedule vì tour thật sẽ set theo lịch khởi hành
       form.setFieldsValue({
@@ -271,7 +322,6 @@ const TourCreate = () => {
         category_id: tpl.category_id?._id || tpl.category_id,
         schedule: normalizeScheduleFromTemplate(tpl.schedule),
         policies: Array.isArray(tpl.policies) ? tpl.policies : [],
-        suppliers: mergedSuppliers,
       });
 
       // Đồng bộ ảnh từ template sang tour (dạng fileList của Upload)
@@ -296,7 +346,7 @@ const TourCreate = () => {
 
   const onFinish = (values: any) => {
     const finalValues = { ...values };
-    finalValues.suppliers = Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []);
+    finalValues.suppliers = deriveSupplierIdsFromSchedule(values.schedule, allRestaurants, allTickets);
 
     // template tồn tại (backend validate); frontend gửi template_id nếu chọn template
     if (selectedTemplateId) {
@@ -398,6 +448,7 @@ const TourCreate = () => {
                     onChange={(v) => {
                       setSelectedTemplateId(v);
                       if (v) applyTemplateToForm(v);
+                      else setTemplatePickerExtras({ restaurants: [], tickets: [] });
                     }}
                     allowClear
                     className="rounded-lg"
@@ -476,24 +527,17 @@ const TourCreate = () => {
                                 name={[name, 'lunch_restaurant_id']}
                                 label={<span className="font-medium text-gray-600">Nhà hàng buổi trưa</span>}
                                 style={{ marginBottom: 0 }}
-                                tooltip="Danh sách theo các NCC đã chọn bên phải. Nhãn: Tên nhà hàng (Tên NCC)."
+                                tooltip="Nhãn hiển thị: Tên nhà hàng (Tên NCC)."
                               >
                                 <Select
                                   allowClear
                                   showSearch
                                   className="rounded-lg"
-                                  placeholder={
-                                    normalizedSupplierIds.length
-                                      ? 'Chọn nhà hàng trưa'
-                                      : 'Chọn ít nhất 1 nhà cung cấp bên phải'
-                                  }
-                                  disabled={!normalizedSupplierIds.length}
+                                  placeholder="Chọn nhà hàng trưa"
                                   loading={restaurantsLoading}
                                   options={restaurantOptions}
                                   optionFilterProp="label"
-                                  notFoundContent={
-                                    normalizedSupplierIds.length ? 'Chưa có nhà hàng — khai báo tại Nhà cung cấp' : null
-                                  }
+                                  notFoundContent="Chưa có nhà hàng — khai báo tại Nhà cung cấp"
                                 />
                               </Form.Item>
                             </Col>
@@ -503,24 +547,17 @@ const TourCreate = () => {
                                 name={[name, 'dinner_restaurant_id']}
                                 label={<span className="font-medium text-gray-600">Nhà hàng buổi tối</span>}
                                 style={{ marginBottom: 0 }}
-                                tooltip="Danh sách theo các NCC đã chọn bên phải."
+                                tooltip="Nhãn hiển thị: Tên nhà hàng (Tên NCC)."
                               >
                                 <Select
                                   allowClear
                                   showSearch
                                   className="rounded-lg"
-                                  placeholder={
-                                    normalizedSupplierIds.length
-                                      ? 'Chọn nhà hàng tối'
-                                      : 'Chọn ít nhất 1 nhà cung cấp bên phải'
-                                  }
-                                  disabled={!normalizedSupplierIds.length}
+                                  placeholder="Chọn nhà hàng tối"
                                   loading={restaurantsLoading}
                                   options={restaurantOptions}
                                   optionFilterProp="label"
-                                  notFoundContent={
-                                    normalizedSupplierIds.length ? 'Chưa có nhà hàng — khai báo tại Nhà cung cấp' : null
-                                  }
+                                  notFoundContent="Chưa có nhà hàng — khai báo tại Nhà cung cấp"
                                 />
                               </Form.Item>
                             </Col>
@@ -530,27 +567,18 @@ const TourCreate = () => {
                                 name={[name, 'ticket_ids']}
                                 label={<span className="font-medium text-gray-600">Vé trong ngày</span>}
                                 style={{ marginBottom: 0 }}
-                                tooltip="Danh sách vé theo các NCC đã chọn. [Bao gồm] = trong giá tour; [Mua thêm] = phụ thu khi khách chọn."
+                                tooltip="[Bao gồm] = trong giá tour; [Mua thêm] = phụ thu khi khách chọn."
                               >
                                 <Select
                                   mode="multiple"
                                   allowClear
                                   showSearch
                                   className="rounded-lg"
-                                  placeholder={
-                                    normalizedSupplierIds.length
-                                      ? 'Chọn vé (có thể nhiều vé)'
-                                      : 'Chọn ít nhất 1 nhà cung cấp bên phải'
-                                  }
-                                  disabled={!normalizedSupplierIds.length}
+                                  placeholder="Chọn vé (có thể nhiều vé)"
                                   loading={ticketsLoading}
                                   options={ticketOptions}
                                   optionFilterProp="label"
-                                  notFoundContent={
-                                    normalizedSupplierIds.length
-                                      ? 'Các NCC đã chọn chưa có vé — thêm tại Nhà cung cấp'
-                                      : null
-                                  }
+                                  notFoundContent="Chưa có vé — thêm tại Nhà cung cấp"
                                 />
                               </Form.Item>
                             </Col>
@@ -614,26 +642,12 @@ const TourCreate = () => {
             <Col xs={24} lg={8}>
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Thiết lập chung</div>
-                <Form.Item name="status" label={<span className="font-medium text-gray-600">Trạng thái</span>}>
+                <Form.Item name="status" label={<span className="font-medium text-gray-600">Trạng thái</span>} style={{ marginBottom: 0 }}>
                   <Select size="large" className="rounded-lg">
                     <Option value="active">Đang hoạt động</Option>
                     <Option value="draft">Bản nháp</Option>
                     <Option value="hidden">Tạm ẩn</Option>
                   </Select>
-                </Form.Item>
-                <Form.Item
-                  name="suppliers"
-                  label={<span className="font-medium text-gray-600">Nhà cung cấp</span>}
-                  style={{marginBottom: 0}}
-                  tooltip="Chọn NCC để chọn nhà hàng trưa / tối trong từng ngày lịch trình."
-                >
-                   <Select
-                     mode="multiple"
-                     size="large" placeholder="Chọn nhà cung cấp" allowClear
-                     loading={isProvidersLoading} optionFilterProp="label"
-                     className="rounded-lg"
-                     options={providers.map((p: any) => ({ value: p.id || p._id, label: p.name }))}
-                   />
                 </Form.Item>
               </Card>
 
