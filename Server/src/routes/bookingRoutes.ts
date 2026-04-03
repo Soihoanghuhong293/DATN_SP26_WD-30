@@ -1,6 +1,6 @@
 import express from 'express';
 import * as bookingController from '../controllers/bookingController';
-import { protect, restrictToGuide } from '../middlewares/auth.middleware';
+import { protect, restrictToGuide, optionalProtect } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
@@ -11,11 +11,16 @@ router.patch('/guide/:id/checkin', protect, restrictToGuide, bookingController.c
 router.patch('/guide/:id/stage', protect, restrictToGuide, bookingController.updateTourStage);
 router.patch('/guide/:id/diary', protect, restrictToGuide, bookingController.addDiaryEntryForGuide);
 router.post('/:id/auto-allocate-cars', protect, bookingController.autoAllocateCars);
+router.post('/:id/auto-allocate-rooms', protect, bookingController.autoAllocateRooms);
+router.post('/:id/auto-allocate-services', protect, bookingController.autoAllocateCarsAndRooms);
+
+router.get('/me', protect, bookingController.getMyBookingsForUser);
+router.get('/me/:id', protect, bookingController.getMyBookingDetailForUser);
 
 router
   .route('/')
-  .get(bookingController.getAllBookings) 
-  .post(bookingController.createBooking); 
+  .get(bookingController.getAllBookings)
+  .post(optionalProtect, bookingController.createBooking);
 
 router
   .route('/:id')

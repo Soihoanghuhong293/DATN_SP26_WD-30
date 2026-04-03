@@ -15,7 +15,10 @@ import authRoutes from './routes/auth.route.js';
 import userRoutes from './routes/user.route.js'; // Đã import
 import providerRoutes from './routes/provider.routes.js';
 import vehicleRoutes from './routes/vehicle.routes';
-
+import hotelRoutes from './routes/hotel.routes';
+import roomRoutes from './routes/room.routes';
+import restaurantRoutes from './routes/restaurant.routes';
+import providerTicketRoutes from './routes/providerTicket.routes';
 
 import bookingRouter from './routes/bookingRoutes';
 import chatRouter from './routes/chat.routes.js';
@@ -24,6 +27,7 @@ import contactMessageRouter from './routes/contactMessage.routes.js';
 import holidayPricingRoutes from './routes/holidayPricing.routes';
 import uploadRoutes from './routes/upload.routes.js';
 import path from 'path';
+import { generateSepayQR, handleSepayWebhook, getLastSepayWebhookDebug } from './controllers/payment.controller';
 
 dotenv.config();
 
@@ -55,12 +59,24 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes); // 👈 THÊM DÒNG NÀY ĐỂ KÍCH HOẠT API USERS
 app.use('/api/v1/providers', providerRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
+app.use('/api/v1/hotels', hotelRoutes);
+app.use('/api/v1/rooms', roomRoutes);
+app.use('/api/v1/restaurants', restaurantRoutes);
+app.use('/api/v1/provider-tickets', providerTicketRoutes);
 app.use('/api/v1/bookings', bookingRouter);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);
 
 app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
+
+// SePay / VietQR: QR chuyển khoản (theo spec: GET /sepay/qr/:id)
+app.get('/sepay/qr/:id', generateSepayQR);
+// SePay webhook: nhận thông báo tiền vào để cập nhật booking.payment_status
+app.post('/sepay/webhook', handleSepayWebhook);
+// Debug: xem webhook gần nhất (chỉ dùng khi SEPAY_DEBUG=true)
+app.get('/sepay/debug/last-webhook', getLastSepayWebhookDebug);
+
 // Handle 404https://gemini.google.com/gems/view
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

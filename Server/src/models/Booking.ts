@@ -20,6 +20,10 @@ export interface IBooking extends Document {
   service_detail?: string;
   notes?: string;
 
+  /** Vé mua thêm (ProviderTicket id) — chỉ optional_addon có trong lịch tour */
+  optional_ticket_ids?: mongoose.Types.ObjectId[];
+  optional_tickets_total?: number;
+
   status: "pending" | "confirmed" | "cancelled";
   payment_status?: "unpaid" | "deposit" | "paid" | "refunded";
 
@@ -110,6 +114,9 @@ const BookingSchema: Schema = new Schema(
     schedule_detail: { type: String },
     service_detail: { type: String },
     notes: { type: String },
+
+    optional_ticket_ids: [{ type: Schema.Types.ObjectId, ref: 'ProviderTicket' }],
+    optional_tickets_total: { type: Number, default: 0 },
 
     status: {
       type: String,

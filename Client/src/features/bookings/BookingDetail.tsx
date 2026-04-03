@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
-  Button, Card, Spin, Tabs, Tag, Timeline, Table, 
+  Button, Card, Spin, Tabs, Tag, Table, 
   Typography, Space, Popconfirm, message, Breadcrumb, 
   Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Collapse, List, Empty
 } from 'antd';
@@ -179,6 +179,27 @@ const BookingDetail = () => {
       });
   }, [booking, providers]);
 
+  const allocatedRooms = useMemo(() => {
+    const rows = booking?.allocated_services?.rooms;
+    if (!Array.isArray(rows)) return [];
+
+    return rows
+      .map((row: any, index: number) => {
+        const provider =
+          providers.find((p: any) => p._id === row.provider_id || p.id === row.provider_id) || null;
+
+        return {
+          key: row.room_allocation_id || `${row.day_no}-${row.hotel_name}-${row.room_number}-${index}`,
+          providerName: provider?.name || provider?.provider_name || '',
+          ...row,
+        };
+      })
+      .sort((a: any, b: any) => {
+        if ((a.day_no || 0) !== (b.day_no || 0)) return (a.day_no || 0) - (b.day_no || 0);
+        return String(a.hotel_name || '').localeCompare(String(b.hotel_name || ''));
+      });
+  }, [booking, providers]);
+
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
     mutationFn: async (updatedGuests: any[]) => { 
@@ -228,12 +249,20 @@ const BookingDetail = () => {
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
     },
     onError: (error: any) => {
-      const code = error?.response?.data?.code;
-      if (code === 'NOT_ENOUGH_CAR') {
-        message.error('Không đủ xe để phân bổ cho booking này.');
-        return;
-      }
       message.error(error?.response?.data?.message || 'Phân bổ xe thất bại!');
+    },
+  });
+
+  const autoAllocateRoomsMutation = useMutation({
+    mutationFn: async () => {
+      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-rooms`, {}, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã tự động phân bổ phòng thành công!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    },
+    onError: (error: any) => {
+      message.error(error?.response?.data?.message || 'Phân bổ phòng thất bại!');
     },
   });
 
@@ -632,6 +661,57 @@ const BookingDetail = () => {
               ]}
             />
           </Card>
+
+          <Card
+            title={<Space><HomeOutlined style={{ color: '#059669' }} /> Phân bổ khách sạn &amp; phòng</Space>}
+            bordered={true}
+            className="saas-card mb-6"
+            extra={(
+              <Space size="small" wrap>
+                <Button
+                  type="primary"
+                  ghost
+                  size="small"
+                  loading={autoAllocateRoomsMutation.isPending}
+                  onClick={() => autoAllocateRoomsMutation.mutate()}
+                >
+                  Phân bổ phòng
+                </Button>
+              </Space>
+            )}
+          >
+            <Table
+              dataSource={allocatedRooms}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có phân bổ phòng. Khai báo khách sạn/phòng ở nhà cung cấp rồi bấm phân bổ.' }}
+              columns={[
+                { title: 'Ngày', dataIndex: 'day_no', width: 70, render: (v) => `Đêm ${v || 1}` },
+                {
+                  title: 'Ngày ở',
+                  dataIndex: 'service_date',
+                  render: (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '---'),
+                },
+                { title: 'Khách sạn', dataIndex: 'hotel_name', render: (v) => <Text strong>{v || '---'}</Text> },
+                { title: 'Số phòng', dataIndex: 'room_number', render: (v) => <Text strong>{v || '---'}</Text> },
+                {
+                  title: 'Nhà cung cấp',
+                  dataIndex: 'providerName',
+                  render: (v) => v || <Text type="secondary">---</Text>,
+                },
+                { title: 'Sức chứa', dataIndex: 'max_occupancy', render: (v) => `${v || 0} người` },
+                {
+                  title: 'Trạng thái',
+                  dataIndex: 'status',
+                  render: (v) => (
+                    <Tag color={v === 'confirmed' ? 'green' : v === 'cancelled' ? 'red' : 'processing'}>
+                      {v === 'confirmed' ? 'Đã xác nhận' : v === 'cancelled' ? 'Đã hủy' : 'Đã giữ chỗ'}
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
+          </Card>
         </Col>
 
         {/* CỘT PHẢI */}
@@ -687,30 +767,12 @@ const BookingDetail = () => {
             headStyle={{ paddingBottom: 0, borderBottom: 'none' }}
           >
             {logs.length > 0 ? (
-              <Timeline 
-                className="mt-4"
-                items={logs.map((log: any, index: number) => ({
-                    color: index === 0 ? 'blue' : 'gray', 
-                    children: (
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 4 }}>
-                              {log.time || dayjs(log.created_at).format('DD/MM/YYYY HH:mm')}
-                            </div>
-                            <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 6 }}>
-                              {log.user || 'Hệ thống'}
-                            </div>
-                            <div style={{ color: '#374151', fontSize: 14 }}>
-                              Đã đổi: {log.old || 'Khởi tạo'} → <span style={{ fontWeight: 600 }}>{log.new}</span>
-                            </div>
-                            {log.note && (
-                              <div style={{ marginTop: 8, fontStyle: 'italic', color: '#6b7280', backgroundColor: '#f9fafb', padding: '6px 12px', borderRadius: 6, display: 'inline-block' }}>
-                                "{log.note}"
-                              </div>
-                            )}
-                        </div>
-                    ),
-                }))} 
-              />
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Text type="secondary">Có {logs.length} bản ghi. Mở trang riêng để xem đầy đủ.</Text>
+                <Button type="primary" block onClick={() => navigate(`/admin/bookings/${booking._id}/history`)}>
+                  Xem
+                </Button>
+              </Space>
             ) : (
               <div className="text-center text-gray-400 py-4 italic">Chưa có lịch sử.</div>
             )}
@@ -768,8 +830,8 @@ const BookingDetail = () => {
         <div style={{ marginBottom: 24 }}>
             <Breadcrumb items={[
                 { title: <Link to="/admin"><HomeOutlined /></Link> },
-                { title: <Link to="/admin/bookings">Bookings</Link> },
-                { title: `Chi tiết Booking` }
+                { title: <Link to="/admin/bookings">Danh sách đơn</Link> },
+                { title: 'Chi tiết đơn' }
             ]} />
         </div>
 
@@ -792,7 +854,13 @@ const BookingDetail = () => {
                 </div>
             </div>
 
-            <Space>
+            <Space wrap>
+                <Button
+                  icon={<ClockCircleOutlined />}
+                  onClick={() => navigate(`/admin/bookings/${booking._id}/history`)}
+                >
+                  Lịch sử xử lý
+                </Button>
                 <Button icon={<EditOutlined />} onClick={() => navigate(`/admin/bookings/edit/${booking._id}`)}>Chỉnh sửa</Button>
                 <Popconfirm
                     title="Xóa booking này?" description="Hành động này không thể hoàn tác."
@@ -873,7 +941,6 @@ const BookingDetail = () => {
         <style>{`
             .saas-card .ant-card-body { padding: 24px; }
             .saas-card { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
-            .ant-timeline-item-tail { border-inline-start: 2px solid #e5e7eb !important; }
             @media print { .ant-tabs-nav, .ant-btn, .ant-breadcrumb { display: none !important; } .saas-card { border: none !important; } }
         `}</style>
       </div>

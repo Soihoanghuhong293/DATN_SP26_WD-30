@@ -1,9 +1,10 @@
 import { Button, Card, Form, Input, Select, Space, Typography, message, Spin } from 'antd';
 import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { getCategories, getCategory, updateCategory } from '../../../services/api';
+import { getCategoryTree, getCategory, updateCategory } from '../../../services/api';
 import type { ICategory } from '../../../types/tour.types';
 import { useNavigate, useParams } from 'react-router-dom';
+import { collectDescendantIds, flattenCategoryTree, getCategoryId } from '../../../utils/categoryTree';
 
 const { Title, Text } = Typography;
 
@@ -34,9 +35,14 @@ const CategoryEdit = () => {
 
   const { data: categoriesRes, isLoading: isLoadingCategories } = useQuery({
     queryKey: ['categories', { status: 'active' }],
-    queryFn: () => getCategories({ status: 'active' }),
+    queryFn: () => getCategoryTree({ status: 'active' }),
   });
   const categories: ICategory[] = categoriesRes?.data?.categories ?? [];
+  const currentId = category ? getCategoryId(category) : '';
+  const disallowedParentIds = currentId ? collectDescendantIds(categories, currentId) : new Set<string>();
+  const categoryOptions = flattenCategoryTree(categories, { includePath: true }).filter(
+    (o) => !disallowedParentIds.has(o.value)
+  );
 
   useEffect(() => {
     if (!category) return;
@@ -108,9 +114,9 @@ const CategoryEdit = () => {
               allowClear
               loading={isLoadingCategories}
               placeholder="(Không chọn) = danh mục gốc"
-              options={categories
-                .filter((c) => (c.id || c._id) !== (category.id || category._id))
-                .map((c) => ({ value: c.id || c._id, label: c.name }))}
+              optionFilterProp="label"
+              showSearch
+              options={categoryOptions.map((o) => ({ value: o.value, label: o.label }))}
             />
           </Form.Item>
 

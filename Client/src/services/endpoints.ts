@@ -13,6 +13,14 @@ export const ENDPOINTS = {
   providerById: (id: string) => `/providers/${id}`,
   vehicles: '/vehicles',
   vehicleById: (id: string) => `/vehicles/${id}`,
+  hotels: '/hotels',
+  hotelById: (id: string) => `/hotels/${id}`,
+  rooms: '/rooms',
+  roomById: (id: string) => `/rooms/${id}`,
+  restaurants: '/restaurants',
+  restaurantById: (id: string) => `/restaurants/${id}`,
+  providerTickets: '/provider-tickets',
+  providerTicketById: (id: string) => `/provider-tickets/${id}`,
 } as const;
 
 

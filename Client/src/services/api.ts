@@ -1,7 +1,16 @@
 import axios from 'axios';
 import type { ApiResponse, ICategory, ITour, ToursListResponse } from '../types/tour.types';
 import type { IGuide, IGuideCreateRequest, IGuideUpdateRequest, IGuideRatingRequest, ITourHistoryRequest } from '../types/guide.types';
-import type { CreateProviderPayload, IProvider, IVehicle } from '../types/provider.types';
+import type {
+  CreateProviderPayload,
+  IProvider,
+  IVehicle,
+  IHotel,
+  IRoom,
+  IRestaurant,
+  IProviderTicket,
+  TicketApplicationMode,
+} from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
 
 const baseURL =
@@ -242,6 +251,123 @@ export async function updateVehicle(id: string, payload: Partial<UpsertVehiclePa
 
 export async function deleteVehicle(id: string) {
   const res = await api.delete(ENDPOINTS.vehicleById(id));
+  return res.data;
+}
+
+// ===== HOTEL & ROOM (theo nhà cung cấp) =====
+
+export type GetHotelsParams = { provider_id?: string };
+
+export async function getHotels(params: GetHotelsParams = {}) {
+  const res = await api.get<ApiResponse<{ hotels: IHotel[] }> & { results?: number }>(ENDPOINTS.hotels, {
+    params,
+  });
+  return res.data;
+}
+
+export type UpsertHotelPayload = {
+  name: string;
+  address?: string;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createHotel(payload: UpsertHotelPayload) {
+  const res = await api.post<ApiResponse<{ hotel: IHotel }>>(ENDPOINTS.hotels, payload);
+  return res.data;
+}
+
+export async function deleteHotel(id: string) {
+  const res = await api.delete(ENDPOINTS.hotelById(id));
+  return res.data;
+}
+
+export type GetRoomsParams = { provider_id?: string; hotel_id?: string };
+
+export async function getRooms(params: GetRoomsParams = {}) {
+  const res = await api.get<ApiResponse<{ rooms: IRoom[] }> & { results?: number }>(ENDPOINTS.rooms, {
+    params,
+  });
+  return res.data;
+}
+
+export type UpsertRoomPayload = {
+  hotel_id: string;
+  room_number: string;
+  max_occupancy?: number;
+  status?: 'active' | 'inactive';
+  provider_id?: string;
+};
+
+export async function createRoom(payload: UpsertRoomPayload) {
+  const res = await api.post<ApiResponse<{ room: IRoom }>>(ENDPOINTS.rooms, payload);
+  return res.data;
+}
+
+export async function deleteRoom(id: string) {
+  const res = await api.delete(ENDPOINTS.roomById(id));
+  return res.data;
+}
+
+// ===== RESTAURANTS (theo nhà cung cấp) =====
+
+export type GetRestaurantsParams = { provider_id?: string };
+
+export async function getRestaurants(params: GetRestaurantsParams = {}) {
+  const res = await api.get<ApiResponse<{ restaurants: IRestaurant[] }> & { results?: number }>(ENDPOINTS.restaurants, {
+    params,
+  });
+  return res.data;
+}
+
+export type UpsertRestaurantPayload = {
+  name: string;
+  phone?: string;
+  capacity: number;
+  location?: string;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createRestaurant(payload: UpsertRestaurantPayload) {
+  const res = await api.post<ApiResponse<{ restaurant: IRestaurant }>>(ENDPOINTS.restaurants, payload);
+  return res.data;
+}
+
+export async function deleteRestaurant(id: string) {
+  const res = await api.delete(ENDPOINTS.restaurantById(id));
+  return res.data;
+}
+
+// ===== VÉ (theo nhà cung cấp) =====
+
+export type GetProviderTicketsParams = { provider_id?: string };
+
+export async function getProviderTickets(params: GetProviderTicketsParams = {}) {
+  const res = await api.get<ApiResponse<{ tickets: IProviderTicket[] }> & { results?: number }>(
+    ENDPOINTS.providerTickets,
+    { params }
+  );
+  return res.data;
+}
+
+export type UpsertProviderTicketPayload = {
+  name: string;
+  ticket_type: string;
+  price_adult: number;
+  price_child: number;
+  application_mode: TicketApplicationMode;
+  provider_id?: string;
+  status?: 'active' | 'inactive';
+};
+
+export async function createProviderTicket(payload: UpsertProviderTicketPayload) {
+  const res = await api.post<ApiResponse<{ ticket: IProviderTicket }>>(ENDPOINTS.providerTickets, payload);
+  return res.data;
+}
+
+export async function deleteProviderTicket(id: string) {
+  const res = await api.delete(ENDPOINTS.providerTicketById(id));
   return res.data;
 }
 

@@ -23,7 +23,6 @@ const ToursPage = () => {
   const [pageSize, setPageSize] = useState(12);
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [budgetFilter, setBudgetFilter] = useState<string>(''); // dưới 5tr, 5-10tr...
   const [departureDate, setDepartureDate] = useState<string>('');
@@ -47,7 +46,6 @@ const ToursPage = () => {
         const data = await getTours({
           page: 1,
           limit: 2000,
-          status: statusFilter || undefined,
           search: debouncedSearch || undefined,
           ...mapBudgetToPriceRange(budgetFilter),
           departureDate: departureDate || undefined,
@@ -109,11 +107,10 @@ const ToursPage = () => {
     };
 
     fetchTours();
-  }, [currentPage, pageSize, statusFilter, debouncedSearch, budgetFilter, departureDate]);
+  }, [currentPage, pageSize, debouncedSearch, budgetFilter, departureDate]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setStatusFilter('');
     setBudgetFilter('');
     setDepartureDate('');
     setCurrentPage(1);
@@ -160,20 +157,6 @@ const ToursPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
                 className="filter-input"
-              />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">Trạng thái</label>
-              <Select
-                value={statusFilter}
-                onChange={setStatusFilter}
-                className="filter-select"
-                options={[
-                  { label: 'Tất cả', value: '' },
-                  { label: 'Đang hoạt động', value: 'active' },
-                  { label: 'Nháp', value: 'draft' },
-                  { label: 'Inactive', value: 'inactive' },
-                ]}
               />
             </div>
             <div className="filter-group">

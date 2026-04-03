@@ -28,7 +28,10 @@ const UserList = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [searchText, setSearchText] = useState<string>('');
 
-  const getAuthHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('admin_token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+  };
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],

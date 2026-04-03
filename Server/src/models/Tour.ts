@@ -13,6 +13,10 @@ export interface ITour extends Document {
     day: number;
     title: string;
     activities: string[];
+    lunch_restaurant_id?: mongoose.Types.ObjectId;
+    dinner_restaurant_id?: mongoose.Types.ObjectId;
+    restaurant_ids?: mongoose.Types.ObjectId[];
+    ticket_ids?: mongoose.Types.ObjectId[];
   }[];
   
   images: string[];
@@ -78,7 +82,11 @@ departure_schedule: [{
   schedule: [{
     day: Number,
     title: String,
-    activities: [String]
+    activities: [String],
+    lunch_restaurant_id: { type: Schema.Types.ObjectId, ref: 'Restaurant' },
+    dinner_restaurant_id: { type: Schema.Types.ObjectId, ref: 'Restaurant' },
+    restaurant_ids: [{ type: Schema.Types.ObjectId }],
+    ticket_ids: [{ type: Schema.Types.ObjectId, ref: 'ProviderTicket' }],
   }],
 
   images: [String],

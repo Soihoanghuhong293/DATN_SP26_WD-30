@@ -34,12 +34,15 @@ import BookingCreate from '../features/bookings/BookingCreate';
 import BookingPage from '../pages/BookingPage';
 import BookingSuccessPage from '../pages/BookingSuccessPage';
 import BookingPaymentPage from '../pages/BookingPaymentPage';
+import MyBookingsPage from '../pages/MyBookingsPage';
+import MyBookingDetailPage from '../pages/MyBookingDetailPage';
 
 import BookingList from '../features/bookings/BookingList';
 import BookingEdit from '../features/bookings/BookingEdit';
 import UserList from '../features/admin/users/UserList';
 import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
+import BookingHistory from '../features/bookings/BookingHistory';
 import HolidayPricingList from '../components/layout/HolidayPricingList';
 import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
 import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
@@ -61,6 +64,8 @@ const AppRoutes = () => {
         <Route path="order/booking/:id" element={<BookingPage />} />
         <Route path="booking/payment/:id" element={<BookingPaymentPage />} />
         <Route path="booking/success/:id" element={<BookingSuccessPage />} />
+        <Route path="my-bookings" element={<MyBookingsPage />} />
+        <Route path="my-bookings/:id" element={<MyBookingDetailPage />} />
       </Route>
 
       {/* ===== HDV (Hướng dẫn viên) ===== */}
@@ -103,6 +108,7 @@ const AppRoutes = () => {
         <Route path="bookings" element={<BookingList />} />
         <Route path="bookings/create" element={<BookingCreate />} />
         <Route path="bookings/edit/:id" element={<BookingEdit />} />
+        <Route path="bookings/:id/history" element={<BookingHistory />} />
         <Route path="bookings/:id" element={<BookingDetail />} />
           <Route path="users" element={<UserList />} />
           <Route path="users/create" element={<UserCreate />} />

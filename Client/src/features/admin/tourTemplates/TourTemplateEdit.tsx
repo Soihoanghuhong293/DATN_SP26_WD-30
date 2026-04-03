@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Button, Card, Col, Form, Input, InputNumber, message, Row, Select, Space, Spin, Typography, Upload } from 'antd';
+import { getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
+import type { IProvider, IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { ArrowLeftOutlined, MinusCircleOutlined, PlusOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
@@ -14,6 +16,49 @@ type CategoryNode = {
   id?: string;
   name: string;
   children?: CategoryNode[];
+};
+
+const mealRefId = (v: any): string | undefined => {
+  if (v == null || v === '') return undefined;
+  if (typeof v === 'object' && v != null && v._id != null) return String(v._id);
+  return String(v);
+};
+
+const normalizeTicketIds = (arr: unknown): string[] => {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((t) => (typeof t === 'object' && t != null && (t as any)._id != null ? String((t as any)._id) : String(t)))
+    .filter(Boolean);
+};
+
+const normalizeScheduleForForm = (sched: any[] | undefined) => {
+  if (!Array.isArray(sched)) {
+    return [
+      {
+        day: 1,
+        title: '',
+        activities: [],
+        lunch_restaurant_id: undefined,
+        dinner_restaurant_id: undefined,
+        ticket_ids: [] as string[],
+      },
+    ];
+  }
+  return sched.map((s, idx) => {
+    const legacy = Array.isArray(s.restaurant_ids) ? s.restaurant_ids : [];
+    let lunch = mealRefId(s.lunch_restaurant_id);
+    let dinner = mealRefId(s.dinner_restaurant_id);
+    if (!lunch && legacy[0]) lunch = mealRefId(legacy[0]);
+    if (!dinner && legacy[1]) dinner = mealRefId(legacy[1]);
+    return {
+      day: typeof s.day === 'number' ? s.day : idx + 1,
+      title: s.title ?? '',
+      activities: Array.isArray(s.activities) ? s.activities : [],
+      lunch_restaurant_id: lunch,
+      dinner_restaurant_id: dinner,
+      ticket_ids: normalizeTicketIds(s.ticket_ids),
+    };
+  });
 };
 
 const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string; label: string }[] => {
@@ -37,6 +82,64 @@ export default function TourTemplateEdit() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
+
+  const { data: providersRes } = useQuery({
+    queryKey: ['providers', { status: 'active' }],
+    queryFn: () => getProviders({ status: 'active' }),
+  });
+  const providers: IProvider[] = providersRes?.data?.providers ?? [];
+
+  const { data: restaurantsRes, isLoading: isRestaurantsLoading } = useQuery({
+    queryKey: ['restaurants', 'all'],
+    queryFn: () => getRestaurants({}),
+  });
+  const restaurants: IRestaurant[] = restaurantsRes?.data?.restaurants ?? [];
+
+  const { data: ticketsRes, isLoading: isTicketsLoading } = useQuery({
+    queryKey: ['provider-tickets', 'all'],
+    queryFn: () => getProviderTickets({}),
+  });
+  const providerTickets: IProviderTicket[] = ticketsRes?.data?.tickets ?? [];
+
+  const providerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of providers) {
+      const pid = String(p.id || p._id || '');
+      if (pid) m.set(pid, p.name?.trim() || '');
+    }
+    return m;
+  }, [providers]);
+
+  const ticketOptions = useMemo(
+    () =>
+      providerTickets
+        .filter((t) => (t.status || 'active') === 'active')
+        .map((t) => {
+          const tid = t.id || t._id || '';
+          const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+          const pn = providerNameById.get(String(t.provider_id || '')) || '';
+          return {
+            value: tid,
+            label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pn ? ` (${pn})` : ''}`,
+          };
+        })
+        .filter((o) => o.value),
+    [providerTickets, providerNameById]
+  );
+
+  const restaurantOptions = useMemo(
+    () =>
+      restaurants
+        .map((r) => {
+          const pn = providerNameById.get(String(r.provider_id || '')) || '';
+          return {
+            value: r.id || r._id || '',
+            label: `${r.name}${r.location ? ` — ${r.location}` : ''}${r.capacity ? ` (${r.capacity} chỗ)` : ''}${pn ? ` (${pn})` : ''}`,
+          };
+        })
+        .filter((o) => o.value),
+    [restaurants, providerNameById]
+  );
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -62,9 +165,11 @@ export default function TourTemplateEdit() {
 
   useEffect(() => {
     if (!template) return;
+    const { provider_id: _omitProvider, ...templateFields } = template as Record<string, unknown>;
     form.setFieldsValue({
-      ...template,
+      ...templateFields,
       category_id: template.category_id?._id || template.category_id,
+      schedule: normalizeScheduleForForm(template.schedule),
     });
 
     const existingImages = Array.isArray(template.images) ? template.images : [];
@@ -86,7 +191,14 @@ export default function TourTemplateEdit() {
         let next = [...currentSchedule];
         if (duration > currentSchedule.length) {
           for (let i = currentSchedule.length; i < duration; i++) {
-            next.push({ day: i + 1, title: '', activities: [] });
+            next.push({
+              day: i + 1,
+              title: '',
+              activities: [],
+              lunch_restaurant_id: undefined,
+              dinner_restaurant_id: undefined,
+              ticket_ids: [],
+            });
           }
         } else if (duration < currentSchedule.length) {
           next = next.slice(0, duration);
@@ -115,7 +227,7 @@ export default function TourTemplateEdit() {
   });
 
   const onFinish = (values: any) => {
-    const payload = { ...values };
+    const payload = { ...values, provider_id: null };
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)
@@ -258,15 +370,58 @@ export default function TourTemplateEdit() {
                           <Form.Item {...restField} name={[name, 'day']} hidden>
                             <InputNumber />
                           </Form.Item>
-                          <Row gutter={16}>
-                            <Col span={8}>
+                          <Row gutter={[16, 12]}>
+                            <Col xs={24} md={8}>
                               <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                                 <Input className="rounded-lg" placeholder="Tiêu đề" />
                               </Form.Item>
                             </Col>
-                            <Col span={16}>
+                            <Col xs={24} md={16}>
                               <Form.Item {...restField} name={[name, 'activities']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                                 <Select mode="tags" open={false} className="rounded-lg" placeholder="Nhập hoạt động & Enter" />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item {...restField} name={[name, 'lunch_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi trưa">
+                                <Select
+                                  allowClear
+                                  className="rounded-lg w-full"
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="Chọn nhà hàng trưa"
+                                  loading={isRestaurantsLoading}
+                                  options={restaurantOptions}
+                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item {...restField} name={[name, 'dinner_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi tối">
+                                <Select
+                                  allowClear
+                                  className="rounded-lg w-full"
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="Chọn nhà hàng tối"
+                                  loading={isRestaurantsLoading}
+                                  options={restaurantOptions}
+                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={24}>
+                              <Form.Item {...restField} name={[name, 'ticket_ids']} style={{ marginBottom: 0 }} label="Vé trong ngày">
+                                <Select
+                                  mode="multiple"
+                                  allowClear
+                                  className="rounded-lg w-full"
+                                  showSearch
+                                  optionFilterProp="label"
+                                  placeholder="Chọn một hoặc nhiều vé — khai báo tại Nhà cung cấp"
+                                  loading={isTicketsLoading}
+                                  options={ticketOptions}
+                                  notFoundContent="Chưa có vé — thêm trong chi tiết NCC"
+                                />
                               </Form.Item>
                             </Col>
                           </Row>

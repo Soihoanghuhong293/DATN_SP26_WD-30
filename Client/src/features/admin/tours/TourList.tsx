@@ -37,7 +37,9 @@ const TourList = () => {
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ['tours'],
     queryFn: async () => {
-      const response = await axios.get('http://localhost:5000/api/v1/tours');
+      const response = await axios.get('http://localhost:5000/api/v1/tours', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
       return response.data.data || [];
     },
   });

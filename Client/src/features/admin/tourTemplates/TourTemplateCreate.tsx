@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Button, Card, Col, Form, Input, InputNumber, message, Row, Select, Space, Typography, Upload } from 'antd';
+import { getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
+import type { IProvider, IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { ArrowLeftOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
@@ -36,6 +38,64 @@ export default function TourTemplateCreate() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
+
+  const { data: providersRes } = useQuery({
+    queryKey: ['providers', { status: 'active' }],
+    queryFn: () => getProviders({ status: 'active' }),
+  });
+  const providers: IProvider[] = providersRes?.data?.providers ?? [];
+
+  const { data: restaurantsRes, isLoading: isRestaurantsLoading } = useQuery({
+    queryKey: ['restaurants', 'all'],
+    queryFn: () => getRestaurants({}),
+  });
+  const restaurants: IRestaurant[] = restaurantsRes?.data?.restaurants ?? [];
+
+  const { data: ticketsRes, isLoading: isTicketsLoading } = useQuery({
+    queryKey: ['provider-tickets', 'all'],
+    queryFn: () => getProviderTickets({}),
+  });
+  const providerTickets: IProviderTicket[] = ticketsRes?.data?.tickets ?? [];
+
+  const providerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of providers) {
+      const id = String(p.id || p._id || '');
+      if (id) m.set(id, p.name?.trim() || '');
+    }
+    return m;
+  }, [providers]);
+
+  const ticketOptions = useMemo(
+    () =>
+      providerTickets
+        .filter((t) => (t.status || 'active') === 'active')
+        .map((t) => {
+          const tid = t.id || t._id || '';
+          const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
+          const pn = providerNameById.get(String(t.provider_id || '')) || '';
+          return {
+            value: tid,
+            label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pn ? ` (${pn})` : ''}`,
+          };
+        })
+        .filter((o) => o.value),
+    [providerTickets, providerNameById]
+  );
+
+  const restaurantOptions = useMemo(
+    () =>
+      restaurants
+        .map((r) => {
+          const pn = providerNameById.get(String(r.provider_id || '')) || '';
+          return {
+            value: r.id || r._id || '',
+            label: `${r.name}${r.location ? ` — ${r.location}` : ''}${r.capacity ? ` (${r.capacity} chỗ)` : ''}${pn ? ` (${pn})` : ''}`,
+          };
+        })
+        .filter((o) => o.value),
+    [restaurants, providerNameById]
+  );
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -72,7 +132,14 @@ export default function TourTemplateCreate() {
         let next = [...currentSchedule];
         if (duration > currentSchedule.length) {
           for (let i = currentSchedule.length; i < duration; i++) {
-            next.push({ day: i + 1, title: '', activities: [] });
+            next.push({
+              day: i + 1,
+              title: '',
+              activities: [],
+              lunch_restaurant_id: undefined,
+              dinner_restaurant_id: undefined,
+              ticket_ids: [],
+            });
           }
         } else if (duration < currentSchedule.length) {
           next = next.slice(0, duration);
@@ -85,6 +152,7 @@ export default function TourTemplateCreate() {
 
   const onFinish = (values: any) => {
     const payload = { ...values };
+    delete payload.provider_id;
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)
@@ -125,7 +193,9 @@ export default function TourTemplateCreate() {
           onValuesChange={handleValuesChange}
           initialValues={{
             duration_days: 1,
-            schedule: [{ day: 1, title: '', activities: [] }],
+            schedule: [
+              { day: 1, title: '', activities: [], lunch_restaurant_id: undefined, dinner_restaurant_id: undefined, ticket_ids: [] },
+            ],
           }}
         >
           <Row gutter={24}>
@@ -228,15 +298,58 @@ export default function TourTemplateCreate() {
                           <Form.Item {...restField} name={[name, 'day']} hidden>
                             <InputNumber />
                           </Form.Item>
-                          <Row gutter={16}>
-                            <Col span={8}>
+                          <Row gutter={[16, 12]}>
+                            <Col xs={24} md={8}>
                               <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true, message: 'Nhập tiêu đề' }]} style={{ marginBottom: 0 }}>
                                 <Input className="rounded-lg" placeholder="Tiêu đề" />
                               </Form.Item>
                             </Col>
-                            <Col span={16}>
+                            <Col xs={24} md={16}>
                               <Form.Item {...restField} name={[name, 'activities']} rules={[{ required: true, message: 'Nhập hoạt động' }]} style={{ marginBottom: 0 }}>
                                 <Select mode="tags" open={false} className="rounded-lg" placeholder="Nhập hoạt động & Enter" />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item {...restField} name={[name, 'lunch_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi trưa">
+                                <Select
+                                  allowClear
+                                  showSearch
+                                  className="rounded-lg w-full"
+                                  optionFilterProp="label"
+                                  placeholder="Chọn nhà hàng trưa"
+                                  loading={isRestaurantsLoading}
+                                  options={restaurantOptions}
+                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item {...restField} name={[name, 'dinner_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi tối">
+                                <Select
+                                  allowClear
+                                  showSearch
+                                  className="rounded-lg w-full"
+                                  optionFilterProp="label"
+                                  placeholder="Chọn nhà hàng tối"
+                                  loading={isRestaurantsLoading}
+                                  options={restaurantOptions}
+                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={24}>
+                              <Form.Item {...restField} name={[name, 'ticket_ids']} style={{ marginBottom: 0 }} label="Vé trong ngày">
+                                <Select
+                                  mode="multiple"
+                                  allowClear
+                                  showSearch
+                                  className="rounded-lg w-full"
+                                  optionFilterProp="label"
+                                  placeholder="Chọn vé (có thể nhiều vé) — ví dụ Bà Nà, show…"
+                                  loading={isTicketsLoading}
+                                  options={ticketOptions}
+                                  notFoundContent="Chưa có vé — thêm trong chi tiết NCC"
+                                />
                               </Form.Item>
                             </Col>
                           </Row>

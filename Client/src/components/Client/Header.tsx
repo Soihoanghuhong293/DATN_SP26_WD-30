@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout, Menu, Button, Drawer } from 'antd';
 import { SendOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
@@ -10,7 +10,8 @@ const Header = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isLogin, setIsLogin] = useState<boolean>(() => !!localStorage.getItem("token")); 
+  const [isLogin, setIsLogin] = useState<boolean>(() => !!localStorage.getItem("token"));
+  const [role, setRole] = useState<string | null>(() => localStorage.getItem("role"));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,14 +21,20 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Đồng bộ khi đổi route: sau khi đăng nhập từ /login về /, MainLayout không remount
+  // nên phải đọc lại token (trước đây chỉ chạy một lần lúc vào /login nên luôn "chưa đăng nhập").
   useEffect(() => {
     // Sync trạng thái login khi đổi route (sau login thường navigate("/"))
     setIsLogin(!!localStorage.getItem("token"));
+    setRole(localStorage.getItem("role"));
   }, [location.pathname]);
 
   useEffect(() => {
     // Sync ngay sau login/logout (cùng tab) qua custom event
-    const onAuthChanged = () => setIsLogin(!!localStorage.getItem("token"));
+    const onAuthChanged = () => {
+      setIsLogin(!!localStorage.getItem("token"));
+      setRole(localStorage.getItem("role"));
+    };
     window.addEventListener("auth:changed", onAuthChanged);
     return () => window.removeEventListener("auth:changed", onAuthChanged);
   }, []);
@@ -36,17 +43,34 @@ const Header = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     setIsLogin(false);
-    setMobileMenuOpen(false); 
+    setRole(null);
+    setMobileMenuOpen(false);
     window.dispatchEvent(new Event("auth:changed"));
     navigate("/login");
   };
 
-  const items = [
-    { key: '/', label: <Link to="/">Điểm đến</Link> },
-    { key: '/tours', label: <Link to="/tours">Tour</Link> },
-    { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
-    { key: '/blog', label: <Link to="/blog">Blog</Link> },
-  ];
+  const items = useMemo(() => {
+    const base = [
+      { key: '/', label: <Link to="/">Điểm đến</Link> },
+      { key: '/tours', label: <Link to="/tours">Tour</Link> },
+      { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
+      { key: '/blog', label: <Link to="/blog">Blog</Link> },
+    ];
+    const isCustomer = isLogin && (!role || role === 'user');
+    if (isCustomer) {
+      return [
+        ...base,
+        { key: '/my-bookings', label: <Link to="/my-bookings">Đơn của tôi</Link> },
+      ];
+    }
+    return base;
+  }, [isLogin, role]);
+
+  const menuSelectedKeys = useMemo(() => {
+    const p = location.pathname;
+    if (p.startsWith('/my-bookings')) return ['/my-bookings'];
+    return [p];
+  }, [location.pathname]);
 
   return (
     <>
@@ -98,7 +122,7 @@ const Header = () => {
         <div className="desktop-menu" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <Menu
             mode="horizontal"
-            selectedKeys={[location.pathname]}
+            selectedKeys={menuSelectedKeys}
             items={items}
             style={{
               background: 'transparent',
@@ -166,7 +190,7 @@ const Header = () => {
       >
         <Menu
           mode="vertical"
-          selectedKeys={[location.pathname]}
+          selectedKeys={menuSelectedKeys}
           items={items}
           onClick={() => setMobileMenuOpen(false)}
           style={{ border: 'none', fontSize: '16px' }}

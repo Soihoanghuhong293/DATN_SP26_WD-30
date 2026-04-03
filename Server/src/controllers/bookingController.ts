@@ -1,8 +1,15 @@
 import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
+import ProviderTicket from '../models/ProviderTicket';
+import { autoAllocateCarsForBooking, autoAllocateRoomsForBooking } from '../services/allocation.service';
+import VehicleAllocation from '../models/VehicleAllocation';
+import RoomAllocation from '../models/RoomAllocation';
+import User from '../models/user.model';
 import { AuthRequest } from '../middlewares/auth.middleware';
-import { autoAllocateCarsForBooking } from '../services/allocation.service';
+import { canSendMail } from '../services/mailer';
+import { sendGuideAssignmentEmail } from '../services/guideAssignmentEmail';
+import { sendGuideUnassignmentEmail } from '../services/guideUnassignmentEmail';
 
 const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
   pending: 'unpaid',
@@ -11,6 +18,39 @@ const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 
   paid: 'paid',
   refunded: 'refunded',
   cancelled: 'unpaid',
+};
+
+const normalizeId = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const markAssignmentEmailSent = async (args: {
+  bookingId: string;
+  actorName: string;
+  toEmail: string;
+  guideId: string;
+}) => {
+  const now = new Date();
+  await Booking.findByIdAndUpdate(
+    args.bookingId,
+    {
+      $set: {
+        assignment_email_last_sent_at: now,
+        assignment_email_last_sent_to: args.toEmail,
+        assignment_email_last_sent_guide_id: args.guideId,
+      },
+      $push: {
+        logs: {
+          time: now,
+          user: args.actorName,
+          old: 'Phân công HDV',
+          new: 'Đã gửi email',
+          note: `Đã gửi email phân công tới ${args.toEmail}`,
+        },
+      },
+    },
+    { new: false }
+  );
 };
 
 // Lấy danh sách booking của HDV đang đăng nhập 
@@ -68,6 +108,98 @@ export const getMyBookingDetail = async (req: AuthRequest, res: Response) => {
          ...log,
          time: log.time ? new Date(log.time).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : ''
        })).reverse();
+    }
+
+    res.status(200).json({ status: 'success', data: formattedBooking });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+/** Khách đăng nhập: danh sách booking */
+export const getMyBookingsForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+    const role = String((req.user as any)?.role || 'user');
+    if (role !== 'user') {
+      return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới xem được mục này' });
+    }
+
+    const emailRaw = String((req.user as any)?.email || '').trim();
+    const statusParam = typeof req.query.status === 'string' ? req.query.status : '';
+
+    if (emailRaw) {
+      const emailRegex = new RegExp(`^${escapeRegex(emailRaw)}$`, 'i');
+      await Booking.updateMany(
+        {
+          $or: [{ user_id: null }, { user_id: { $exists: false } }],
+          customer_email: emailRegex,
+        },
+        { $set: { user_id: userId } }
+      );
+    }
+
+    const query: Record<string, unknown> = { user_id: userId };
+    if (statusParam && ['pending', 'confirmed', 'cancelled'].includes(statusParam)) {
+      query.status = statusParam;
+    }
+
+    const bookings = await Booking.find(query)
+      .populate({ path: 'tour_id', select: 'name images duration_days price slug' })
+      .sort({ created_at: -1 });
+
+    res.status(200).json({ status: 'success', results: bookings.length, data: bookings });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+/** Khách đăng nhập: chi tiết một booking */
+export const getMyBookingDetailForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+    const role = String((req.user as any)?.role || 'user');
+    if (role !== 'user') {
+      return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới xem được mục này' });
+    }
+
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const booking: any = await Booking.findById(bookingId)
+      .populate({ path: 'tour_id', select: 'name images duration_days price schedule slug' })
+      .populate({ path: 'user_id', select: 'name email phone' });
+
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const uid = booking.user_id?._id?.toString?.() ?? booking.user_id?.toString?.();
+    const emailRaw = String((req.user as any)?.email || '').trim();
+    const emailRegex = emailRaw ? new RegExp(`^${escapeRegex(emailRaw)}$`, 'i') : null;
+    const bookingEmail = String(booking.customer_email || '').trim();
+
+    const ownsByUser = uid && uid === userId.toString();
+    const ownsByEmail = Boolean(emailRegex && bookingEmail && emailRegex.test(bookingEmail));
+    if (!ownsByUser && !ownsByEmail) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền xem đơn này' });
+    }
+
+    if (!ownsByUser && ownsByEmail) {
+      booking.user_id = userId;
+      await booking.save();
+    }
+
+    const formattedBooking: any = booking.toObject();
+    if (formattedBooking.logs) {
+      formattedBooking.logs = formattedBooking.logs.map((log: any) => ({
+        ...log,
+        time: log.time ? new Date(log.time).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '',
+      })).reverse();
     }
 
     res.status(200).json({ status: 'success', data: formattedBooking });
@@ -422,7 +554,10 @@ export const getAllBookings = async (req: Request, res: Response) => {
 export const getBooking = async (req: Request, res: Response) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('tour_id', 'name duration_days') 
+      .populate(
+        'tour_id',
+        'name duration_days images schedule suppliers description price slug status departure_schedule',
+      )
       .populate('guide_id', 'name phone email')  
       .populate('user_id', 'name phone email');  
       
@@ -455,7 +590,7 @@ export const getBooking = async (req: Request, res: Response) => {
 };
 
 // tạo đơn đặt tour mới
-export const createBooking = async (req: Request, res: Response) => {
+export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const {
       tour_id,
@@ -474,6 +609,7 @@ export const createBooking = async (req: Request, res: Response) => {
       totalPrice,
       groupSize,
       paymentMethod,
+      guide_id,
     } = req.body;
 
     const normalizedCustomerName = customer_name || customerName;
@@ -491,9 +627,19 @@ export const createBooking = async (req: Request, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'Thiếu thông tin khách hàng' });
     }
 
-    const tour = await Tour.findById(tour_id);
+    const tour = await Tour.findById(tour_id).populate({
+      path: 'schedule.ticket_ids',
+      select: 'application_mode status price_adult price_child name',
+    });
     if (!tour) {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
+    }
+
+    if ((tour as any).status !== 'active') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Tour không mở bán hoặc đang tạm dừng. Chỉ tour đang hoạt động mới được đặt.',
+      });
     }
 
     // Validate số chỗ còn lại cho ngày khởi hành
@@ -544,6 +690,77 @@ export const createBooking = async (req: Request, res: Response) => {
       });
     }
 
+    const scheduleForTickets = Array.isArray((tour as any).schedule) ? (tour as any).schedule : [];
+    const allowedOptionalTicketIds = new Set<string>();
+    for (const day of scheduleForTickets) {
+      const ticks = day?.ticket_ids || [];
+      for (const t of ticks) {
+        if (!t || typeof t !== 'object') continue;
+        if ((t as any).status && (t as any).status !== 'active') continue;
+        const tid = (t as any)._id?.toString?.();
+        if (tid && (t as any).application_mode === 'optional_addon') {
+          allowedOptionalTicketIds.add(tid);
+        }
+      }
+    }
+
+    const rawOptional = req.body.optional_ticket_ids ?? req.body.optionalTicketIds;
+    const selectedOptionalIds: string[] = Array.isArray(rawOptional)
+      ? [...new Set(rawOptional.map((x: any) => String(x)))]
+      : [];
+
+    for (const tid of selectedOptionalIds) {
+      if (!allowedOptionalTicketIds.has(tid)) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Có vé được chọn không áp dụng cho tour này hoặc không thuộc loại mua thêm.',
+        });
+      }
+    }
+
+    const passengersBody = req.body.passengers || req.body.guests || [];
+    let adultsCount = 0;
+    let childrenCount = 0;
+    if (Array.isArray(passengersBody) && passengersBody.length > 0) {
+      for (const p of passengersBody) {
+        const typ = String((p as any)?.type || '');
+        if (typ.includes('Trẻ em')) childrenCount += 1;
+        else adultsCount += 1;
+      }
+    } else {
+      adultsCount = Math.max(1, Number(groupSize) || 0);
+    }
+
+    let optionalTicketsAddon = 0;
+    if (selectedOptionalIds.length > 0) {
+      const ticketDocs = await ProviderTicket.find({
+        _id: { $in: selectedOptionalIds },
+        status: 'active',
+        application_mode: 'optional_addon',
+      });
+      if (ticketDocs.length !== selectedOptionalIds.length) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Một hoặc nhiều vé không tồn tại hoặc không còn áp dụng.',
+        });
+      }
+      for (const ticket of ticketDocs) {
+        const id = ticket._id.toString();
+        if (!allowedOptionalTicketIds.has(id)) {
+          return res.status(400).json({
+            status: 'fail',
+            message: 'Vé được chọn không nằm trong lịch tour.',
+          });
+        }
+        const pa = Number(ticket.price_adult || 0);
+        const pc = Number(ticket.price_child || 0);
+        optionalTicketsAddon += adultsCount * pa + childrenCount * pc;
+      }
+    }
+
+    const tourOnlyTotal = Number(normalizedTotalPrice ?? 0);
+    const finalTotalPrice = tourOnlyTotal + optionalTicketsAddon;
+
     const incomingStatus = req.body?.status;
     const normalizedPaymentStatus =
       req.body?.payment_status ||
@@ -570,7 +787,9 @@ export const createBooking = async (req: Request, res: Response) => {
       customer_email: normalizedCustomerEmail,
       customer_address: normalizedCustomerAddress,
       customer_note: normalizedCustomerNote,
-      total_price: normalizedTotalPrice ?? 0,
+      total_price: finalTotalPrice,
+      optional_ticket_ids: selectedOptionalIds,
+      optional_tickets_total: optionalTicketsAddon,
       paymentMethod: paymentMethod || req.body.payment_method || 'later',
       status: normalizedBookingStatus,
       payment_status: normalizedPaymentStatus,
@@ -579,6 +798,11 @@ export const createBooking = async (req: Request, res: Response) => {
     // mặc định trạng thái giai đoạn tour là "sắp khởi hành"
     if (!newBookingData.tour_stage) {
       newBookingData.tour_stage = 'scheduled';
+    }
+
+    const authUser = req.user;
+    if (authUser && String((authUser as any).role) === 'user') {
+      newBookingData.user_id = (authUser as any)._id;
     }
 
     // tự động tạo lịch sử đầu tiên
@@ -592,6 +816,45 @@ export const createBooking = async (req: Request, res: Response) => {
     }];
 
     const newBooking = await Booking.create(newBookingData);
+
+    // Nếu admin tạo booking và đã phân công HDV ngay -> gửi email thông báo
+    try {
+      const assignedGuideId = normalizeId((newBooking as any)?.guide_id || guide_id);
+      if (assignedGuideId) {
+        const guideUser = await User.findById(assignedGuideId).select("name email role status");
+        const toEmail = String((guideUser as any)?.email || "").trim();
+        const isGuideRole = (guideUser as any)?.role === "guide" || (guideUser as any)?.role === "hdv";
+        const isActive = (guideUser as any)?.status !== "inactive";
+
+        const lastSentGuideId = normalizeId((newBooking as any)?.assignment_email_last_sent_guide_id);
+        if (lastSentGuideId && lastSentGuideId === assignedGuideId) {
+          // chống gửi trùng
+        } else if (canSendMail() && toEmail && isGuideRole && isActive) {
+          await sendGuideAssignmentEmail({
+            toEmail,
+            guideName: (guideUser as any)?.name,
+            bookingId: String((newBooking as any)?._id),
+            tourName: String((tour as any)?.name || "Tour"),
+            startDate: (newBooking as any)?.startDate,
+            endDate: (newBooking as any)?.endDate,
+            customerName: (newBooking as any)?.customer_name,
+            groupSize: Number((newBooking as any)?.groupSize || 0),
+            bookingStatus: String((newBooking as any)?.status || ''),
+            pickupLocation: String((newBooking as any)?.customer_address || ''),
+            departureTime: String((newBooking as any)?.departure_time || (newBooking as any)?.start_time || ''),
+            note: String((newBooking as any)?.customer_note || ''),
+          });
+          await markAssignmentEmailSent({
+            bookingId: String((newBooking as any)?._id),
+            actorName: (req as any).user?.name || 'Admin',
+            toEmail,
+            guideId: assignedGuideId,
+          });
+        }
+      }
+    } catch (e) {
+      // Không chặn tạo booking nếu gửi email thất bại
+    }
 
     res.status(201).json({
       status: 'success',
@@ -609,14 +872,25 @@ export const createBooking = async (req: Request, res: Response) => {
 // quản lí danh sách khách
 export const updateBooking = async (req: Request, res: Response) => {
   try {
-    const bookingId = req.params.id;
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const currentUser = (req as any).user?.name || 'Admin';
 
     //  kiểm tra booking có tồn tại không
-    const booking = await Booking.findById(bookingId);
+    const booking: any = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
     }
+
+    const oldGuideId = normalizeId((booking as any)?.guide_id?.toString?.() || (booking as any)?.guide_id);
+    const incomingGuideIdRaw = req.body?.guide_id;
+    const incomingGuideId = normalizeId(incomingGuideIdRaw);
+    const guideFieldTouched = Object.prototype.hasOwnProperty.call(req.body || {}, 'guide_id');
+    const guideAssignedOrSwapped = Boolean(incomingGuideId) && incomingGuideId !== oldGuideId;
+    const guideRemoved = guideFieldTouched && !!oldGuideId && !incomingGuideId;
+
+    let mail: any = (guideAssignedOrSwapped || guideRemoved)
+      ? { attempted: true, sent: false, reason: '', unassigned: { attempted: false, sent: false, reason: '' } }
+      : { attempted: false, sent: false, reason: 'guide_id không thay đổi', unassigned: { attempted: false, sent: false, reason: '' } };
 
     //  chuẩn bị dữ liệu update
     const updateData: any = { ...req.body };
@@ -624,7 +898,7 @@ export const updateBooking = async (req: Request, res: Response) => {
 
     // cập nhật danh sách hành khác
     const incomingPassengers = req.body.passengers || req.body.guests;
-    const shouldReallocateCars = Boolean(incomingPassengers);
+    const shouldReallocateServices = Boolean(incomingPassengers);
     if (incomingPassengers) {
       // Cảnh báo nếu số lượng lố groupSize
       if (incomingPassengers.length > booking.groupSize) {
@@ -658,8 +932,7 @@ export const updateBooking = async (req: Request, res: Response) => {
       });
     }
 
-    // Nếu có đổi trạng thái thanh toán (payment status)
-    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    const currentPaymentStatus = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
     const nextPaymentStatus =
       req.body.payment_status ||
       (req.body.status && ['deposit', 'paid', 'refunded'].includes(req.body.status) ? req.body.status : undefined);
@@ -689,20 +962,141 @@ export const updateBooking = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
 
-    // Nếu người dùng cập nhật danh sách hành khách, tự động cập nhật phân bổ xe
-    // để linh hoạt theo số khách thực tế.
-    if (shouldReallocateCars) {
+    // Nếu phân công/đổi HDV -> gửi email cho HDV mới
+    if (guideAssignedOrSwapped && updatedBooking) {
+      try {
+        const lastSentGuideId = normalizeId((booking as any)?.assignment_email_last_sent_guide_id);
+        if (lastSentGuideId && lastSentGuideId === incomingGuideId) {
+          mail.sent = false;
+          mail.reason = 'Đã gửi email phân công cho HDV này trước đó';
+        } else {
+        const guideUser = await User.findById(incomingGuideId).select('name email role status');
+        const tour = await Tour.findById((updatedBooking as any).tour_id).select('name duration_days');
+        const toEmail = String((guideUser as any)?.email || '').trim();
+
+        const isGuideRole = (guideUser as any)?.role === 'guide' || (guideUser as any)?.role === 'hdv';
+        const isActive = (guideUser as any)?.status !== 'inactive';
+
+        if (!canSendMail()) {
+          mail.reason = 'SMTP chưa cấu hình';
+          console.warn('[mail] SMTP chưa cấu hình, bỏ qua gửi email phân công.');
+        } else if (!toEmail) {
+          mail.reason = 'HDV không có email';
+          console.warn('[mail] HDV không có email, bỏ qua gửi email phân công.');
+        } else if (!isGuideRole) {
+          mail.reason = 'User không phải role guide/hdv';
+          console.warn('[mail] User được phân công không phải role guide/hdv, bỏ qua gửi email.');
+        } else if (!isActive) {
+          mail.reason = 'Tài khoản HDV bị khóa';
+          console.warn('[mail] Tài khoản HDV bị khóa, bỏ qua gửi email.');
+        } else {
+          await sendGuideAssignmentEmail({
+            toEmail,
+            guideName: (guideUser as any)?.name,
+            bookingId: String((updatedBooking as any)?._id || bookingId),
+            tourName: String((tour as any)?.name || (updatedBooking as any)?.tour_id?.name || 'Tour'),
+            startDate: (updatedBooking as any)?.startDate,
+            endDate: (updatedBooking as any)?.endDate,
+            customerName: (updatedBooking as any)?.customer_name,
+            groupSize: Number((updatedBooking as any)?.groupSize || 0),
+            bookingStatus: String((updatedBooking as any)?.status || ''),
+            pickupLocation: String((updatedBooking as any)?.customer_address || ''),
+            departureTime: String((updatedBooking as any)?.departure_time || (updatedBooking as any)?.start_time || ''),
+            note: String((updatedBooking as any)?.customer_note || ''),
+          });
+          mail.sent = true;
+          mail.reason = '';
+          console.log(`[mail] Đã gửi email phân công đến: ${toEmail}`);
+
+          await markAssignmentEmailSent({
+            bookingId,
+            actorName: currentUser,
+            toEmail,
+            guideId: incomingGuideId,
+          });
+        }
+        }
+      } catch (e) {
+        mail.reason = (e as any)?.message || 'Gửi email thất bại';
+        console.error('[mail] Gửi email phân công thất bại:', e);
+        // Không chặn cập nhật booking nếu gửi email thất bại
+      }
+    }
+
+    // Nếu gỡ phân công hoặc đổi HDV -> gửi email cho HDV cũ (thông báo không còn phụ trách)
+    if ((guideRemoved || guideAssignedOrSwapped) && updatedBooking && oldGuideId) {
+      mail.unassigned.attempted = true;
+      try {
+        if (!canSendMail()) {
+          mail.unassigned.sent = false;
+          mail.unassigned.reason = 'SMTP chưa cấu hình';
+        } else {
+          const oldGuideUser = await User.findById(oldGuideId).select('name email role status');
+          const toEmail = String((oldGuideUser as any)?.email || '').trim();
+          const isGuideRole = (oldGuideUser as any)?.role === 'guide' || (oldGuideUser as any)?.role === 'hdv';
+          const isActive = (oldGuideUser as any)?.status !== 'inactive';
+
+          if (!toEmail) {
+            mail.unassigned.sent = false;
+            mail.unassigned.reason = 'HDV cũ không có email';
+          } else if (!isGuideRole) {
+            mail.unassigned.sent = false;
+            mail.unassigned.reason = 'User cũ không phải role guide/hdv';
+          } else if (!isActive) {
+            mail.unassigned.sent = false;
+            mail.unassigned.reason = 'Tài khoản HDV cũ bị khóa';
+          } else {
+            const tour = await Tour.findById((updatedBooking as any).tour_id).select('name duration_days');
+            await sendGuideUnassignmentEmail({
+              toEmail,
+              guideName: (oldGuideUser as any)?.name,
+              bookingId: String((updatedBooking as any)?._id || bookingId),
+              tourName: String((tour as any)?.name || (updatedBooking as any)?.tour_id?.name || 'Tour'),
+              startDate: (updatedBooking as any)?.startDate,
+              endDate: (updatedBooking as any)?.endDate,
+            });
+            mail.unassigned.sent = true;
+            mail.unassigned.reason = '';
+
+            // log vào booking.logs
+            await Booking.findByIdAndUpdate(
+              bookingId,
+              {
+                $push: {
+                  logs: {
+                    time: new Date(),
+                    user: currentUser,
+                    old: 'Phân công HDV',
+                    new: 'Đã gỡ phân công',
+                    note: `Đã gửi email thông báo gỡ phân công tới ${toEmail}`,
+                  },
+                },
+              },
+              { new: false }
+            );
+          }
+        }
+      } catch (e) {
+        mail.unassigned.sent = false;
+        mail.unassigned.reason = (e as any)?.message || 'Gửi email gỡ phân công thất bại';
+        console.error('[mail] Gửi email gỡ phân công thất bại:', e);
+      }
+    }
+
+    // Cập nhật danh sách khách → tự động phân bổ lại xe & phòng theo số khách thực tế.
+    if (shouldReallocateServices) {
       try {
         await autoAllocateCarsForBooking(bookingId);
+        await autoAllocateRoomsForBooking(bookingId);
       } catch (e) {
-        // Không chặn việc cập nhật danh sách khách.
-        // Nếu auto-allocate thất bại, booking sẽ giữ dữ liệu phân bổ cũ hoặc rỗng tùy trường hợp.
+        // Không chặn cập nhật danh sách; phân bổ có thể giữ bản cũ nếu lỗi.
       }
     }
 
     res.status(200).json({
       status: 'success',
-      data: updatedBooking
+      data: updatedBooking,
+      mail
     });
   } catch (error: any) {
     res.status(400).json({
@@ -714,7 +1108,10 @@ export const updateBooking = async (req: Request, res: Response) => {
 // xóa đơn hàng
 export const deleteBooking = async (req: Request, res: Response) => {
   try {
-    await Booking.findByIdAndDelete(req.params.id);
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await VehicleAllocation.deleteMany({ booking_id: bookingId });
+    await RoomAllocation.deleteMany({ booking_id: bookingId });
+    await Booking.findByIdAndDelete(bookingId);
 
     res.status(204).json({
       status: 'success',
@@ -734,7 +1131,7 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     const bookingId = req.params.id;
     const { pay_type } = req.body || {};
 
-    const booking = await Booking.findById(bookingId);
+    const booking: any = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         status: 'fail',
@@ -743,9 +1140,9 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     }
 
     const currentUser = (req as any).user?.name || 'Khách hàng';
-    const total = Number((booking as any).total_price || 0);
-    const method = String((booking as any).paymentMethod || '').trim() || 'full';
-    const currentPaymentStatus = (booking as any).payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    const total = Number(booking.total_price || 0);
+    const method = String(booking.paymentMethod || '').trim() || 'full';
+    const currentPaymentStatus = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
 
     // Không cho thanh toán lại nếu đã paid
     if (currentPaymentStatus === 'paid') {
@@ -852,7 +1249,8 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
 // admin: tự động phân bổ xe theo ngày cho booking
 export const autoAllocateCars = async (req: Request, res: Response) => {
   try {
-    const result = await autoAllocateCarsForBooking(req.params.id);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await autoAllocateCarsForBooking(id);
 
     if (!result.success) {
       return res.status(400).json({
@@ -869,6 +1267,54 @@ export const autoAllocateCars = async (req: Request, res: Response) => {
     return res.status(500).json({
       status: 'error',
       message: error.message || 'Lỗi khi tự động phân bổ xe',
+    });
+  }
+};
+
+export const autoAllocateRooms = async (req: Request, res: Response) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await autoAllocateRoomsForBooking(id);
+
+    if (!result.success) {
+      return res.status(400).json({
+        status: 'fail',
+        ...result,
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: result.data,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi tự động phân bổ phòng',
+    });
+  }
+};
+
+/** Phân bổ xe trước, sau đó phân bổ phòng (cùng logic như cập nhật danh sách khách). */
+export const autoAllocateCarsAndRooms = async (req: Request, res: Response) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const cars = await autoAllocateCarsForBooking(id);
+    if (!cars.success) {
+      return res.status(400).json({ status: 'fail', phase: 'cars', ...cars });
+    }
+    const rooms = await autoAllocateRoomsForBooking(id);
+    if (!rooms.success) {
+      return res.status(400).json({ status: 'fail', phase: 'rooms', ...rooms });
+    }
+    return res.status(200).json({
+      status: 'success',
+      data: { cars: cars.data, rooms: rooms.data },
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 'error',
+      message: error.message || 'Lỗi khi phân bổ dịch vụ',
     });
   }
 };

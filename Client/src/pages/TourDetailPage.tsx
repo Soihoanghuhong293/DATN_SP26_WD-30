@@ -547,6 +547,41 @@ const TourDetailPage = () => {
                         </li>
                       ))}
                     </ul>
+                    {(() => {
+                      const day = item as any;
+                      const lunch = day.lunch_restaurant_id?.name;
+                      const dinner = day.dinner_restaurant_id?.name;
+                      if (!lunch && !dinner) return null;
+                      return (
+                        <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                          {lunch ? (
+                            <div>
+                              <b>Buổi trưa:</b> {lunch}
+                            </div>
+                          ) : null}
+                          {dinner ? (
+                            <div>
+                              <b>Buổi tối:</b> {dinner}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                    {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
+                      <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                        <b>Vé:</b>{' '}
+                        {(item as any).ticket_ids
+                          .map((tk: any) => {
+                            if (typeof tk === 'object' && tk?.name) {
+                              const mode =
+                                tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
+                              return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
+                            }
+                            return String(tk);
+                          })
+                          .join('; ')}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}
