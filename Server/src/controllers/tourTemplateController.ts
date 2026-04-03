@@ -4,11 +4,11 @@ import TourTemplate from '../models/TourTemplate';
 const templatePopulate = [
   { path: 'category_id' },
   { path: 'provider_id', select: 'name status' },
-  { path: 'schedule.lunch_restaurant_id', select: 'name phone capacity location status' },
-  { path: 'schedule.dinner_restaurant_id', select: 'name phone capacity location status' },
+  { path: 'schedule.lunch_restaurant_id', select: 'name phone capacity location status provider_id' },
+  { path: 'schedule.dinner_restaurant_id', select: 'name phone capacity location status provider_id' },
   {
     path: 'schedule.ticket_ids',
-    select: 'name ticket_type application_mode price_adult price_child status',
+    select: 'name ticket_type application_mode price_adult price_child status provider_id',
   },
 ] as const;
 
