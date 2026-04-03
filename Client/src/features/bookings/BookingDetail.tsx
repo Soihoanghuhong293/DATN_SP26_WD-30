@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
-  Button, Card, Spin, Tabs, Tag, Timeline, Table, 
+  Button, Card, Spin, Tabs, Tag, Table, 
   Typography, Space, Popconfirm, message, Breadcrumb, 
   Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Collapse, List, Empty
 } from 'antd';
@@ -767,30 +767,12 @@ const BookingDetail = () => {
             headStyle={{ paddingBottom: 0, borderBottom: 'none' }}
           >
             {logs.length > 0 ? (
-              <Timeline 
-                className="mt-4"
-                items={logs.map((log: any, index: number) => ({
-                    color: index === 0 ? 'blue' : 'gray', 
-                    children: (
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ color: '#6b7280', fontSize: 13, marginBottom: 4 }}>
-                              {log.time || dayjs(log.created_at).format('DD/MM/YYYY HH:mm')}
-                            </div>
-                            <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 6 }}>
-                              {log.user || 'Hệ thống'}
-                            </div>
-                            <div style={{ color: '#374151', fontSize: 14 }}>
-                              Đã đổi: {log.old || 'Khởi tạo'} → <span style={{ fontWeight: 600 }}>{log.new}</span>
-                            </div>
-                            {log.note && (
-                              <div style={{ marginTop: 8, fontStyle: 'italic', color: '#6b7280', backgroundColor: '#f9fafb', padding: '6px 12px', borderRadius: 6, display: 'inline-block' }}>
-                                "{log.note}"
-                              </div>
-                            )}
-                        </div>
-                    ),
-                }))} 
-              />
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Text type="secondary">Có {logs.length} bản ghi. Mở trang riêng để xem đầy đủ.</Text>
+                <Button type="primary" block onClick={() => navigate(`/admin/bookings/${booking._id}/history`)}>
+                  Xem
+                </Button>
+              </Space>
             ) : (
               <div className="text-center text-gray-400 py-4 italic">Chưa có lịch sử.</div>
             )}
@@ -848,8 +830,8 @@ const BookingDetail = () => {
         <div style={{ marginBottom: 24 }}>
             <Breadcrumb items={[
                 { title: <Link to="/admin"><HomeOutlined /></Link> },
-                { title: <Link to="/admin/bookings">Bookings</Link> },
-                { title: `Chi tiết Booking` }
+                { title: <Link to="/admin/bookings">Danh sách đơn</Link> },
+                { title: 'Chi tiết đơn' }
             ]} />
         </div>
 
@@ -872,7 +854,13 @@ const BookingDetail = () => {
                 </div>
             </div>
 
-            <Space>
+            <Space wrap>
+                <Button
+                  icon={<ClockCircleOutlined />}
+                  onClick={() => navigate(`/admin/bookings/${booking._id}/history`)}
+                >
+                  Lịch sử xử lý
+                </Button>
                 <Button icon={<EditOutlined />} onClick={() => navigate(`/admin/bookings/edit/${booking._id}`)}>Chỉnh sửa</Button>
                 <Popconfirm
                     title="Xóa booking này?" description="Hành động này không thể hoàn tác."
@@ -953,7 +941,6 @@ const BookingDetail = () => {
         <style>{`
             .saas-card .ant-card-body { padding: 24px; }
             .saas-card { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
-            .ant-timeline-item-tail { border-inline-start: 2px solid #e5e7eb !important; }
             @media print { .ant-tabs-nav, .ant-btn, .ant-breadcrumb { display: none !important; } .saas-card { border: none !important; } }
         `}</style>
       </div>
