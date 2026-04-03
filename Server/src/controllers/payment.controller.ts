@@ -148,14 +148,20 @@ export const handleSepayWebhook = async (req: Request, res: Response) => {
       body.amount_in ??
       body.transferAmount ??
       body.transfer_amount ??
+      body.transferValue ??
+      body.value ??
       data.amountIn ??
       data.amount ??
       data.amount_in ??
       data.transferAmount ??
       data.transfer_amount ??
+      data.transferValue ??
+      data.value ??
       0;
 
-    const amountIn = Number(amountInRaw || 0);
+    let amountIn = Number(amountInRaw || 0);
+    if (!amountIn && Number(body.accumulated) > 0) amountIn = Number(body.accumulated);
+    if (!amountIn && Number(data.accumulated) > 0) amountIn = Number(data.accumulated);
 
     const referenceCode =
       body.referenceCode ??

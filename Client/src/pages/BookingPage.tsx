@@ -607,7 +607,9 @@ const BookingPage: React.FC = () => {
   if (loadingTour) {
     return (
       <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
-        <Spin size="large" tip="Đang tải thông tin tour..." />
+        <Spin size="large" spinning tip="Đang tải thông tin tour...">
+          <div style={{ minHeight: 240 }} />
+        </Spin>
       </div>
     );
   }

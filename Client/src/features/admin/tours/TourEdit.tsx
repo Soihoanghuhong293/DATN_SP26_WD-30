@@ -277,7 +277,13 @@ const TourEdit = () => {
   };
 
   if (isTourLoading) {
-    return <div className="flex justify-center items-center h-screen"><Spin size="large" tip="Đang tải dữ liệu tour..." /></div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spin size="large" spinning tip="Đang tải dữ liệu tour...">
+          <div style={{ minHeight: 120, minWidth: 200 }} />
+        </Spin>
+      </div>
+    );
   }
 
   return (
