@@ -261,6 +261,9 @@ const TourEdit = () => {
         date: item.date ? item.date.format('YYYY-MM-DD') : null
       })).filter((item: any) => item.date) || []
     };
+    // Backend không cho sửa itinerary (schedule) khi update tour
+    // => không gửi schedule lên để tránh bị reject
+    delete (payload as any).schedule;
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)

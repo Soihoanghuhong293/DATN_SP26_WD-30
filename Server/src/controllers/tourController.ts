@@ -203,21 +203,34 @@ export const updateTour = async (req: Request, res: Response) => {
       
     }
 
+
+    // không cho sửa itinerary
+    if (req.body?.schedule) {
+      return res.status(400).json({ status: 'fail', message: 'Không được sửa itinerary (schedule)' });
+    }
+
+    // Nếu tour đã có booking: chỉ cho phép cập nhật một số trường "an toàn"
+    // (ví dụ: lịch khởi hành để mở thêm ngày mới, nhà cung cấp, trạng thái hiển thị, ảnh, chính sách).
+    // Không cho phép chỉnh sửa các trường ảnh hưởng trực tiếp tới booking hiện hữu (giá, thời lượng, danh mục, mô tả...).
     const hasBooking = await Booking.exists({ tour_id: req.params.id, status: { $ne: 'cancelled' } });
 
     // Đã có booking: chỉ cho phần “nội dung hiển thị / trạng thái bán” để tránh phá lịch trình & giá đã chốt với khách.
     if (hasBooking) {
-      const safeKeys = ['status', 'description', 'images', 'policies'] as const;
-      for (const key of safeKeys) {
-        if (req.body[key] !== undefined) (tour as any)[key] = req.body[key];
+      const allowedWhenHasBooking = new Set([
+        'departure_schedule',
+        'suppliers',
+        'status',
+        'images',
+        'policies',
+      ]);
+      const incomingKeys = Object.keys(req.body || {}).filter((k) => req.body?.[k] !== undefined);
+      const invalid = incomingKeys.filter((k) => !allowedWhenHasBooking.has(k));
+      if (invalid.length > 0) {
+        return res.status(409).json({
+          status: 'fail',
+          message: `Tour đã có booking, không thể chỉnh sửa các trường: ${invalid.join(', ')}`,
+        });
       }
-      await tour.save();
-      return res.status(200).json({
-        status: 'success',
-        data: tour,
-        notice:
-          'Tour đã có đơn đặt: chỉ lưu trạng thái, mô tả, ảnh và chính sách. Để sửa lịch trình, giá, NCC… cần không còn booking (hoặc hủy các đơn tương ứng).',
-      });
     }
 
     // validate template tồn tại (nếu có)
@@ -234,36 +247,50 @@ export const updateTour = async (req: Request, res: Response) => {
     // validate & cập nhật lịch khởi hành (nhiều ngày)
     if (req.body?.departure_schedule !== undefined) {
       const ds = Array.isArray(req.body.departure_schedule) ? req.body.departure_schedule : [];
-      const normalized: { date: string; slots: number }[] = [];
-      for (const row of ds) {
-        const dateStr = normalizeDateStr(row?.date);
-        const slots = Number(row?.slots || 0);
-        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      if (!ds.length) {
+        return res.status(400).json({ status: 'fail', message: 'Thiếu ngày khởi hành' });
+      }
+
+      const normalized = ds
+        .map((x: any) => ({
+          date: normalizeDateStr(x?.date),
+          slots: Number(x?.slots || 0),
+        }))
+        .filter((x: any) => x.date);
+
+      if (!normalized.length) {
+        return res.status(400).json({ status: 'fail', message: 'Thiếu ngày khởi hành' });
+      }
+
+      for (const item of normalized) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date)) {
           return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành không hợp lệ (YYYY-MM-DD)' });
         }
-        if (slots <= 0) {
+        if (!Number.isFinite(item.slots) || item.slots <= 0) {
           return res.status(400).json({ status: 'fail', message: 'Số chỗ phải lớn hơn 0' });
         }
-        normalized.push({ date: dateStr, slots });
       }
-      const seen = new Set<string>();
-      for (const row of normalized) {
-        if (seen.has(row.date)) {
-          return res.status(400).json({ status: 'fail', message: `Ngày ${row.date} bị trùng trong danh sách khởi hành` });
+
+      // check trùng ngày trong cùng payload
+      const dateSet = new Set<string>();
+      for (const item of normalized) {
+        if (dateSet.has(item.date)) {
+          return res.status(400).json({ status: 'fail', message: `Ngày khởi hành bị trùng trong danh sách: ${item.date}` });
         }
-        seen.add(row.date);
-        const existed = await Tour.findOne({
-          _id: { $ne: tour._id },
-          name: tour.name,
-          'departure_schedule.date': row.date,
-        });
-        if (existed) {
-          return res.status(400).json({
-            status: 'fail',
-            message: `Ngày ${row.date} bị trùng với instance tour khác cùng tên`,
-          });
-        }
+        dateSet.add(item.date);
       }
+
+      // check trùng ngày với instance khác (cùng tên tour)
+      const dates = Array.from(dateSet);
+      const existed = await Tour.findOne({
+        _id: { $ne: tour._id },
+        name: tour.name,
+        'departure_schedule.date': { $in: dates },
+      });
+      if (existed) {
+        return res.status(400).json({ status: 'fail', message: 'Có ngày khởi hành bị trùng với instance khác' });
+      }
+
       (tour as any).departure_schedule = normalized;
     }
 
