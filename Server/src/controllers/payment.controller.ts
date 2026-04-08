@@ -90,12 +90,23 @@ export const generateSepayQR = async (req: Request, res: Response) => {
     const total = Number(booking.total_price || 0);
     let amountToPay = Number.isFinite(total) ? total : 0;
     
-    if (pay_type === 'deposit') {
+    const payTypeNorm = String(pay_type || 'full').toLowerCase();
+
+    if (payTypeNorm === 'deposit') {
       const dep = Number(booking.deposit_amount || 0);
       amountToPay = dep > 0 ? dep : Math.round(amountToPay * 0.3);
-    } else if (pay_type === 'remaining') {
+    } else if (payTypeNorm === 'remaining') {
+      // Đã thu thực tế (webhook SePay tích lũy paid_amount); fallback deposit_amount / 30% nếu dữ liệu cũ
+      const paidSoFar = Number(booking.paid_amount || 0);
       const dep = Number(booking.deposit_amount || 0);
-      amountToPay = Math.max(0, amountToPay - (Number.isFinite(dep) ? dep : 0));
+      let already = Math.max(
+        Number.isFinite(paidSoFar) ? paidSoFar : 0,
+        Number.isFinite(dep) ? dep : 0
+      );
+      if (!already && booking.payment_status === 'deposit' && total > 0) {
+        already = Math.round(total * 0.3);
+      }
+      amountToPay = Math.max(0, total - already);
     }
 
     const transferContent = `SP${id}`; 
@@ -218,20 +229,29 @@ export const handleSepayWebhook = async (req: Request, res: Response) => {
       return res.json({ success: true, message: 'Đơn hàng không tồn tại' });
     }
 
-    
     const total = Number(booking.total_price || 0);
-    let newPaymentStatus: any = booking.payment_status || 'unpaid';
-    if (amountIn >= total && total > 0) newPaymentStatus = 'paid';
-    else newPaymentStatus = 'deposit';
+    const prevPaid = Number(booking.paid_amount || 0);
+    if (total > 0 && prevPaid >= total && booking.payment_status === 'paid') {
+      return res.json({ success: true, message: 'Đơn đã thanh toán đủ' });
+    }
+
+    const combined = total > 0 ? Math.min(total, prevPaid + amountIn) : prevPaid + amountIn;
+
+    const newPaymentStatus = combined >= total && total > 0 ? 'paid' : 'deposit';
 
     const paymentLog = {
       time: new Date(),
       user: 'SePay Webhook',
       old: booking.payment_status || 'unpaid',
       new: newPaymentStatus,
-      note: `Khách chuyển khoản ${amountIn.toLocaleString('vi-VN')}đ. Mã GD: ${referenceCode}`
+      note: `Nhận ${amountIn.toLocaleString('vi-VN')}đ (lũy kế ${combined.toLocaleString('vi-VN')}đ / ${total.toLocaleString('vi-VN')}đ). Mã GD: ${referenceCode}`
     };
 
+    booking.paid_amount = combined;
+    booking.remaining_amount = total > 0 ? Math.max(0, total - combined) : 0;
+    if (combined > 0 && combined < total) {
+      booking.deposit_amount = Math.max(Number(booking.deposit_amount || 0), combined);
+    }
     booking.payment_status = newPaymentStatus;
     booking.logs.push(paymentLog);
     await booking.save();

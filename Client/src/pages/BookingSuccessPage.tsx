@@ -7,6 +7,13 @@ import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
+const RAW_BASE = ((import.meta.env?.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
+const API_V1 = RAW_BASE
+  ? RAW_BASE.endsWith("/api/v1")
+    ? RAW_BASE
+    : `${RAW_BASE}/api/v1`
+  : "http://localhost:5000/api/v1";
+
 const getPaymentStatusInfo = (booking: any) => {
   const paymentStatus = booking?.payment_status
     || (booking?.status === 'paid' ? 'paid'
@@ -38,7 +45,7 @@ const BookingSuccessPage = () => {
   useEffect(() => {
     const fetchBooking = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/v1/bookings/${id}`);
+        const res = await axios.get(`${API_V1}/bookings/${id}`);
         setBooking(res.data.data || res.data);
       } catch (error) {
         message.error('Không tìm thấy thông tin đơn hàng');
@@ -61,16 +68,28 @@ const BookingSuccessPage = () => {
   const paymentMethod = booking.paymentMethod || 'full';
   const isDeposit = paymentMethod === 'deposit';
   const isLater = paymentMethod === 'later';
-  const depositAmount = Number(booking?.deposit_amount || Math.round(Number(totalPrice || 0) * 0.3));
-  const remainingAmount = Math.max(0, Number(totalPrice || 0) - depositAmount);
   const isPaid = paymentStatus === 'paid';
   const isDeposited = paymentStatus === 'deposit';
+  const totalNum = Number(totalPrice || 0);
+  const estimate30 = totalNum > 0 ? Math.round(totalNum * 0.3) : 0;
+  const depField = Number(booking?.deposit_amount || 0);
+  const paidSoFar = Number(booking?.paid_amount || 0);
+  let credited = Math.max(
+    Number.isFinite(paidSoFar) ? paidSoFar : 0,
+    Number.isFinite(depField) ? depField : 0
+  );
+  if (isDeposited && !credited && totalNum > 0) {
+    credited = estimate30;
+  }
+  const depositAmount =
+    isPaid ? totalNum : credited > 0 ? credited : isDeposit ? (depField > 0 ? depField : estimate30) : 0;
+  const remainingAmount = Math.max(0, totalNum - (isPaid ? totalNum : credited));
   const paymentAmount =
     isLater ? 0
     : isPaid ? 0
     : isDeposited ? remainingAmount
     : isDeposit ? depositAmount
-    : totalPrice;
+    : totalNum;
   const paymentStatusInfo = getPaymentStatusInfo(booking);
   const bookingStatusInfo = getBookingStatusInfo(booking);
 
