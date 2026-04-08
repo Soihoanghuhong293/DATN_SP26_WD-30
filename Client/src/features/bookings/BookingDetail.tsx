@@ -12,7 +12,7 @@ import {
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,
-  FileExcelOutlined, PlusOutlined, UploadOutlined, ShopOutlined, CarOutlined
+  FileExcelOutlined,   PlusOutlined, UploadOutlined, ShopOutlined, CarOutlined, BookOutlined, PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -414,6 +414,95 @@ const BookingDetail = () => {
       })),
     ];
 
+    const diaryEntries: any[] = Array.isArray((booking as any)?.diary_entries)
+      ? (booking as any).diary_entries
+      : [];
+
+    const getDiaryForDay = (dayNum: number) =>
+      diaryEntries.find((e: any) => Number(e?.day_no ?? 1) === Number(dayNum));
+
+    const renderDiaryForDay = (dayNum: number) => {
+      const entry = getDiaryForDay(dayNum);
+      if (!entry) {
+        return (
+          <div style={{ marginTop: 16, padding: '12px 14px', background: '#f9fafb', borderRadius: 10, border: '1px dashed #e5e7eb' }}>
+            <Space size={8}>
+              <BookOutlined style={{ color: '#94a3b8' }} />
+              <Text type="secondary" italic>Chưa có nhật ký hành trình từ HDV cho ngày này.</Text>
+            </Space>
+          </div>
+        );
+      }
+      const imgs = Array.isArray(entry.images) ? entry.images.filter((x: any) => x?.url) : [];
+      return (
+        <Card
+          size="small"
+          title={
+            <Space>
+              <BookOutlined style={{ color: '#2563eb' }} />
+              <span>Nhật ký hành trình (HDV)</span>
+              {entry.created_by ? <Tag color="blue">{String(entry.created_by)}</Tag> : null}
+            </Space>
+          }
+          style={{ marginTop: 16, background: '#f8fafc', borderColor: '#e2e8f0' }}
+        >
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            {entry.date ? (
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {dayjs(entry.date).format('DD/MM/YYYY')}
+                {entry.title ? ` · ${entry.title}` : ''}
+              </Text>
+            ) : entry.title ? (
+              <Text strong>{entry.title}</Text>
+            ) : null}
+            {entry.highlight ? (
+              <div
+                style={{
+                  padding: '8px 10px',
+                  background: '#fffbeb',
+                  borderLeft: '3px solid #f59e0b',
+                  borderRadius: 4,
+                  fontWeight: 600,
+                  color: '#92400e',
+                }}
+              >
+                {entry.highlight}
+              </div>
+            ) : null}
+            {entry.content ? (
+              <div style={{ whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.65 }}>{entry.content}</div>
+            ) : !entry.highlight ? (
+              <Text type="secondary" italic>HDV chưa nhập nội dung chi tiết.</Text>
+            ) : null}
+            {imgs.length > 0 ? (
+              <div>
+                <Divider orientation="left" plain style={{ margin: '12px 0 8px', fontSize: 12 }}>
+                  <PictureOutlined /> Hình ảnh ({imgs.length})
+                </Divider>
+                <Space wrap size={[8, 8]}>
+                  {imgs.map((img: any, ii: number) => (
+                    <a key={ii} href={img.url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={img.url}
+                        alt={img.name || `Ảnh ${ii + 1}`}
+                        style={{
+                          width: 96,
+                          height: 96,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '1px solid #e2e8f0',
+                        }}
+                      />
+                    </a>
+                  ))}
+                </Space>
+              </div>
+            ) : null}
+          </Space>
+        </Card>
+      );
+    };
+
     if (checkpointDays.length === 0) {
       return <Empty description="Chưa có dữ liệu checkpoint để hiển thị điểm danh." />;
     }
@@ -500,6 +589,7 @@ const BookingDetail = () => {
                   }}
                 />
               )}
+              {renderDiaryForDay(d.day)}
             </div>
           ),
         }))}
