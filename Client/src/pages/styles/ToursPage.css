@@ -64,6 +64,12 @@
   margin-bottom: 16px;
 }
 
+.filter-group-destination {
+  flex: 3 1 220px;
+  min-width: 180px;
+  max-width: none;
+}
+
 .tours-filter-row-extra {
   padding-top: 16px;
   border-top: 1px solid #e5e7eb;
@@ -307,8 +313,10 @@
   }
 
   .filter-group,
-  .filter-group-budget {
+  .filter-group-budget,
+  .filter-group-destination {
     min-width: 0;
+    max-width: none;
   }
 
   .filter-input {

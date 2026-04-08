@@ -9,6 +9,19 @@ export type CategoryOption = {
 
 export const getCategoryId = (c: Pick<ICategory, 'id' | '_id'>): string => String(c.id || c._id || '');
 
+/** category_id có thể là string hoặc object sau khi populate từ API tour. */
+export function getTourCategoryId(tour: { category_id?: unknown }): string | null {
+  const raw: unknown = tour?.category_id;
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  if (typeof raw === 'object') {
+    const o = raw as { id?: string; _id?: string };
+    const id = String(o.id || o._id || '').trim();
+    return id || null;
+  }
+  return null;
+}
+
 export function flattenCategoryTree(
   nodes: ICategory[],
   opts: { separator?: string; indentUnit?: string; includePath?: boolean } = {}
