@@ -556,7 +556,7 @@ export const getBooking = async (req: Request, res: Response) => {
     const booking = await Booking.findById(req.params.id)
       .populate(
         'tour_id',
-        'name duration_days images schedule suppliers description price slug status departure_schedule',
+        'name duration_days images schedule suppliers description policies price slug status departure_schedule',
       )
       .populate('guide_id', 'name phone email')  
       .populate('user_id', 'name phone email');  

@@ -111,7 +111,14 @@ const BookingDetail = () => {
 
   const tourInfo = useMemo(() => {
     if (!booking) return null;
-    return toursData?.find((t: any) => t._id === (booking.tour_id?._id || booking.tour_id)) || booking.tour_id;
+    const tidRaw = booking.tour_id?._id || booking.tour_id;
+    const fromList = toursData?.find((t: any) => String(t._id) === String(tidRaw));
+    const fromPopulate =
+      booking.tour_id && typeof booking.tour_id === 'object' ? (booking.tour_id as any) : null;
+    if (!fromList && !fromPopulate) {
+      return typeof tidRaw === 'string' ? ({ _id: tidRaw } as any) : null;
+    }
+    return { ...(fromList || {}), ...(fromPopulate || {}) };
   }, [booking, toursData]);
 
   const displayEndDate = useMemo(() => {
@@ -882,24 +889,144 @@ const BookingDetail = () => {
     );
   };
 
-  const DetailsTab = () => (
-    <Row gutter={24}>
-       <Col span={12}>
-          <Card title={<Space><ProfileOutlined /> Lịch trình chi tiết</Space>} bordered={true} className="saas-card">
-              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: '1.6' }}>
-                  {booking.schedule_detail || <Text type="secondary" italic>Chưa có dữ liệu lịch trình.</Text>}
+  const DetailsTab = () => {
+    const tour = tourInfo as any;
+    const scheduleFromTour: any[] = Array.isArray(tour?.schedule) ? tour.schedule : [];
+
+    const renderScheduleFromTour = () => {
+      if (scheduleFromTour.length === 0) return null;
+      const rows = scheduleFromTour
+        .map((d: any, idx: number) => ({
+          day: Number(d?.day ?? idx + 1),
+          title: d?.title || `Ngày ${idx + 1}`,
+          activities: Array.isArray(d?.activities) ? d.activities.filter((x: any) => typeof x === 'string' && x.trim()) : [],
+        }))
+        .sort((a, b) => a.day - b.day);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {rows.map((d) => (
+            <div
+              key={d.day}
+              style={{
+                padding: 14,
+                background: '#f9fafb',
+                borderRadius: 10,
+                border: '1px solid #e5e7eb',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 10, color: '#111827' }}>
+                <Tag color="blue" style={{ marginRight: 8 }}>Ngày {d.day}</Tag>
+                {d.title}
               </div>
-          </Card>
-       </Col>
-       <Col span={12}>
-          <Card title={<Space><ProfileOutlined /> Dịch vụ & Chính sách</Space>} bordered={true} className="saas-card">
-              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: '1.6' }}>
-                  {booking.service_detail || <Text type="secondary" italic>Chưa có dữ liệu chính sách.</Text>}
+              {d.activities.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 20, color: '#374151', lineHeight: 1.65 }}>
+                  {d.activities.map((act: string, i: number) => (
+                    <li key={i} style={{ marginBottom: 4 }}>
+                      {act}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Text type="secondary">Chưa khai báo hoạt động chi tiết cho ngày này.</Text>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    const policiesList: string[] = Array.isArray(tour?.policies)
+      ? tour.policies.filter((x: any) => typeof x === 'string' && x.trim())
+      : [];
+    const tourDesc = tour?.description ? String(tour.description).trim() : '';
+    const hasBookingSchedule = !!String(booking.schedule_detail || '').trim();
+    const hasBookingService = !!String(booking.service_detail || '').trim();
+
+    const renderPoliciesFromTour = () => {
+      if (!tourDesc && policiesList.length === 0) return null;
+      return (
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          {tourDesc ? (
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                Mô tả tour
+              </Text>
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.65 }}>
+                {tourDesc}
               </div>
+            </div>
+          ) : null}
+          {policiesList.length > 0 ? (
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                Chính sách &amp; lưu ý
+              </Text>
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#374151', lineHeight: 1.65 }}>
+                {policiesList.map((p: string, i: number) => (
+                  <li key={i} style={{ marginBottom: 6 }}>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Space>
+      );
+    };
+
+    return (
+      <Row gutter={24}>
+        <Col xs={24} lg={12}>
+          <Card title={<Space><ProfileOutlined /> Lịch trình chi tiết</Space>} bordered className="saas-card">
+            {hasBookingSchedule ? (
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.65 }}>
+                {booking.schedule_detail}
+              </div>
+            ) : scheduleFromTour.length > 0 ? (
+              <>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 14, fontSize: 13 }}>
+                  Hiển thị theo lịch trình tour đã đặt
+                  {tour?.name ? (
+                    <>
+                      {' '}
+                      (<Text strong>{tour.name}</Text>)
+                    </>
+                  ) : null}
+                  .
+                </Text>
+                {renderScheduleFromTour()}
+              </>
+            ) : (
+              <Text type="secondary" italic>
+                Chưa có lịch trình (booking không ghi chữ và tour chưa có mục schedule).
+              </Text>
+            )}
           </Card>
-       </Col>
-    </Row>
-  );
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title={<Space><ProfileOutlined /> Dịch vụ &amp; chính sách</Space>} bordered className="saas-card">
+            {hasBookingService ? (
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.65 }}>
+                {booking.service_detail}
+              </div>
+            ) : renderPoliciesFromTour() ? (
+              <>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 14, fontSize: 13 }}>
+                  Hiển thị mô tả và chính sách từ tour đã đặt.
+                </Text>
+                {renderPoliciesFromTour()}
+              </>
+            ) : (
+              <Text type="secondary" italic>
+                Chưa có dữ liệu (booking không ghi chữ và tour chưa có mô tả/chính sách).
+              </Text>
+            )}
+          </Card>
+        </Col>
+      </Row>
+    );
+  };
 
   return (
     <ConfigProvider
