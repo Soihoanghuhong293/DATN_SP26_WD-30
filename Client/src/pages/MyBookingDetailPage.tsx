@@ -104,8 +104,18 @@ const MyBookingDetailPage: React.FC = () => {
           </div>
           <Space>
             <Button onClick={() => navigate("/my-bookings")}>Quay lại</Button>
-            <Button type="primary" onClick={() => navigate(`/booking/success/${id}`)}>
-              Thanh toán / Hóa đơn
+            <Button
+              type="primary"
+              onClick={() => {
+                const ps = String(booking?.payment_status || "");
+                if (ps === "deposit" || ps === "unpaid") {
+                  navigate(`/booking/payment/${id}?gateway=bank`);
+                } else {
+                  navigate(`/booking/success/${id}`);
+                }
+              }}
+            >
+              {String(booking?.payment_status || "") === "paid" ? "Xem hóa đơn" : "Thanh toán / Hóa đơn"}
             </Button>
           </Space>
         </div>
