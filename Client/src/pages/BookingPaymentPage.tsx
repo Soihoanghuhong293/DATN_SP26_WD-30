@@ -5,21 +5,28 @@ import axios from "axios";
 
 const { Title, Text } = Typography;
 
-const API_V1 =
-  (import.meta.env?.VITE_API_URL as string | undefined) || "http://localhost:5000/api/v1";
+/** Hỗ trợ cả VITE_API_URL = .../api/v1 và chỉ ...:5000 */
+const RAW_BASE = (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
+const API_V1 = RAW_BASE
+  ? RAW_BASE.endsWith("/api/v1")
+    ? RAW_BASE
+    : `${RAW_BASE}/api/v1`
+  : "http://localhost:5000/api/v1";
 const SERVER_ORIGIN = API_V1.replace(/\/api\/v1\/?$/, "");
 
 const getPaymentStatus = (booking: any): "unpaid" | "deposit" | "paid" | "refunded" => {
-  const s =
-    booking?.payment_status ||
+  const raw =
+    booking?.payment_status ??
     (booking?.status === "paid"
       ? "paid"
       : booking?.status === "deposit"
         ? "deposit"
         : booking?.status === "refunded"
           ? "refunded"
-          : "unpaid");
-  return s as "unpaid" | "deposit" | "paid" | "refunded";
+          : null);
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : raw;
+  if (s === "paid" || s === "deposit" || s === "refunded" || s === "unpaid") return s;
+  return "unpaid";
 };
 
 /** xử lí nhận tiền */
@@ -51,6 +58,7 @@ const BookingPaymentPage: React.FC = () => {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const baselinePaymentRef = useRef<string | null>(null);
+  const hasNavigatedToSuccessRef = useRef(false);
 
   const [qrLoading, setQrLoading] = useState(false);
   const [qrData, setQrData] = useState<SepayQrPayload | null>(null);
@@ -62,7 +70,8 @@ const BookingPaymentPage: React.FC = () => {
   const refreshBooking = async () => {
     if (!id) return null;
     const res = await axios.get(`${API_V1}/bookings/${id}`, {
-      params: { _t: new Date().getTime() },
+      params: { _t: Date.now() },
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
     });
     const b = res.data.data || res.data;
     setBooking(b);
@@ -87,6 +96,21 @@ const BookingPaymentPage: React.FC = () => {
     if (!booking || baselinePaymentRef.current !== null) return;
     baselinePaymentRef.current = getPaymentStatus(booking);
   }, [booking]);
+
+  useEffect(() => {
+    if (useMomoMock || loading || !id || hasNavigatedToSuccessRef.current) return;
+    if (!booking || baselinePaymentRef.current === null) return;
+    const baseline = baselinePaymentRef.current;
+    const next = getPaymentStatus(booking);
+    if (!pollPaymentReached(baseline, next)) return;
+    hasNavigatedToSuccessRef.current = true;
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    message.success("Thanh toán đã được xác nhận!");
+    navigate(`/booking/success/${id}`, { replace: true });
+  }, [booking, loading, id, navigate, useMomoMock]);
 
   const totalPrice = booking?.total_price || booking?.totalPrice || 0;
   const paymentMethod = booking?.paymentMethod || "full";
@@ -153,12 +177,14 @@ const BookingPaymentPage: React.FC = () => {
         if (!b) return;
         const next = getPaymentStatus(b);
         if (pollPaymentReached(baseline, next)) {
+          if (hasNavigatedToSuccessRef.current) return;
+          hasNavigatedToSuccessRef.current = true;
           if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
           }
           message.success("Thanh toán đã được xác nhận!");
-          navigate(`/booking/success/${id}`);
+          navigate(`/booking/success/${id}`, { replace: true });
           return;
         }
         setPollHint(`Chưa ghi nhận thanh toán (trạng thái: ${next}).`);
@@ -350,9 +376,9 @@ const BookingPaymentPage: React.FC = () => {
         {paymentAmount <= 0 ? (
           <Alert type="info" message="Không có số tiền cần thanh toán." showIcon />
         ) : qrLoading ? (
-          <div style={{ padding: 32 }}>
-            <Spin tip="Đang tạo mã QR..." />
-          </div>
+          <Spin spinning tip="Đang tạo mã QR...">
+            <div style={{ padding: 32, minHeight: 120 }} />
+          </Spin>
         ) : qrData?.qrUrl ? (
           <>
             <div

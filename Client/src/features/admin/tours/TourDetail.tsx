@@ -443,7 +443,9 @@ const TourDetail = () => {
             </div>
             ))
           ) : tour?.suppliers?.length > 0 ? (
-            <Spin size="small" tip="Đang tải thông tin NCC..." />
+            <Spin size="small" spinning tip="Đang tải thông tin NCC...">
+              <div style={{ minHeight: 48 }} />
+            </Spin>
           ) : (
             <div>
               <Text type="secondary">Chưa chọn nhà cung cấp</Text>
