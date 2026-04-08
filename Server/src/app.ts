@@ -27,6 +27,7 @@ import contactMessageRouter from './routes/contactMessage.routes.js';
 import holidayPricingRoutes from './routes/holidayPricing.routes';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
+import guideReviewRoutes from './routes/guideReview.routes';
 import path from 'path';
 import { generateSepayQR, handleSepayWebhook, getLastSepayWebhookDebug } from './controllers/payment.controller';
 
@@ -70,6 +71,7 @@ app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);
 
 app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
+app.use('/api/v1/guide-reviews', guideReviewRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 
 // SePay / VietQR: QR chuyển khoản (theo spec: GET /sepay/qr/:id)

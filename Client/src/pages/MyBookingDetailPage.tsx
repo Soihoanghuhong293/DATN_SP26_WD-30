@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message } from "antd";
+import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -28,11 +28,54 @@ const bookingStatusInfo = (status: string) => {
   return { color: "green" as const, label: "Đã xác nhận" };
 };
 
+const toVietnameseLogValue = (raw: unknown) => {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+
+  const map: Record<string, string> = {
+    // tour_stage
+    scheduled: "Chưa bắt đầu",
+    in_progress: "Đang diễn ra",
+    completed: "Đã kết thúc",
+
+    // payment_status
+    unpaid: "Chưa thanh toán",
+    deposit: "Đã đặt cọc",
+    paid: "Đã thanh toán",
+    refunded: "Đã hoàn tiền",
+
+    // booking status
+    pending: "Chờ xử lý",
+    confirmed: "Đã xác nhận",
+    cancelled: "Đã hủy",
+  };
+
+  // nếu log lưu dạng "scheduled" hoặc "unpaid"...
+  if (map[s]) return map[s];
+
+  // nếu log lưu dạng "scheduled -> in_progress" hoặc "scheduled - in_progress"
+  const normalized = s.replace(/\s+→\s+/g, "→").replace(/\s*-\s*/g, "→");
+  if (normalized.includes("→")) {
+    const parts = normalized.split("→").map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const left = map[parts[0]] || parts[0];
+      const right = map[parts[1]] || parts[1];
+      return `${left} → ${right}`;
+    }
+  }
+
+  return s;
+};
+
 const MyBookingDetailPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
+  const [myReview, setMyReview] = useState<any>(null);
+  const [reviewScore, setReviewScore] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>("");
+  const [submittingReview, setSubmittingReview] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -51,6 +94,22 @@ const MyBookingDetailPage: React.FC = () => {
     fetchDetail();
   }, [id]);
 
+  useEffect(() => {
+    const fetchMyReview = async () => {
+      if (!id) return;
+      try {
+        const res = await axios.get(`${API_V1}/guide-reviews/me`, {
+          ...getAuthHeader(),
+          params: { booking_id: id },
+        });
+        setMyReview(res.data?.data || null);
+      } catch {
+        setMyReview(null);
+      }
+    };
+    fetchMyReview();
+  }, [id]);
+
   const tourName = booking?.tour_id?.name || "Tour";
   const pay = paymentStatusInfo(booking?.payment_status || "unpaid");
   const st = bookingStatusInfo(booking?.status || "confirmed");
@@ -58,6 +117,11 @@ const MyBookingDetailPage: React.FC = () => {
   const total = Number(booking?.total_price || booking?.totalPrice || 0);
   const deposit = Number(booking?.deposit_amount || Math.round(total * 0.3));
   const remaining = Math.max(0, total - deposit);
+  const tourStage = String(booking?.tour_stage || "scheduled");
+  const canReview =
+    String(booking?.status || "") !== "cancelled" &&
+    tourStage === "completed" &&
+    Boolean(booking?.guide_id);
 
   const logs = useMemo(() => {
     const arr = Array.isArray(booking?.logs) ? booking.logs : [];
@@ -159,6 +223,75 @@ const MyBookingDetailPage: React.FC = () => {
 
           <Divider />
 
+          <Title level={4} style={{ marginBottom: 10 }}>Đánh giá hướng dẫn viên</Title>
+          {booking?.guide_id ? (
+            <Text type="secondary">
+              Hướng dẫn viên: <Text strong>{booking.guide_id?.name || "—"}</Text>
+            </Text>
+          ) : (
+            <Text type="secondary">Chưa có hướng dẫn viên.</Text>
+          )}
+
+          <div style={{ marginTop: 12 }}>
+            {!canReview ? (
+              <Empty
+                description={
+                  tourStage !== "completed"
+                    ? "Tour chưa kết thúc nên chưa thể đánh giá."
+                    : String(booking?.status || "") === "cancelled"
+                    ? "Booking đã hủy nên không thể đánh giá."
+                    : "Booking chưa có hướng dẫn viên để đánh giá."
+                }
+              />
+            ) : myReview ? (
+              <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
+                <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                  <Rate disabled value={Number(myReview?.score || 0)} />
+                  <Text>{myReview?.comment || "Không có nội dung."}</Text>
+                </Space>
+              </Card>
+            ) : (
+              <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  <Rate value={reviewScore} onChange={(v) => setReviewScore(v)} />
+                  <Input.TextArea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Viết đánh giá của bạn về hướng dẫn viên..."
+                    autoSize={{ minRows: 3, maxRows: 6 }}
+                    maxLength={1000}
+                    showCount
+                  />
+                  <Button
+                    type="primary"
+                    loading={submittingReview}
+                    onClick={async () => {
+                      if (!id) return;
+                      setSubmittingReview(true);
+                      try {
+                        const res = await axios.post(
+                          `${API_V1}/guide-reviews`,
+                          { booking_id: id, score: reviewScore, comment: reviewComment },
+                          getAuthHeader()
+                        );
+                        setMyReview(res.data?.data || null);
+                        message.success("Đã gửi đánh giá");
+                      } catch (e: any) {
+                        message.error(e?.response?.data?.message || "Gửi đánh giá thất bại");
+                      } finally {
+                        setSubmittingReview(false);
+                      }
+                    }}
+                  >
+                    Gửi đánh giá
+                  </Button>
+                </Space>
+              </Card>
+            )}
+          </div>
+
+          <Divider />
+
           <Title level={4} style={{ marginBottom: 10 }}>Lịch sử</Title>
           {logs.length ? (
             <Timeline
@@ -171,8 +304,8 @@ const MyBookingDetailPage: React.FC = () => {
                       <Text type="secondary">{l.user || ""}</Text>
                     </div>
                     <div style={{ marginTop: 4 }}>
-                      <Text type="secondary">{l.old ? `${l.old} → ` : ""}</Text>
-                      <Text strong>{l.next || ""}</Text>
+                      <Text type="secondary">{l.old ? `${toVietnameseLogValue(l.old)} → ` : ""}</Text>
+                      <Text strong>{toVietnameseLogValue(l.next) || ""}</Text>
                     </div>
                     {l.note ? <div style={{ marginTop: 4 }}><Text>{l.note}</Text></div> : null}
                   </div>
