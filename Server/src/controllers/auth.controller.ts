@@ -32,6 +32,14 @@ export const register = async (req: Request, res: Response) => {
         user_id: user._id, // Khóa ngoại 1-1
         name: user.name,   // Đẩy tên qua luôn
         email: user.email, // Đẩy email qua
+        // Tránh lỗi unique index phone_1 với giá trị null (DB cũ có thể không-sparse)
+        phone: `AUTO-${String(user._id)}`,
+        languages: ["Vietnamese"],
+        experience: { years: 0 },
+        group_type: "domestic",
+        health_status: "healthy",
+        history: [],
+        rating: { average: 0, totalReviews: 0, reviews: [] },
       });
     }
 

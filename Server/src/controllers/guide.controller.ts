@@ -1,13 +1,85 @@
 import { Request, Response, NextFunction } from 'express';
 import Guide from '../models/Guide'; // Thêm .js nếu project của bạn yêu cầu
+import User from '../models/user.model';
+import GuideReview from '../models/GuideReview';
 import { catchAsync } from '../utils/catchAsync';
 import { AppError } from '../utils/AppError';
 import mongoose from 'mongoose';
 
 const isValidObjectId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
+const ensureGuideDocsForGuideUsers = async () => {
+  // Đồng bộ: mọi User role guide/hdv đều có 1 Guide document
+  const guideUsers = await User.find({ role: { $in: ['guide', 'hdv'] } }).select('_id name email');
+  if (!guideUsers.length) return;
+
+  const existing = await Guide.find({ user_id: { $in: guideUsers.map((u) => u._id) } }).select('user_id');
+  const existingSet = new Set(existing.map((g: any) => String(g.user_id)));
+
+  const toCreate = guideUsers.filter((u) => !existingSet.has(String(u._id)));
+  if (!toCreate.length) return;
+
+  await Guide.insertMany(
+    toCreate.map((u) => ({
+      user_id: u._id,
+      name: u.name || u.email || 'Hướng dẫn viên',
+      email: u.email,
+      // Một số DB đã tạo unique index `phone_1` không-sparse từ trước,
+      // nên nhiều doc thiếu phone sẽ bị hiểu là null và trùng unique.
+      // Dùng giá trị placeholder unique để tránh lỗi và vẫn cho phép admin cập nhật sau.
+      phone: `AUTO-${String(u._id)}`,
+      languages: ['Vietnamese'],
+      experience: { years: 0 },
+      group_type: 'domestic',
+      health_status: 'healthy',
+      history: [],
+      rating: { average: 0, totalReviews: 0, reviews: [] },
+    })),
+    { ordered: false }
+  );
+};
+
+const recomputeAllGuideRatings = async () => {
+  const agg = await GuideReview.aggregate([
+    {
+      $group: {
+        _id: '$guide_user_id',
+        avg: { $avg: '$score' },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  if (!agg.length) {
+    // nếu chưa có review nào thì không cần bulk update
+    return;
+  }
+
+  await Guide.bulkWrite(
+    agg
+      .filter((g) => mongoose.Types.ObjectId.isValid(String(g._id)))
+      .map((g) => ({
+        updateOne: {
+          filter: { user_id: g._id },
+          update: {
+            $set: {
+              'rating.average': Number(g.avg || 0),
+              'rating.totalReviews': Number(g.count || 0),
+            },
+          },
+        },
+      })),
+    { ordered: false }
+  );
+};
+
 // 1. Lấy danh sách hướng dẫn viên
 export const getAllGuides = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+  // Auto-sync để danh sách HDV luôn khớp với bảng User
+  await ensureGuideDocsForGuideUsers();
+  // Backfill rating từ bảng GuideReview để UI luôn đúng (kể cả review cũ)
+  await recomputeAllGuideRatings();
+
   const { group_type, health_status, search, language } = req.query as Record<string, string | undefined>;
 
   const filter: Record<string, any> = {};
