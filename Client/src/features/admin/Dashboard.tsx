@@ -67,7 +67,7 @@ function HintTip({ text }: { text: string }) {
   return (
     <Tooltip title={text} placement="topLeft">
       <QuestionCircleOutlined
-        style={{ marginLeft: 5, fontSize: 13, color: "#94a3b8", cursor: "help" }}
+        style={{ marginLeft: 5, fontSize: 13, color: "#64748b", cursor: "help" }}
         aria-label="Giải thích"
       />
     </Tooltip>
@@ -172,7 +172,7 @@ function DeltaInline({
           0{suffix}
         </span>
         <Tooltip title="Không đổi so với kỳ liền trước (cùng độ dài kỳ).">
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#94a3b8", cursor: "default" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#64748b", cursor: "default" }}>
             Bằng kỳ trước
             <QuestionCircleOutlined style={{ fontSize: 11 }} />
           </span>
@@ -194,7 +194,7 @@ function DeltaInline({
         {up ? "+" : ""}{value}{suffix}
       </span>
       <Tooltip title="So sánh với kỳ liền trước (cùng độ dài: ngày/tháng/năm tương ứng).">
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#94a3b8", cursor: "default" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#64748b", cursor: "default" }}>
           So với kỳ trước
           <QuestionCircleOutlined style={{ fontSize: 11 }} />
         </span>
@@ -206,7 +206,7 @@ function DeltaInline({
 function OccupancyDeltaInline({ value }: { value: number | null }) {
   if (value === null) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 4, fontSize: 12, color: "#94a3b8" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 4, fontSize: 12, color: "#64748b" }}>
         <span>Chưa so sánh được</span>
         <Tooltip title="Cần lịch khởi hành có slot để ước tính và so sánh tỉ lệ lấp đầy giữa hai kỳ.">
           <QuestionCircleOutlined style={{ fontSize: 11, cursor: "help" }} />
@@ -222,7 +222,7 @@ function OccupancyDeltaInline({ value }: { value: number | null }) {
           borderRadius: 999, padding: "3px 10px",
           fontSize: 12, fontWeight: 600,
         }}>0 điểm %</span>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>Bằng kỳ trước</span>
+        <span style={{ fontSize: 12, color: "#64748b" }}>Bằng kỳ trước</span>
       </div>
     );
   }
@@ -240,7 +240,7 @@ function OccupancyDeltaInline({ value }: { value: number | null }) {
         {up ? "+" : ""}{value} điểm %
       </span>
       <Tooltip title="Chênh lệch điểm phần trăm lấp đầy so với kỳ liền trước.">
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#94a3b8", cursor: "default" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#64748b", cursor: "default" }}>
           So với kỳ trước
           <QuestionCircleOutlined style={{ fontSize: 11 }} />
         </span>
@@ -280,7 +280,7 @@ function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
         <div style={{
           position: "absolute", inset: 0, display: "flex",
           alignItems: "center", justifyContent: "center",
-          fontSize: 13, color: "#94a3b8",
+          fontSize: 13, color: "#64748b",
           border: "1px dashed #e2e8f0", borderRadius: 12,
           background: "#f8fafc",
         }}>
@@ -563,7 +563,7 @@ const Dashboard: React.FC = () => {
                 borderRadius: 10, padding: "6px 12px",
                 fontSize: 13, color: "#475569",
               }}>
-                <span style={{ color: "#94a3b8" }}>{icon}</span>
+                <span style={{ color: "#64748b" }}>{icon}</span>
                 {label}
               </span>
             ))}
@@ -572,7 +572,7 @@ const Dashboard: React.FC = () => {
 
         {/* Filter box */}
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
             <CalendarOutlined />
             Bộ lọc thời gian
           </div>
@@ -586,7 +586,7 @@ const Dashboard: React.FC = () => {
               <Radio.Button value="month" style={{ paddingInline: 16 }}>Tháng</Radio.Button>
               <Radio.Button value="year" style={{ paddingInline: 16 }}>Năm</Radio.Button>
             </Radio.Group>
-            <span style={{ fontSize: 13, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 13, color: "#64748b", display: "flex", alignItems: "center", gap: 4 }}>
               <BankOutlined />
               {period === "day" ? "Chọn ngày" : period === "month" ? "Chọn tháng" : "Chọn năm"}
             </span>
@@ -605,7 +605,7 @@ const Dashboard: React.FC = () => {
 
           <Divider style={{ margin: "16px 0", borderColor: "#f1f5f9" }} />
 
-          <Text style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+          <Text style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
             Thao tác nhanh
           </Text>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -667,7 +667,9 @@ const Dashboard: React.FC = () => {
                 icon: <PieChartOutlined style={{ fontSize: 18 }} />,
                 iconBg: "#ede9fe", iconColor: "#6d28d9",
                 value: null,
-                label: "Trạng thái",
+                label: "Trạng thái mở bán",
+                summaryLine:
+                  "Tóm tắt theo tổng tour & tour hoạt động (hai thẻ bên trái) — xem badge bên dưới.",
                 extra: data ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                     <Tag color="blue" style={{ borderRadius: 20, border: 0, padding: "2px 10px", fontSize: 12, margin: 0 }}>
@@ -702,9 +704,32 @@ const Dashboard: React.FC = () => {
                     {item.value}
                   </div>
                 )}
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: item.value !== null ? 6 : 12 }}>
-                  {item.label}
-                </div>
+                {"summaryLine" in item && item.summaryLine ? (
+                  <>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginTop: 12 }}>{item.label}</div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 400,
+                        color: "#64748b",
+                        marginTop: 6,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {item.summaryLine}
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#64748b",
+                      marginTop: item.value !== null ? 6 : 12,
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                )}
                 {item.extra}
               </div>
             ))}
@@ -737,7 +762,7 @@ const Dashboard: React.FC = () => {
                 <PieChartOutlined style={{ fontSize: 18 }} />
               </div>
               <div style={{ flex: 1 }}>
-                <Text style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>
+                <Text style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>
                   Hiệu suất kỳ chọn
                 </Text>
                 <Title level={4} style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
@@ -805,7 +830,8 @@ const Dashboard: React.FC = () => {
               <LineChartOutlined style={{ fontSize: 16, color: "#d97706", flexShrink: 0 }} />
               <span>
                 Xu hướng — xem biểu đồ chi tiết trong mục{" "}
-                <strong style={{ fontWeight: 600, color: "#0f172a" }}>Biểu đồ & top tour</strong> phía dưới.
+                <strong style={{ fontWeight: 600, color: "#0f172a" }}>Biểu đồ & top tour</strong> phía dưới (cùng nhóm với chip{" "}
+                <strong style={{ fontWeight: 600, color: "#0f172a" }}>KPI & biểu đồ</strong>).
               </span>
             </div>
           </div>
@@ -821,7 +847,7 @@ const Dashboard: React.FC = () => {
                 <LineChartOutlined style={{ fontSize: 18 }} />
               </div>
               <div>
-                <Text style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0369a1", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>
+                <Text style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>
                   Xu hướng
                 </Text>
                 <Title level={4} style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
@@ -884,7 +910,7 @@ const Dashboard: React.FC = () => {
                   ) : (
                     <div style={{
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      height: CHART_FIXED_HEIGHT, fontSize: 13, color: "#94a3b8",
+                      height: CHART_FIXED_HEIGHT, fontSize: 13, color: "#64748b",
                       border: "1px dashed #e2e8f0", borderRadius: 10, background: "#f8fafc",
                     }}>
                       Không có dữ liệu biểu đồ
@@ -1059,7 +1085,7 @@ const Dashboard: React.FC = () => {
                         background: "#f8fafc", borderRadius: 8,
                         padding: "10px 14px", fontSize: 13, color: "#64748b",
                       }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#94a3b8", flexShrink: 0 }} />
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#64748b", flexShrink: 0 }} />
                         Không có cảnh báo hiện tại.
                       </div>
                     )}
@@ -1233,7 +1259,7 @@ const Dashboard: React.FC = () => {
                       <Text style={{ display: "block", fontSize: 12, color: "#0f172a", marginBottom: 4 }}>
                         Đơn có vé add-on: <strong>{data.resources.tickets.bookingsWithOptionalTickets}</strong>
                       </Text>
-                      <Text style={{ fontSize: 11, color: "#94a3b8" }}>
+                      <Text style={{ fontSize: 11, color: "#64748b" }}>
                         Hệ thống không quản lý tồn vé chi tiết
                       </Text>
                     </div>
@@ -1264,4 +1290,4 @@ function StatisticMini({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default Dashboard;
+export default Dashboard; 
