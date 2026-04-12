@@ -21,6 +21,29 @@ const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 
 };
 
 const normalizeId = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
+// chọn hdv chính và phụ
+async function guideHasAccessToBooking(guideObjectId: any, booking: any): Promise<boolean> {
+  const gid = String(guideObjectId?._id ?? guideObjectId);
+  const direct = booking.guide_id?._id?.toString?.() ?? booking.guide_id?.toString?.();
+  if (direct && direct === gid) return true;
+  const tid = booking.tour_id?._id ?? booking.tour_id;
+  if (!tid) return false;
+  let t: any = null;
+  if (
+    booking.tour_id &&
+    typeof booking.tour_id === 'object' &&
+    (booking.tour_id as any).primary_guide_id !== undefined
+  ) {
+    t = booking.tour_id;
+  } else {
+    t = await Tour.findById(tid).select('primary_guide_id secondary_guide_ids').lean();
+  }
+  if (!t) return false;
+  const p = String((t as any).primary_guide_id ?? '');
+  if (p && p === gid) return true;
+  const secs = Array.isArray((t as any).secondary_guide_ids) ? (t as any).secondary_guide_ids : [];
+  return secs.some((s: any) => String(s) === gid);
+}
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -61,8 +84,18 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
     }
 
-    const bookings = await Booking.find({ guide_id: guideId })
-      .populate({ path: 'tour_id', select: 'name images duration_days price' })
+    const tourIdsForGuide = await Tour.find({
+      $or: [{ primary_guide_id: guideId }, { secondary_guide_ids: guideId }],
+    })
+      .select('_id')
+      .lean();
+
+    const tourIdList = tourIdsForGuide.map((x: any) => x._id).filter(Boolean);
+
+    const bookings = await Booking.find({
+      $or: [{ guide_id: guideId }, ...(tourIdList.length ? [{ tour_id: { $in: tourIdList } }] : [])],
+    })
+      .populate({ path: 'tour_id', select: 'name images duration_days price primary_guide_id secondary_guide_ids' })
       .populate({ path: 'user_id', select: 'name email phone' })
       .sort({ startDate: 1 });
 
@@ -88,15 +121,14 @@ export const getMyBookingDetail = async (req: AuthRequest, res: Response) => {
     }
 
     const booking = await Booking.findById(req.params.id)
-      .populate({ path: 'tour_id', select: 'name schedule duration_days images' })
+      .populate({ path: 'tour_id', select: 'name schedule duration_days images primary_guide_id secondary_guide_ids' })
       .populate({ path: 'user_id', select: 'name email phone' });
 
     if (!booking) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
     }
 
-    const bookingGuideId = (booking as any).guide_id?._id?.toString?.() ?? (booking as any).guide_id?.toString?.();
-    if (bookingGuideId !== guideId.toString()) {
+    if (!(await guideHasAccessToBooking(guideId, booking))) {
       return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền xem đơn này' });
     }
 
@@ -223,8 +255,7 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
     }
 
     const b = booking as any;
-    const bookingGuideId = b.guide_id?.toString?.();
-    if (bookingGuideId !== guideId.toString()) {
+    if (!(await guideHasAccessToBooking(guideId, b))) {
       return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
     }
 
@@ -368,8 +399,7 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
     }
 
     const b = booking as any;
-    const bookingGuideId = b.guide_id?.toString?.();
-    if (bookingGuideId !== guideId.toString()) {
+    if (!(await guideHasAccessToBooking(guideId, b))) {
       return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
     }
 
@@ -432,8 +462,7 @@ export const addDiaryEntryForGuide = async (req: AuthRequest, res: Response) => 
     }
 
     const b = booking as any;
-    const bookingGuideId = b.guide_id?.toString?.();
-    if (bookingGuideId !== guideId.toString()) {
+    if (!(await guideHasAccessToBooking(guideId, b))) {
       return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
     }
 
@@ -500,8 +529,7 @@ export const deleteDiaryEntryForGuide = async (req: AuthRequest, res: Response) 
     }
 
     const b = booking as any;
-    const bookingGuideId = b.guide_id?.toString?.();
-    if (bookingGuideId !== guideId.toString()) {
+    if (!(await guideHasAccessToBooking(guideId, b))) {
       return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
     }
 
@@ -815,6 +843,14 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       new: initialStatus,
       note: 'Hệ thống tự động duyệt đơn hàng mới'
     }];
+
+    const gidBody = normalizeId(guide_id);
+    const gidTour = normalizeId((tour as any).primary_guide_id);
+    if (gidBody) {
+      newBookingData.guide_id = gidBody;
+    } else if (gidTour) {
+      newBookingData.guide_id = gidTour;
+    }
 
     const newBooking = await Booking.create(newBookingData);
 

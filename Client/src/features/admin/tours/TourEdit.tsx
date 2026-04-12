@@ -175,6 +175,34 @@ const TourEdit = () => {
     });
   }, [ticketQueries, normalizedSupplierIds, providers]);
 
+  const { data: usersList = [] } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/users', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data?.data ?? res.data ?? [];
+    },
+  });
+
+  const primaryGuideIdWatch = Form.useWatch('primary_guide_id', form);
+
+  const guideUserOptions = useMemo(() => {
+    const arr = Array.isArray(usersList) ? usersList : [];
+    return arr
+      .filter((u: any) => u.role === 'guide' || u.role === 'hdv')
+      .filter((u: any) => u.status !== 'inactive')
+      .map((u: any) => ({
+        value: String(u._id),
+        label: [u.name, u.email].filter(Boolean).join(' — ') || String(u._id),
+      }));
+  }, [usersList]);
+
+  const secondaryGuideOptions = useMemo(() => {
+    const p = primaryGuideIdWatch ? String(primaryGuideIdWatch) : '';
+    return guideUserOptions.filter((o) => o.value !== p);
+  }, [guideUserOptions, primaryGuideIdWatch]);
+
   const { data: tour, isLoading: isTourLoading } = useQuery({
     queryKey: ['tour', id],
     queryFn: async () => {
@@ -195,6 +223,10 @@ const TourEdit = () => {
         ...tour,
         category_id: tour.category_id?._id || tour.category_id,
         suppliers: suppliers,
+        primary_guide_id: (tour as any).primary_guide_id?._id ?? (tour as any).primary_guide_id,
+        secondary_guide_ids: Array.isArray((tour as any).secondary_guide_ids)
+          ? (tour as any).secondary_guide_ids.map((x: any) => x?._id ?? x)
+          : [],
         schedule: normalizeScheduleForForm(tour.schedule),
         departure_schedule: tour.departure_schedule?.map((item: any) => ({
           ...item,
@@ -273,6 +305,12 @@ const TourEdit = () => {
       return;
     }
     payload.images = imageUrls;
+    if (Array.isArray((payload as any).secondary_guide_ids)) {
+      const p = (payload as any).primary_guide_id ? String((payload as any).primary_guide_id) : '';
+      (payload as any).secondary_guide_ids = [
+        ...new Set((payload as any).secondary_guide_ids.map((x: any) => String(x))),
+      ].filter((id: string) => id && id !== p);
+    }
     mutation.mutate(payload);
   };
 
@@ -299,6 +337,15 @@ const TourEdit = () => {
         form={form}
         layout="vertical"
         onFinish={onFinish}
+        onValuesChange={(changed) => {
+          if (changed.primary_guide_id !== undefined) {
+            const p = changed.primary_guide_id ? String(changed.primary_guide_id) : '';
+            const sec = form.getFieldValue('secondary_guide_ids');
+            if (Array.isArray(sec) && p) {
+              form.setFieldsValue({ secondary_guide_ids: sec.filter((id: string) => String(id) !== p) });
+            }
+          }
+        }}
       >
         <Row gutter={24}>
           <Col xs={24} lg={16}>
@@ -337,6 +384,37 @@ const TourEdit = () => {
 
               <Form.Item name="description" label="Mô tả giới thiệu" rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}>
                 <TextArea rows={5} placeholder="Nhập bài viết giới thiệu..." />
+              </Form.Item>
+
+              <Form.Item
+                name="primary_guide_id"
+                label="HDV chính (theo trip)"
+                tooltip="Gán trên tour; đơn đặt mặc định lấy HDV này nếu không chỉ định khác."
+              >
+                <Select
+                  size="large"
+                  showSearch
+                  allowClear
+                  placeholder="Chọn HDV chính..."
+                  options={guideUserOptions}
+                  optionFilterProp="label"
+                  notFoundContent="Chưa có tài khoản HDV"
+                />
+              </Form.Item>
+              <Form.Item
+                name="secondary_guide_ids"
+                label="HDV phụ (tuỳ chọn)"
+                tooltip="HDV phụ cũng thấy đơn và thao tác trên booking của trip này."
+              >
+                <Select
+                  mode="multiple"
+                  size="large"
+                  showSearch
+                  allowClear
+                  placeholder="Thêm HDV phụ..."
+                  options={secondaryGuideOptions}
+                  optionFilterProp="label"
+                />
               </Form.Item>
             </Card>
 
