@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Card,
   Row,
@@ -34,7 +34,6 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ResponsiveContainer,
   ComposedChart,
   Bar,
   Line,
@@ -135,20 +134,172 @@ function Delta({
 }) {
   if (value === 0) {
     return (
-      <Text type="secondary" className="text-xs">
-        0{suffix} so với kỳ trước
-      </Text>
+      <span className="text-sm text-slate-500 inline-flex items-center gap-1">
+        <span className="font-medium text-slate-600">Bằng kỳ trước</span>
+        <span className="text-slate-400">(0{suffix})</span>
+      </span>
     );
   }
   const up = value > 0;
   return (
     <span
-      className={`text-xs inline-flex items-center gap-0.5 ${up ? "text-emerald-600" : "text-rose-600"}`}
+      className={`text-sm font-medium inline-flex items-center gap-1 ${up ? "text-emerald-600" : "text-rose-600"}`}
     >
       {up ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
       {up ? "+" : ""}
       {value}
-      {suffix} so với kỳ trước
+      {suffix} <span className="font-normal text-slate-500">so với kỳ trước</span>
+    </span>
+  );
+}
+
+const CHART_FIXED_HEIGHT = 360;
+
+type RevBookPoint = { label: string; revenue: number; bookings: number };
+
+/**
+ * Recharts 3: ResponsiveContainer returns null when ResizeObserver reports
+ * non-positive width/height (common inside Ant Design Card / flex). Measuring
+ * the wrapper and passing numeric width + height avoids a blank chart.
+ */
+function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const read = () => {
+      const w = Math.floor(el.getBoundingClientRect().width);
+      if (w > 0) setWidth((prev) => (prev === w ? prev : w));
+    };
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={hostRef}
+      className="w-full"
+      style={{
+        height: CHART_FIXED_HEIGHT,
+        minHeight: CHART_FIXED_HEIGHT,
+        position: "relative",
+      }}
+    >
+      {width <= 0 ? (
+        <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/80">
+          Đang chuẩn bị khung biểu đồ…
+        </div>
+      ) : (
+        <ComposedChart
+          width={width}
+          height={CHART_FIXED_HEIGHT}
+          data={data}
+          margin={{ top: 12, right: 12, left: 4, bottom: 8 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: "#64748b" }}
+            axisLine={{ stroke: "#e2e8f0" }}
+            tickLine={false}
+          />
+          <YAxis
+            yAxisId="left"
+            tick={{ fontSize: 11, fill: "#64748b" }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v) =>
+              v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}tr` : `${v}`
+            }
+            width={52}
+            domain={[0, "auto"]}
+          />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            tick={{ fontSize: 11, fill: "#64748b" }}
+            axisLine={false}
+            tickLine={false}
+            width={40}
+            allowDecimals={false}
+            domain={[0, "auto"]}
+          />
+          <Tooltip
+            contentStyle={{
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
+            }}
+            formatter={(val, _name, item) => {
+              const n = typeof val === "number" ? val : Number(val);
+              const safe = Number.isFinite(n) ? n : 0;
+              const key = String(item?.dataKey ?? "");
+              if (key === "revenue") {
+                return [`${safe.toLocaleString("vi-VN")} đ`, "Doanh thu"];
+              }
+              if (key === "bookings") {
+                return [safe, "Số booking"];
+              }
+              return [safe, ""];
+            }}
+          />
+          <Legend
+            wrapperStyle={{ paddingTop: 8 }}
+            formatter={(value) => <span className="text-slate-600 text-sm">{value}</span>}
+          />
+          <Bar
+            yAxisId="right"
+            dataKey="bookings"
+            name="Số booking"
+            fill="#94a3b8"
+            maxBarSize={32}
+            radius={[6, 6, 0, 0]}
+          />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="revenue"
+            name="Doanh thu"
+            stroke="#0284c7"
+            strokeWidth={2.5}
+            dot={{ r: 4, fill: "#0284c7", strokeWidth: 0 }}
+            activeDot={{ r: 6 }}
+          />
+        </ComposedChart>
+      )}
+    </div>
+  );
+}
+
+function OccupancyDelta({ value }: { value: number | null }) {
+  if (value === null) {
+    return (
+      <Text type="secondary" className="text-sm">
+        Cần lịch khởi hành có slots
+      </Text>
+    );
+  }
+  if (value === 0) {
+    return (
+      <span className="text-sm text-slate-500">
+        <span className="font-medium text-slate-600">Bằng kỳ trước</span>
+      </span>
+    );
+  }
+  const up = value > 0;
+  return (
+    <span
+      className={`text-sm font-medium inline-flex items-center gap-1 ${up ? "text-emerald-600" : "text-rose-600"}`}
+    >
+      {up ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+      {up ? "+" : ""}
+      {value} điểm %{" "}
+      <span className="font-normal text-slate-500">so với kỳ trước</span>
     </span>
   );
 }
@@ -183,68 +334,49 @@ const Dashboard: React.FC = () => {
     const { kpi } = data;
     return [
       {
-        title: "Tổng số tour",
-        value: kpi.totalTours,
-        icon: <GlobalOutlined className="text-xl text-cyan-600" />,
-        delta: null as React.ReactNode,
-        sub: `${kpi.activeTours} đang hoạt động`,
-        bg: "bg-cyan-50",
-      },
-      {
-        title: "Tour đang hoạt động",
-        value: kpi.activeTours,
-        icon: <CalendarOutlined className="text-xl text-blue-600" />,
-        delta: null,
-        sub: "Trạng thái active",
-        bg: "bg-blue-50",
-      },
-      {
-        title: "Tổng booking",
+        title: "Booking trong kỳ",
+        hint: "Theo ngày tạo đơn, không tính đã hủy",
         value: kpi.totalBookings,
-        icon: <ShoppingOutlined className="text-xl text-violet-600" />,
+        icon: <ShoppingOutlined className="text-2xl text-violet-600" />,
         delta: <Delta value={kpi.totalBookingsDelta} />,
-        sub: "Trong kỳ (theo ngày tạo đơn)",
-        bg: "bg-violet-50",
+        accent: "border-l-violet-500",
+        iconBg: "bg-violet-50",
       },
       {
         title: "Doanh thu",
+        hint: "Đã cọc / đã thanh toán",
         value: `${kpi.revenue.toLocaleString("vi-VN")} đ`,
-        icon: <DollarOutlined className="text-xl text-rose-600" />,
+        icon: <DollarOutlined className="text-2xl text-rose-600" />,
         delta: <Delta value={kpi.revenueDelta} />,
-        sub: "Đã cọc / đã thanh toán",
-        bg: "bg-rose-50",
+        accent: "border-l-rose-500",
+        iconBg: "bg-rose-50",
       },
       {
-        title: "Khách (vé)",
+        title: "Khách (chỗ)",
+        hint: "Tổng chỗ đặt trong kỳ",
         value: kpi.passengersServed,
-        icon: <TeamOutlined className="text-xl text-emerald-600" />,
+        icon: <TeamOutlined className="text-2xl text-emerald-600" />,
         delta: <Delta value={kpi.passengersDelta} />,
-        sub: "Tổng chỗ trong kỳ",
-        bg: "bg-emerald-50",
+        accent: "border-l-emerald-500",
+        iconBg: "bg-emerald-50",
       },
       {
         title: "Tỉ lệ lấp đầy",
-        value:
-          kpi.occupancyPct != null ? `${kpi.occupancyPct}%` : "—",
-        icon: <PieChartOutlined className="text-xl text-amber-600" />,
-        delta:
-          kpi.occupancyDelta != null ? (
-            <Text
-              type="secondary"
-              className="text-xs"
-            >{`${kpi.occupancyDelta >= 0 ? "+" : ""}${kpi.occupancyDelta} điểm % so với kỳ trước`}</Text>
-          ) : (
-            <Text type="secondary" className="text-xs">
-              Cần lịch khởi hành có slots
-            </Text>
-          ),
-        sub: "Theo booking trong kỳ",
-        bg: "bg-amber-50",
+        hint: "Ước tính theo slot tour & chỗ đặt",
+        value: kpi.occupancyPct != null ? `${kpi.occupancyPct}%` : "—",
+        icon: <PieChartOutlined className="text-2xl text-amber-600" />,
+        delta: <OccupancyDelta value={kpi.occupancyDelta} />,
+        accent: "border-l-amber-500",
+        iconBg: "bg-amber-50",
       },
     ];
   }, [data]);
 
   const chartData = data?.charts.revenueAndBookings ?? [];
+  const chartHasPoints = chartData.length > 0;
+  const chartHasValues =
+    chartHasPoints &&
+    chartData.some((p) => (p.revenue ?? 0) > 0 || (p.bookings ?? 0) > 0);
 
   const topTourColumns = [
     { title: "Tour", dataIndex: "name", key: "name" },
@@ -377,29 +509,78 @@ const Dashboard: React.FC = () => {
         <Skeleton active paragraph={{ rows: 12 }} />
       ) : (
         <>
+          <Card
+            bordered={false}
+            className="mb-4 rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4 min-w-0">
+                <div className="shrink-0 w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center border border-sky-100">
+                  <GlobalOutlined className="text-2xl text-sky-600" />
+                </div>
+                <div className="min-w-0">
+                  <Text className="text-xs uppercase tracking-wider text-slate-500 font-semibold block">
+                    Tour trong hệ thống
+                  </Text>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="text-3xl font-bold text-slate-900 tabular-nums">
+                      {data.kpi.totalTours}
+                    </span>
+                    <span className="text-slate-400 text-lg">·</span>
+                    <span className="text-lg text-slate-700">
+                      <span className="font-semibold text-emerald-600 tabular-nums">
+                        {data.kpi.activeTours}
+                      </span>{" "}
+                      <span className="text-slate-500 font-normal text-base">đang hoạt động</span>
+                    </span>
+                  </div>
+                  <Text type="secondary" className="text-sm block mt-1">
+                    Tổng số tour và tour trạng thái active — gọn một dòng để dễ quét.
+                  </Text>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0 pl-0 sm:pl-4 sm:border-l sm:border-slate-100">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                  <CalendarOutlined className="text-xl text-blue-600" />
+                </div>
+                <div>
+                  <Text className="text-xs text-slate-500 block">Trạng thái</Text>
+                  <Text strong className="text-base text-slate-800">
+                    {data.kpi.activeTours === data.kpi.totalTours && data.kpi.totalTours > 0
+                      ? "Toàn bộ đang mở bán"
+                      : data.kpi.activeTours > 0
+                        ? "Có tour đang mở bán"
+                        : "Chưa có tour active"}
+                  </Text>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <Row gutter={[16, 16]}>
             {kpiCards.map((c) => (
-              <Col xs={24} sm={12} xl={8} key={c.title}>
+              <Col xs={24} sm={12} xl={6} key={c.title}>
                 <Card
                   bordered={false}
-                  className="h-full rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+                  className={`h-full rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 border-l-4 ${c.accent} bg-white`}
+                  styles={{ body: { padding: "20px 20px 18px" } }}
                 >
-                  <div className="flex justify-between gap-3">
-                    <div className="min-w-0">
-                      <Text type="secondary" className="text-xs uppercase tracking-wide">
-                        {c.title}
-                      </Text>
-                      <div className="text-2xl font-semibold mt-1 truncate">{c.value}</div>
-                      <div className="mt-1">{c.delta}</div>
-                      <Text type="secondary" className="text-xs block mt-1">
-                        {c.sub}
-                      </Text>
-                    </div>
+                  <div className="relative pl-0">
                     <div
-                      className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${c.bg}`}
+                      className={`absolute top-0 right-0 w-11 h-11 rounded-xl flex items-center justify-center ${c.iconBg}`}
                     >
                       {c.icon}
                     </div>
+                    <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 pr-14">
+                      {c.title}
+                    </Text>
+                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 truncate tabular-nums pr-2">
+                      {c.value}
+                    </div>
+                    <div className="mt-3 min-h-[1.5rem] flex items-start">{c.delta}</div>
+                    <Text type="secondary" className="text-xs block mt-2 leading-relaxed">
+                      {c.hint}
+                    </Text>
                   </div>
                 </Card>
               </Col>
@@ -412,52 +593,33 @@ const Dashboard: React.FC = () => {
                 title="Doanh thu & số booking theo thời gian"
                 bordered={false}
                 className="rounded-2xl shadow-sm"
+                styles={{ body: { paddingTop: 12 } }}
               >
-                <Text type="secondary" className="text-xs block mb-2">
-                  Chu kỳ hiển thị:{" "}
-                  {period === "day"
-                    ? "14 ngày quanh ngày chọn"
-                    : period === "month"
-                      ? "12 tháng"
-                      : "5 năm"}
-                </Text>
-                <div className="h-[320px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                      <YAxis
-                        yAxisId="left"
-                        tick={{ fontSize: 11 }}
-                        tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}tr`}
-                      />
-                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                      <Tooltip
-                        formatter={(val: number, name: string) =>
-                          name === "revenue"
-                            ? [`${val.toLocaleString("vi-VN")} đ`, "Doanh thu"]
-                            : [val, "Booking"]
-                        }
-                      />
-                      <Legend />
-                      <Bar
-                        yAxisId="right"
-                        dataKey="bookings"
-                        name="Số booking"
-                        fill="#94a3b8"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="revenue"
-                        name="Doanh thu"
-                        stroke="#0ea5e9"
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <Text type="secondary" className="text-sm">
+                    {period === "day"
+                      ? "14 ngày quanh ngày chọn"
+                      : period === "month"
+                        ? "12 tháng gần nhất (theo tháng)"
+                        : "5 năm gần nhất"}
+                  </Text>
+                  {!chartHasValues && (
+                    <Text className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
+                      Chưa có dữ liệu booking/doanh thu trong các mốc này
+                    </Text>
+                  )}
+                </div>
+                <div className="w-full min-w-0" style={{ minHeight: CHART_FIXED_HEIGHT }}>
+                  {chartHasPoints ? (
+                    <RevenueBookingComposedChart data={chartData} />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/80"
+                      style={{ height: CHART_FIXED_HEIGHT }}
+                    >
+                      Không có dữ liệu biểu đồ
+                    </div>
+                  )}
                 </div>
               </Card>
             </Col>
@@ -465,7 +627,8 @@ const Dashboard: React.FC = () => {
               <Card
                 title="Top tour bán chạy (90 ngày)"
                 bordered={false}
-                className="rounded-2xl shadow-sm h-full"
+                className="rounded-2xl shadow-sm h-full lg:mr-2"
+                styles={{ body: { paddingBottom: 16 } }}
               >
                 <Table
                   size="small"
