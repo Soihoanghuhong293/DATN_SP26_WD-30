@@ -26,10 +26,10 @@ const AdminLayout = () => {
         <AdminSidebar />
       </Sider>
 
-      <Layout>
+      <Layout style={{ minWidth: 0, flex: 1 }}>
         <AdminHeader />
 
-        <Content style={{ padding: 24 }}>
+        <Content style={{ padding: 24, minWidth: 0, width: "100%" }}>
           <Outlet />
         </Content>
       </Layout>

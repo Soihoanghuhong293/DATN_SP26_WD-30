@@ -31,6 +31,14 @@ import {
   WarningOutlined,
   InboxOutlined,
   QuestionCircleOutlined,
+  LineChartOutlined,
+  BarChartOutlined,
+  TrophyOutlined,
+  ScheduleOutlined,
+  BankOutlined,
+  HomeOutlined,
+  CarOutlined,
+  IdcardOutlined,
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import axios from "axios";
@@ -49,7 +57,6 @@ import {
 
 const { Title, Text } = Typography;
 
-/** Cảnh báo khi biến động % so với kỳ trước rất mạnh (ví dụ &gt; 90%) */
 const SEVERE_PERCENT_DROP = 90;
 
 function isSeverePercentDrop(delta: number) {
@@ -60,7 +67,7 @@ function HintTip({ text }: { text: string }) {
   return (
     <Tooltip title={text} placement="topLeft">
       <QuestionCircleOutlined
-        className="cursor-help text-slate-400 hover:text-slate-500"
+        style={{ marginLeft: 5, fontSize: 13, color: "#94a3b8", cursor: "help" }}
         aria-label="Giải thích"
       />
     </Tooltip>
@@ -146,10 +153,7 @@ interface OverviewPayload {
   };
 }
 
-const DELTA_UP = "#16a34a";
-const DELTA_DOWN = "#ef4444";
-
-function Delta({
+function DeltaInline({
   value,
   suffix = "%",
 }: {
@@ -158,38 +162,87 @@ function Delta({
 }) {
   if (value === 0) {
     return (
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-semibold tabular-nums text-slate-600">
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, paddingTop: 4 }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center",
+          background: "#f1f5f9", color: "#475569",
+          borderRadius: 999, padding: "3px 10px",
+          fontSize: 12, fontWeight: 600,
+        }}>
           0{suffix}
         </span>
         <Tooltip title="Không đổi so với kỳ liền trước (cùng độ dài kỳ).">
-          <span className="inline-flex w-fit cursor-default items-center gap-1 text-xs text-slate-400">
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#94a3b8", cursor: "default" }}>
             Bằng kỳ trước
-            <QuestionCircleOutlined className="text-[11px]" />
+            <QuestionCircleOutlined style={{ fontSize: 11 }} />
           </span>
         </Tooltip>
       </div>
     );
   }
   const up = value > 0;
-  const color = up ? DELTA_UP : DELTA_DOWN;
   return (
-    <div className="flex flex-col gap-1">
-      <span
-        className="inline-flex items-center gap-1.5 text-base font-bold tabular-nums leading-tight"
-        style={{ color }}
-      >
-        {up ? <ArrowUpOutlined className="text-sm" /> : <ArrowDownOutlined className="text-sm" />}
-        <span>
-          {up ? "+" : ""}
-          {value}
-          {suffix}
-        </span>
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, paddingTop: 4 }}>
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        borderRadius: 999, padding: "3px 10px",
+        fontSize: 12, fontWeight: 600,
+        background: up ? "#dcfce7" : "#fee2e2",
+        color: up ? "#15803d" : "#991b1b",
+      }}>
+        {up ? <ArrowUpOutlined style={{ fontSize: 10 }} /> : <ArrowDownOutlined style={{ fontSize: 10 }} />}
+        {up ? "+" : ""}{value}{suffix}
       </span>
-      <Tooltip title="So sánh với kỳ liền trước (cùng độ dài): ngày/tháng/năm tương ứng.">
-        <span className="inline-flex w-fit cursor-default items-center gap-1 text-xs text-slate-500">
+      <Tooltip title="So sánh với kỳ liền trước (cùng độ dài: ngày/tháng/năm tương ứng).">
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#94a3b8", cursor: "default" }}>
           So với kỳ trước
-          <QuestionCircleOutlined className="text-[11px] text-slate-400" />
+          <QuestionCircleOutlined style={{ fontSize: 11 }} />
+        </span>
+      </Tooltip>
+    </div>
+  );
+}
+
+function OccupancyDeltaInline({ value }: { value: number | null }) {
+  if (value === null) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 4, fontSize: 12, color: "#94a3b8" }}>
+        <span>Chưa so sánh được</span>
+        <Tooltip title="Cần lịch khởi hành có slot để ước tính và so sánh tỉ lệ lấp đầy giữa hai kỳ.">
+          <QuestionCircleOutlined style={{ fontSize: 11, cursor: "help" }} />
+        </Tooltip>
+      </div>
+    );
+  }
+  if (value === 0) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 4 }}>
+        <span style={{
+          background: "#f1f5f9", color: "#475569",
+          borderRadius: 999, padding: "3px 10px",
+          fontSize: 12, fontWeight: 600,
+        }}>0 điểm %</span>
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>Bằng kỳ trước</span>
+      </div>
+    );
+  }
+  const up = value > 0;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, paddingTop: 4 }}>
+      <span style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        borderRadius: 999, padding: "3px 10px",
+        fontSize: 12, fontWeight: 600,
+        background: up ? "#dcfce7" : "#fee2e2",
+        color: up ? "#15803d" : "#991b1b",
+      }}>
+        {up ? <ArrowUpOutlined style={{ fontSize: 10 }} /> : <ArrowDownOutlined style={{ fontSize: 10 }} />}
+        {up ? "+" : ""}{value} điểm %
+      </span>
+      <Tooltip title="Chênh lệch điểm phần trăm lấp đầy so với kỳ liền trước.">
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#94a3b8", cursor: "default" }}>
+          So với kỳ trước
+          <QuestionCircleOutlined style={{ fontSize: 11 }} />
         </span>
       </Tooltip>
     </div>
@@ -200,11 +253,6 @@ const CHART_FIXED_HEIGHT = 360;
 
 type RevBookPoint = { label: string; revenue: number; bookings: number };
 
-/**
- * Recharts 3: ResponsiveContainer returns null when ResizeObserver reports
- * non-positive width/height (common inside Ant Design Card / flex). Measuring
- * the wrapper and passing numeric width + height avoids a blank chart.
- */
 function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -226,15 +274,16 @@ function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
   return (
     <div
       ref={hostRef}
-      className="w-full"
-      style={{
-        height: CHART_FIXED_HEIGHT,
-        minHeight: CHART_FIXED_HEIGHT,
-        position: "relative",
-      }}
+      style={{ width: "100%", height: CHART_FIXED_HEIGHT, minHeight: CHART_FIXED_HEIGHT, position: "relative" }}
     >
       {width <= 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/80">
+        <div style={{
+          position: "absolute", inset: 0, display: "flex",
+          alignItems: "center", justifyContent: "center",
+          fontSize: 13, color: "#94a3b8",
+          border: "1px dashed #e2e8f0", borderRadius: 12,
+          background: "#f8fafc",
+        }}>
           Đang chuẩn bị khung biểu đồ…
         </div>
       ) : (
@@ -274,43 +323,40 @@ function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
           />
           <RechartsTooltip
             contentStyle={{
-              borderRadius: 12,
+              borderRadius: 10,
               border: "1px solid #e2e8f0",
-              boxShadow: "0 8px 24px rgba(15,23,42,0.08)",
+              boxShadow: "0 4px 16px rgba(15,23,42,0.08)",
+              fontSize: 13,
             }}
             formatter={(val, _name, item) => {
               const n = typeof val === "number" ? val : Number(val);
               const safe = Number.isFinite(n) ? n : 0;
               const key = String(item?.dataKey ?? "");
-              if (key === "revenue") {
-                return [`${safe.toLocaleString("vi-VN")} đ`, "Doanh thu"];
-              }
-              if (key === "bookings") {
-                return [safe, "Số booking"];
-              }
+              if (key === "revenue") return [`${safe.toLocaleString("vi-VN")} đ`, "Doanh thu"];
+              if (key === "bookings") return [safe, "Số booking"];
               return [safe, ""];
             }}
           />
           <Legend
-            wrapperStyle={{ paddingTop: 8 }}
-            formatter={(value) => <span className="text-slate-600 text-sm">{value}</span>}
+            wrapperStyle={{ paddingTop: 8, fontSize: 13, color: "#64748b" }}
+            formatter={(value) => <span style={{ color: "#64748b", fontSize: 13 }}>{value}</span>}
           />
           <Bar
             yAxisId="right"
             dataKey="bookings"
             name="Số booking"
-            fill="#94a3b8"
+            fill="#bfdbfe"
             maxBarSize={32}
-            radius={[6, 6, 0, 0]}
+            radius={[4, 4, 0, 0]}
           />
           <Line
             yAxisId="left"
             type="monotone"
             dataKey="revenue"
             name="Doanh thu"
-            stroke="#0284c7"
+            stroke="#185FA5"
             strokeWidth={2.5}
-            dot={{ r: 4, fill: "#0284c7", strokeWidth: 0 }}
+            dot={{ r: 4, fill: "#185FA5", strokeWidth: 0 }}
             activeDot={{ r: 6 }}
           />
         </ComposedChart>
@@ -319,46 +365,24 @@ function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
   );
 }
 
-function OccupancyDelta({ value }: { value: number | null }) {
-  if (value === null) {
-    return (
-      <Tooltip title="Cần lịch khởi hành có slot để ước tính và so sánh tỉ lệ lấp đầy giữa hai kỳ.">
-        <span className="inline-flex cursor-default items-center gap-1 text-sm text-slate-500">
-          Chưa so sánh được
-          <QuestionCircleOutlined className="text-slate-400" />
-        </span>
-      </Tooltip>
-    );
-  }
-  if (value === 0) {
-    return (
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-semibold tabular-nums text-slate-600">0 điểm %</span>
-        <span className="text-xs text-slate-400">Bằng kỳ trước</span>
-      </div>
-    );
-  }
-  const up = value > 0;
-  const color = up ? DELTA_UP : DELTA_DOWN;
+/* ─── Rank badge helper ─── */
+function RankBadge({ index }: { index: number }) {
+  const styles: React.CSSProperties[] = [
+    { background: "#fef3c7", color: "#92400e" },
+    { background: "#e0f2fe", color: "#0369a1" },
+    { background: "#dcfce7", color: "#166534" },
+  ];
+  const s = styles[index] ?? { background: "#f1f5f9", color: "#475569" };
   return (
-    <div className="flex flex-col gap-1">
-      <span
-        className="inline-flex items-center gap-1.5 text-base font-bold tabular-nums leading-tight"
-        style={{ color }}
-      >
-        {up ? <ArrowUpOutlined className="text-sm" /> : <ArrowDownOutlined className="text-sm" />}
-        <span>
-          {up ? "+" : ""}
-          {value} điểm %
-        </span>
-      </span>
-      <Tooltip title="Chênh lệch điểm phần trăm lấp đầy so với kỳ liền trước.">
-        <span className="inline-flex w-fit cursor-default items-center gap-1 text-xs text-slate-500">
-          So với kỳ trước
-          <QuestionCircleOutlined className="text-[11px] text-slate-400" />
-        </span>
-      </Tooltip>
-    </div>
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 24, height: 24, borderRadius: "50%",
+      fontSize: 12, fontWeight: 600,
+      marginRight: 8,
+      ...s,
+    }}>
+      {index + 1}
+    </span>
   );
 }
 
@@ -378,10 +402,7 @@ const Dashboard: React.FC = () => {
     queryFn: async () => {
       const res = await axios.get<{ success: boolean; data: OverviewPayload }>(
         `${API_V1}/dashboard/overview`,
-        {
-          ...getAuthHeader(),
-          params: { period, anchor: anchorParam },
-        },
+        { ...getAuthHeader(), params: { period, anchor: anchorParam } },
       );
       return res.data.data;
     },
@@ -393,41 +414,43 @@ const Dashboard: React.FC = () => {
     return [
       {
         title: "Booking trong kỳ",
-        hintTooltip:
-          "Số booking được tạo trong kỳ đang chọn, theo ngày tạo đơn. Không tính các đơn đã hủy.",
+        hintTooltip: "Số booking được tạo trong kỳ đang chọn, theo ngày tạo đơn. Không tính các đơn đã hủy.",
         value: kpi.totalBookings,
-        icon: <ShoppingOutlined className="text-lg text-slate-400" />,
-        delta: <Delta value={kpi.totalBookingsDelta} />,
+        icon: <ShoppingOutlined style={{ fontSize: 16 }} />,
+        delta: <DeltaInline value={kpi.totalBookingsDelta} />,
         deltaRaw: kpi.totalBookingsDelta,
         deltaType: "percent" as const,
+        iconBg: "#e0f2fe", iconColor: "#0369a1",
       },
       {
         title: "Doanh thu",
         hintTooltip: "Tổng tiền đã cọc và đã thanh toán trong kỳ (theo quy tắc tính doanh thu trên server).",
         value: `${kpi.revenue.toLocaleString("vi-VN")} đ`,
-        icon: <DollarOutlined className="text-lg text-slate-400" />,
-        delta: <Delta value={kpi.revenueDelta} />,
+        icon: <DollarOutlined style={{ fontSize: 16 }} />,
+        delta: <DeltaInline value={kpi.revenueDelta} />,
         deltaRaw: kpi.revenueDelta,
         deltaType: "percent" as const,
+        iconBg: "#dcfce7", iconColor: "#15803d",
       },
       {
         title: "Khách (chỗ)",
         hintTooltip: "Tổng số chỗ (group size) trên các booking trong kỳ.",
         value: kpi.passengersServed,
-        icon: <TeamOutlined className="text-lg text-slate-400" />,
-        delta: <Delta value={kpi.passengersDelta} />,
+        icon: <TeamOutlined style={{ fontSize: 16 }} />,
+        delta: <DeltaInline value={kpi.passengersDelta} />,
         deltaRaw: kpi.passengersDelta,
         deltaType: "percent" as const,
+        iconBg: "#ede9fe", iconColor: "#6d28d9",
       },
       {
         title: "Tỉ lệ lấp đầy",
-        hintTooltip:
-          "Ước tính theo slot lịch khởi hành của tour và số chỗ đã đặt trong kỳ. Không hiển thị nếu thiếu dữ liệu slot.",
+        hintTooltip: "Ước tính theo slot lịch khởi hành của tour và số chỗ đã đặt trong kỳ. Không hiển thị nếu thiếu dữ liệu slot.",
         value: kpi.occupancyPct != null ? `${kpi.occupancyPct}%` : "—",
-        icon: <PieChartOutlined className="text-lg text-slate-400" />,
-        delta: <OccupancyDelta value={kpi.occupancyDelta} />,
+        icon: <PieChartOutlined style={{ fontSize: 16 }} />,
+        delta: <OccupancyDeltaInline value={kpi.occupancyDelta} />,
         deltaRaw: kpi.occupancyDelta,
         deltaType: "occupancy" as const,
+        iconBg: "#fef3c7", iconColor: "#92400e",
       },
     ];
   }, [data]);
@@ -438,131 +461,255 @@ const Dashboard: React.FC = () => {
     chartHasPoints &&
     chartData.some((p) => (p.revenue ?? 0) > 0 || (p.bookings ?? 0) > 0);
 
+  const [topTourMode, setTopTourMode] = useState<"90days" | "period">("90days");
+
   const topTourColumns = [
-    { title: "Tour", dataIndex: "name", key: "name" },
+    {
+      title: "Tour",
+      dataIndex: "name",
+      key: "name",
+      render: (name: string, _record: any, index: number) => (
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <RankBadge index={index} />
+          <span style={{ fontSize: 13 }}>{name}</span>
+        </div>
+      ),
+    },
     {
       title: "Số booking",
       dataIndex: "bookings",
       key: "bookings",
       align: "center" as const,
-      width: 110,
+      width: 100,
+      render: (v: number) => <span style={{ fontWeight: 500 }}>{v}</span>,
     },
     {
       title: "Doanh thu",
       dataIndex: "revenue",
       key: "revenue",
       align: "right" as const,
-      render: (v: number) => `${v.toLocaleString("vi-VN")} đ`,
+      render: (v: number) => (
+        <span style={{ fontSize: 12, color: "#475569" }}>{v.toLocaleString("vi-VN")} đ</span>
+      ),
     },
   ];
 
   const topCustomerColumns = [
-    { title: "Khách", dataIndex: "name", key: "name" },
-    { title: "SĐT", dataIndex: "phone", key: "phone", width: 120 },
     {
-      title: "Số đơn",
+      title: "Khách",
+      dataIndex: "name",
+      key: "name",
+      render: (v: string) => <span style={{ fontSize: 13, fontWeight: 500 }}>{v}</span>,
+    },
+    {
+      title: "SĐT",
+      dataIndex: "phone",
+      key: "phone",
+      width: 120,
+      render: (v: string) => <span style={{ fontSize: 12, color: "#64748b" }}>{v}</span>,
+    },
+    {
+      title: "Đơn",
       dataIndex: "count",
       key: "count",
-      width: 90,
+      width: 70,
       align: "center" as const,
+      render: (v: number) => (
+        <span style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          width: 28, height: 28, borderRadius: "50%",
+          background: "#f0fdf4", color: "#15803d",
+          fontSize: 12, fontWeight: 600,
+        }}>{v}</span>
+      ),
     },
   ];
 
+  /* ─── shared card style ─── */
+  const baseCard: React.CSSProperties = {
+    borderRadius: 14,
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 1px 4px rgba(15,23,42,0.06)",
+    overflow: "hidden",
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div style={{ position: "relative", maxWidth: 1600, margin: "0 auto", minHeight: "100vh", paddingBottom: 96, overflowX: "hidden" }}>
+
+      {/* ══ HEADER CARD ══ */}
       <Card
         bordered={false}
-        className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
+        style={{ ...baseCard, marginBottom: 24, background: "#f8fafc" }}
         styles={{ body: { padding: 24 } }}
       >
-        <Row gutter={[24, 24]} align="middle" justify="space-between">
-          <Col flex="auto" xs={24} lg={13}>
-            <div className="mb-2 flex items-center gap-2 text-slate-500">
-              <ThunderboltOutlined className="text-slate-400" />
-              <span className="text-xs font-semibold uppercase tracking-wide">Admin</span>
-            </div>
-            <Title level={2} className="!mb-2 !mt-0 !text-xl !font-bold !text-slate-900 md:!text-2xl">
+        {/* Title row */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>
               Tổng quan vận hành
             </Title>
-            <Text className="block max-w-xl text-sm text-slate-500">
-              Chọn kỳ thời gian để xem chỉ số, biểu đồ và cảnh báo.
+            <Text style={{ display: "block", marginTop: 6, fontSize: 13, color: "#64748b", maxWidth: 600 }}>
+              Theo dõi booking, doanh thu và trạng thái tour — màu sắc từng khối giúp phân biệt chỉ số trong một lần nhìn.
             </Text>
-          </Col>
-          <Col xs={24} lg={11}>
-            <div className="w-full rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-left">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <Radio.Group
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  buttonStyle="solid"
-                  className="flex flex-wrap shadow-sm"
-                >
-                  <Radio.Button value="day" className="!px-3">
-                    Ngày
-                  </Radio.Button>
-                  <Radio.Button value="month" className="!px-3">
-                    Tháng
-                  </Radio.Button>
-                  <Radio.Button value="year" className="!px-3">
-                    Năm
-                  </Radio.Button>
-                </Radio.Group>
-                {period === "day" && (
-                  <DatePicker
-                    value={anchor}
-                    onChange={(v) => v && setAnchor(v)}
-                    allowClear={false}
-                    format="DD/MM/YYYY"
-                    className="min-w-[140px] flex-1 sm:flex-initial"
-                  />
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {[
+              { icon: <ScheduleOutlined />, label: "Theo kỳ thời gian" },
+              { icon: <LineChartOutlined />, label: "KPI & biểu đồ" },
+            ].map(({ icon, label }) => (
+              <span key={label} style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                border: "1px solid #e2e8f0", background: "#fff",
+                borderRadius: 10, padding: "6px 12px",
+                fontSize: 13, color: "#475569",
+              }}>
+                <span style={{ color: "#94a3b8" }}>{icon}</span>
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Filter box */}
+        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+            <CalendarOutlined />
+            Bộ lọc thời gian
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
+            <Radio.Group
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button value="day" style={{ paddingInline: 16 }}>Ngày</Radio.Button>
+              <Radio.Button value="month" style={{ paddingInline: 16 }}>Tháng</Radio.Button>
+              <Radio.Button value="year" style={{ paddingInline: 16 }}>Năm</Radio.Button>
+            </Radio.Group>
+            <span style={{ fontSize: 13, color: "#94a3b8", display: "flex", alignItems: "center", gap: 4 }}>
+              <BankOutlined />
+              {period === "day" ? "Chọn ngày" : period === "month" ? "Chọn tháng" : "Chọn năm"}
+            </span>
+          </div>
+          <div style={{ width: "100%" }}>
+            {period === "day" && (
+              <DatePicker value={anchor} onChange={(v) => v && setAnchor(v)} allowClear={false} format="DD/MM/YYYY" style={{ width: "100%" }} />
+            )}
+            {period === "month" && (
+              <DatePicker picker="month" value={anchor} onChange={(v) => v && setAnchor(v)} allowClear={false} format="MM/YYYY" style={{ width: "100%" }} />
+            )}
+            {period === "year" && (
+              <DatePicker picker="year" value={anchor} onChange={(v) => v && setAnchor(v)} allowClear={false} format="YYYY" style={{ width: "100%" }} />
+            )}
+          </div>
+
+          <Divider style={{ margin: "16px 0", borderColor: "#f1f5f9" }} />
+
+          <Text style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+            Thao tác nhanh
+          </Text>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <Link to="/admin/tours/create">
+              <Button icon={<PlusOutlined />} style={{ borderColor: "#e2e8f0", background: "#fff", color: "#1e293b" }}>
+                Tour mới
+              </Button>
+            </Link>
+            <Link to="/admin/bookings/create">
+              <Button icon={<ShoppingOutlined />} style={{ borderColor: "#e2e8f0", background: "#fff", color: "#1e293b" }}>
+                Booking
+              </Button>
+            </Link>
+            <Link to="/admin/providers/create">
+              <Button icon={<GlobalOutlined />} style={{ borderColor: "#e2e8f0", background: "#fff", color: "#1e293b" }}>
+                Nhà cung cấp
+              </Button>
+            </Link>
+            <Link to="/admin/bookings">
+              <Button
+                icon={<ThunderboltOutlined />}
+                style={{ borderColor: "#fbbf24", background: "#fffbeb", color: "#78350f", fontWeight: 500 }}
+              >
+                Phân bổ xe/phòng
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Tour overview */}
+        <div style={{ marginTop: 24 }}>
+          <Text style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Tổng quan tour</Text>
+          <Text style={{ display: "block", marginTop: 4, fontSize: 12, color: "#64748b" }}>
+            Chi tiết số liệu và badge trạng thái (đồng bộ với khối tóm tắt phía trên).
+          </Text>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 14 }}>
+            {[
+              {
+                icon: <GlobalOutlined style={{ fontSize: 18 }} />,
+                iconBg: "#e0f2fe", iconColor: "#0369a1",
+                value: data ? data.kpi.totalTours : 0,
+                label: "Tổng tour trong hệ thống",
+                extra: data ? (
+                  <div style={{ marginTop: 10 }}>
+                    <Tag color="blue" style={{ borderRadius: 20, border: 0, padding: "2px 10px", fontSize: 12 }}>
+                      {data.kpi.activeTours} đang mở bán
+                    </Tag>
+                  </div>
+                ) : null,
+              },
+              {
+                icon: <CalendarOutlined style={{ fontSize: 18 }} />,
+                iconBg: "#dcfce7", iconColor: "#15803d",
+                value: data?.kpi.activeTours ?? 0,
+                label: "Tour sẵn sàng phục vụ khách",
+                extra: null,
+              },
+              {
+                icon: <PieChartOutlined style={{ fontSize: 18 }} />,
+                iconBg: "#ede9fe", iconColor: "#6d28d9",
+                value: null,
+                label: "Trạng thái",
+                extra: data ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    <Tag color="blue" style={{ borderRadius: 20, border: 0, padding: "2px 10px", fontSize: 12, margin: 0 }}>
+                      {(data.kpi.activeTours ?? 0) === (data.kpi.totalTours ?? 0) && (data.kpi.totalTours ?? 0) > 0
+                        ? "Mở bán · toàn bộ"
+                        : (data.kpi.activeTours ?? 0) > 0
+                          ? "Mở bán · một phần"
+                          : "Chưa mở bán"}
+                    </Tag>
+                    <Tag color="success" style={{ borderRadius: 20, border: 0, padding: "2px 10px", fontSize: 12, margin: 0 }}>
+                      Hoạt động · {data.kpi.activeTours ?? 0}
+                    </Tag>
+                    {(data.kpi.totalTours ?? 0) > (data.kpi.activeTours ?? 0) && (
+                      <Tag style={{ borderRadius: 20, border: "1px solid #e2e8f0", background: "#f8fafc", padding: "2px 10px", fontSize: 12, margin: 0, color: "#64748b" }}>
+                        Không hoạt động · {(data.kpi.totalTours ?? 0) - (data.kpi.activeTours ?? 0)}
+                      </Tag>
+                    )}
+                  </div>
+                ) : null,
+              },
+            ].map((item, i) => (
+              <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 18 }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  width: 38, height: 38, borderRadius: 10,
+                  background: item.iconBg, color: item.iconColor,
+                }}>
+                  {item.icon}
+                </div>
+                {item.value !== null && (
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#0f172a", marginTop: 12, lineHeight: 1 }}>
+                    {item.value}
+                  </div>
                 )}
-                {period === "month" && (
-                  <DatePicker
-                    picker="month"
-                    value={anchor}
-                    onChange={(v) => v && setAnchor(v)}
-                    allowClear={false}
-                    format="MM/YYYY"
-                    className="min-w-[120px] flex-1 sm:flex-initial"
-                  />
-                )}
-                {period === "year" && (
-                  <DatePicker
-                    picker="year"
-                    value={anchor}
-                    onChange={(v) => v && setAnchor(v)}
-                    allowClear={false}
-                    format="YYYY"
-                    className="min-w-[100px] flex-1 sm:flex-initial"
-                  />
-                )}
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: item.value !== null ? 6 : 12 }}>
+                  {item.label}
+                </div>
+                {item.extra}
               </div>
-              <Divider className="my-0 border-slate-100" />
-              <Space wrap size={[8, 8]} className="w-full">
-                <Link to="/admin/tours/create">
-                  <Button size="middle" icon={<PlusOutlined />}>
-                    Tour mới
-                  </Button>
-                </Link>
-                <Link to="/admin/bookings/create">
-                  <Button size="middle" icon={<PlusOutlined />}>
-                    Booking
-                  </Button>
-                </Link>
-                <Link to="/admin/providers/create">
-                  <Button size="middle" icon={<PlusOutlined />}>
-                    Nhà cung cấp
-                  </Button>
-                </Link>
-                <Link to="/admin/bookings">
-                  <Button size="middle" type="primary">
-                    Phân bổ xe/phòng
-                  </Button>
-                </Link>
-              </Space>
-            </div>
-          </Col>
-        </Row>
+            ))}
+          </div>
+        </div>
       </Card>
 
       {isError && (
@@ -571,7 +718,7 @@ const Dashboard: React.FC = () => {
           showIcon
           message="Không tải được dashboard"
           description="Kiểm tra server và quyền admin."
-          className="mb-4"
+          style={{ marginBottom: 16 }}
         />
       )}
 
@@ -579,247 +726,270 @@ const Dashboard: React.FC = () => {
         <Skeleton active paragraph={{ rows: 12 }} />
       ) : (
         <>
-          <div className="mb-8 border-b border-[#f1f5f9] pb-8">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <Text className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Tổng quan tour
-                </Text>
-                <Title level={4} className="!mb-0 !text-lg !font-semibold !text-slate-900">
-                  Số lượng & trạng thái
-                </Title>
+          {/* ══ KPI SECTION ══ */}
+          <div style={{ marginBottom: 32, paddingBottom: 32, borderBottom: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12, marginBottom: 20 }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 42, height: 42, borderRadius: 12,
+                background: "#1e293b", color: "#fff", flexShrink: 0,
+              }}>
+                <PieChartOutlined style={{ fontSize: 18 }} />
               </div>
-            </div>
-            <Card
-              bordered={false}
-              className="rounded-lg border border-slate-200 bg-white shadow-sm"
-              styles={{ body: { padding: 24 } }}
-            >
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex min-w-0 flex-1 flex-col gap-6 sm:flex-row sm:items-center">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
-                    <GlobalOutlined className="text-2xl" />
-                  </div>
-                  <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-6">
-                      <div className="text-[28px] font-bold leading-none tabular-nums text-slate-900 md:text-[30px]">
-                        {data.kpi.totalTours}
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
-                        Tổng tour
-                        <HintTip text="Tổng số tour trong hệ thống (mọi trạng thái)." />
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 p-6">
-                      <div className="text-[28px] font-bold leading-none tabular-nums text-emerald-800 md:text-[30px]">
-                        {data.kpi.activeTours}
-                      </div>
-                      <div className="mt-3 flex items-center gap-2 text-sm text-emerald-800/80">
-                        Đang hoạt động
-                        <HintTip text="Số tour đang ở trạng thái active (mở cho đặt)." />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="shrink-0 border-t border-slate-100 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-                  <div className="mb-3 flex items-center gap-2 text-slate-500">
-                    <CalendarOutlined />
-                    <Text className="text-sm font-medium text-slate-600">Trạng thái</Text>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Tag color="blue" className="m-0 inline-flex rounded-full border-0 px-3 py-1 text-sm">
-                      {data.kpi.activeTours === data.kpi.totalTours && data.kpi.totalTours > 0
-                        ? "Mở bán · toàn bộ"
-                        : data.kpi.activeTours > 0
-                          ? "Mở bán · một phần"
-                          : "Chưa mở bán"}
-                    </Tag>
-                    <Tag color="success" className="m-0 inline-flex rounded-full border-0 px-3 py-1 text-sm">
-                      Hoạt động · {data.kpi.activeTours}
-                    </Tag>
-                    {Math.max(0, data.kpi.totalTours - data.kpi.activeTours) > 0 && (
-                      <Tag className="m-0 inline-flex rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-sm text-slate-600">
-                        Không hoạt động · {data.kpi.totalTours - data.kpi.activeTours}
-                      </Tag>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div className="mb-8 border-b border-[#f1f5f9] pb-8">
-            <div className="mb-5 flex flex-wrap items-start gap-2">
-              <div>
-                <Text className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div style={{ flex: 1 }}>
+                <Text style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>
                   Hiệu suất kỳ chọn
                 </Text>
-                <Title level={4} className="!mb-0 !text-lg !font-semibold !text-slate-900">
+                <Title level={4} style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
                   Chỉ số chính
                 </Title>
+                <Text style={{ fontSize: 13, color: "#64748b" }}>
+                  Booking và doanh thu trong kỳ — xem chi tiết và so sánh ở bảng bên dưới.
+                </Text>
               </div>
-              <Tooltip title="Các chỉ số so sánh với kỳ liền trước (cùng độ dài: ngày / tháng / năm). Giảm mạnh được tô đỏ để dễ quét.">
-                <QuestionCircleOutlined className="mt-1 cursor-help text-slate-400 hover:text-slate-500" />
-              </Tooltip>
+              <HintTip text="Các chỉ số so sánh với kỳ liền trước (cùng độ dài: ngày / tháng / năm). Giảm mạnh được tô đỏ để dễ quét." />
             </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               {kpiCards.map((c) => {
                 const severe =
                   c.deltaType === "percent"
-                    ? isSeverePercentDrop(c.deltaRaw)
-                    : c.deltaRaw != null &&
-                      c.deltaRaw < 0 &&
-                      Math.abs(c.deltaRaw) >= 40;
+                    ? isSeverePercentDrop(c.deltaRaw as number)
+                    : c.deltaRaw != null && c.deltaRaw < 0 && Math.abs(c.deltaRaw) >= 40;
                 return (
-                  <Card
+                  <div
                     key={c.title}
-                    bordered={false}
-                    className={`flex h-full min-h-0 flex-col rounded-lg border bg-white shadow-sm ${
-                      severe
-                        ? "border-red-200 bg-[#fef2f2]/80"
-                        : "border-slate-200"
-                    }`}
-                    styles={{
-                      body: {
-                        padding: 24,
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                      },
+                    style={{
+                      background: severe ? "#fff5f5" : "#fff",
+                      border: `1px solid ${severe ? "#fecaca" : "#e2e8f0"}`,
+                      borderRadius: 14,
+                      padding: "20px 22px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      minHeight: 180,
                     }}
                   >
-                    <div className="mb-4 flex justify-end text-slate-400">{c.icon}</div>
-                    <div className="text-[28px] font-bold leading-tight tracking-tight text-slate-900 md:text-[30px]">
-                      <span className="tabular-nums">{c.value}</span>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 36, height: 36, borderRadius: 10,
+                          background: c.iconBg, color: c.iconColor, flexShrink: 0,
+                        }}>
+                          {c.icon}
+                        </span>
+                        <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>{c.title}</span>
+                        <HintTip text={c.hintTooltip} />
+                      </div>
+                      <div style={{ marginTop: 16, fontSize: 30, fontWeight: 700, color: "#0f172a", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                        {c.value}
+                      </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                      <span>{c.title}</span>
-                      <HintTip text={c.hintTooltip} />
-                    </div>
-                    <div
-                      className={`mt-5 rounded-md px-3 py-3 ${
-                        severe ? "bg-red-100/60 ring-1 ring-red-200/80" : "bg-slate-50 ring-1 ring-slate-100"
-                      }`}
-                    >
+                    <div style={{ marginTop: 20, borderTop: "1px solid #f1f5f9", paddingTop: 14 }}>
                       {c.delta}
                     </div>
-                  </Card>
+                  </div>
                 );
               })}
             </div>
+
+            {/* Trend hint */}
+            <div style={{
+              marginTop: 16,
+              display: "flex", alignItems: "center", gap: 10,
+              background: "#fffbeb", border: "1px solid #fef3c7",
+              borderRadius: 10, padding: "10px 16px",
+              fontSize: 13, color: "#78350f",
+            }}>
+              <LineChartOutlined style={{ fontSize: 16, color: "#d97706", flexShrink: 0 }} />
+              <span>
+                Xu hướng — xem biểu đồ chi tiết trong mục{" "}
+                <strong style={{ fontWeight: 600, color: "#0f172a" }}>Biểu đồ & top tour</strong> phía dưới.
+              </span>
+            </div>
           </div>
 
-          <div className="mb-4">
-            <Text className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Xu hướng
-            </Text>
-            <Title level={4} className="!mb-0 !text-lg !font-semibold !text-slate-900">
-              Biểu đồ & top tour
-            </Title>
+          {/* ══ CHART SECTION ══ */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12, marginBottom: 20 }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 42, height: 42, borderRadius: 12,
+                background: "#0ea5e9", color: "#fff", flexShrink: 0,
+              }}>
+                <LineChartOutlined style={{ fontSize: 18 }} />
+              </div>
+              <div>
+                <Text style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#0369a1", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>
+                  Xu hướng
+                </Text>
+                <Title level={4} style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
+                  Biểu đồ & top tour
+                </Title>
+                <Text style={{ fontSize: 13, color: "#64748b" }}>
+                  Đường doanh thu + cột booking theo mốc thời gian; bảng bên phải là top hiệu suất.
+                </Text>
+              </div>
+            </div>
           </div>
-          <Row gutter={[20, 20]} className="mt-0">
+
+          <Row gutter={[20, 20]} style={{ marginTop: 0 }}>
             <Col xs={24} lg={16}>
               <Card
                 title={
-                  <span className="text-base font-semibold text-slate-900">
-                    Doanh thu & số booking theo thời gian
-                  </span>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 38, height: 38, borderRadius: 10,
+                      background: "#e0f2fe", color: "#0369a1", flexShrink: 0,
+                    }}>
+                      <BarChartOutlined style={{ fontSize: 16 }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+                        Doanh thu & số booking theo thời gian
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        So sánh xu hướng theo kỳ đang chọn.
+                      </div>
+                    </div>
+                  </div>
                 }
                 bordered={false}
-                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                style={baseCard}
                 styles={{
-                  header: {
-                    borderBottom: "1px solid #f1f5f9",
-                    padding: "16px 24px",
-                  },
-                  body: { paddingTop: 12, paddingLeft: 24, paddingRight: 24, paddingBottom: 20 },
+                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 22px" },
+                  body: { padding: "14px 22px 22px" },
                 }}
               >
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <Text type="secondary" className="text-[13px]">
-                    {period === "day"
-                      ? "14 ngày quanh ngày chọn"
-                      : period === "month"
-                        ? "12 tháng gần nhất (theo tháng)"
-                        : "5 năm gần nhất"}
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
+                  <Text style={{ fontSize: 12, color: "#64748b" }}>
+                    {period === "day" ? "14 ngày quanh ngày chọn" : period === "month" ? "12 tháng gần nhất (theo tháng)" : "5 năm gần nhất"}
                   </Text>
                   {!chartHasValues && (
-                    <span className="inline-flex items-center rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-[12px] text-amber-900/90">
+                    <span style={{
+                      display: "inline-flex", alignItems: "center",
+                      background: "#fffbeb", border: "1px solid #fef3c7",
+                      borderRadius: 999, padding: "3px 12px",
+                      fontSize: 12, color: "#92400e",
+                    }}>
                       Chưa có dữ liệu trong các mốc thời gian này
                     </span>
                   )}
                 </div>
-                <div className="w-full min-w-0" style={{ minHeight: CHART_FIXED_HEIGHT }}>
+                <div style={{ width: "100%", minHeight: CHART_FIXED_HEIGHT }}>
                   {chartHasPoints ? (
                     <RevenueBookingComposedChart data={chartData} />
                   ) : (
-                    <div
-                      className="flex items-center justify-center text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/80"
-                      style={{ height: CHART_FIXED_HEIGHT }}
-                    >
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      height: CHART_FIXED_HEIGHT, fontSize: 13, color: "#94a3b8",
+                      border: "1px dashed #e2e8f0", borderRadius: 10, background: "#f8fafc",
+                    }}>
                       Không có dữ liệu biểu đồ
                     </div>
                   )}
                 </div>
               </Card>
             </Col>
+
             <Col xs={24} lg={8}>
               <Card
                 title={
-                  <span className="text-base font-semibold text-slate-900">
-                    Top tour bán chạy (90 ngày)
-                  </span>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        width: 38, height: 38, borderRadius: 10,
+                        background: "#fef3c7", color: "#92400e", flexShrink: 0,
+                      }}>
+                        <TrophyOutlined style={{ fontSize: 16 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Top tour bán chạy</div>
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Tour hiệu suất cao nhất.</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <Button
+                        size="small"
+                        type={topTourMode === "90days" ? "primary" : "default"}
+                        onClick={() => setTopTourMode("90days")}
+                        style={{ borderRadius: 6 }}
+                      >
+                        90 ngày
+                      </Button>
+                      <Button
+                        size="small"
+                        type={topTourMode === "period" ? "primary" : "default"}
+                        onClick={() => setTopTourMode("period")}
+                        style={{ borderRadius: 6 }}
+                      >
+                        Theo kỳ
+                      </Button>
+                    </div>
+                  </div>
                 }
                 bordered={false}
-                className="h-full rounded-lg border border-slate-200 bg-white shadow-sm lg:mr-2"
+                style={{ ...baseCard, border: "1px solid #fef3c7", height: "100%" }}
                 styles={{
-                  header: {
-                    borderBottom: "1px solid #f1f5f9",
-                    padding: "16px 24px",
-                  },
-                  body: { paddingBottom: 20, paddingLeft: 24, paddingRight: 24, paddingTop: 12 },
+                  header: { borderBottom: "1px solid #fef3c7", padding: "16px 22px", background: "#fffdf5" },
+                  body: { padding: "14px 22px 20px" },
                 }}
               >
                 <Table
-                  size="small"
+                  size="middle"
                   rowKey="name"
                   columns={topTourColumns}
                   dataSource={data.topTours}
                   pagination={false}
+                  locale={{ emptyText: "Không có tour bán chạy" }}
+                  rowClassName={(_, i) => i % 2 === 0 ? "" : ""}
+                  style={{ fontSize: 13 }}
                 />
               </Card>
             </Col>
           </Row>
 
-          <Row gutter={[20, 20]} className="mt-10">
+          {/* ══ ALERTS ══ */}
+          <Row gutter={[20, 20]} style={{ marginTop: 28 }}>
             <Col xs={24}>
               <Card
                 title={
-                  <span className="text-base font-semibold text-slate-900">
-                    <WarningOutlined className="mr-2 text-amber-500" />
-                    Cảnh báo nhanh
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 42, height: 42, borderRadius: 12,
+                      background: "#f59e0b", color: "#fff", flexShrink: 0,
+                    }}>
+                      <WarningOutlined style={{ fontSize: 18 }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Cảnh báo nhanh</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>Tour sắp đi, booking chờ, HDV, tài nguyên</div>
+                    </div>
+                  </div>
                 }
                 bordered={false}
-                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                style={{ ...baseCard, border: "1px solid #fef3c7" }}
                 styles={{
-                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 24px" },
-                  body: { padding: 24 },
+                  header: { borderBottom: "1px solid #fef3c7", padding: "16px 22px", background: "#fffdf5" },
+                  body: { padding: 22 },
                 }}
               >
-                <Space direction="vertical" className="w-full" size="middle">
+                <Space direction="vertical" style={{ width: "100%" }} size="middle">
                   {data.alerts.departuresSoon.length > 0 && (
                     <Alert
                       type="warning"
                       showIcon
                       message="Tour sắp khởi hành (1–3 ngày)"
                       description={
-                        <ul className="list-disc pl-4 mb-0">
+                        <ul style={{ paddingLeft: 16, margin: 0 }}>
                           {data.alerts.departuresSoon.map((d) => (
                             <li key={d._id}>
                               <Link to={`/admin/bookings/${d._id}`}>
-                                {d.tourName || "Tour"} — {d.customer_name} —{" "}
-                                {dayjs(d.startDate).format("DD/MM/YYYY")}
+                                {d.tourName || "Tour"} — {d.customer_name} — {dayjs(d.startDate).format("DD/MM/YYYY")}
                               </Link>
                             </li>
                           ))}
@@ -833,12 +1003,10 @@ const Dashboard: React.FC = () => {
                       showIcon
                       message="Booking chưa xác nhận"
                       description={
-                        <ul className="list-disc pl-4 mb-0">
+                        <ul style={{ paddingLeft: 16, margin: 0 }}>
                           {data.alerts.pendingBookings.map((d) => (
                             <li key={d._id}>
-                              <Link to={`/admin/bookings/${d._id}`}>
-                                {d.customer_name} · {d.tourName}
-                              </Link>
+                              <Link to={`/admin/bookings/${d._id}`}>{d.customer_name} · {d.tourName}</Link>
                             </li>
                           ))}
                         </ul>
@@ -851,12 +1019,11 @@ const Dashboard: React.FC = () => {
                       showIcon
                       message="Chưa phân công HDV"
                       description={
-                        <ul className="list-disc pl-4 mb-0">
+                        <ul style={{ paddingLeft: 16, margin: 0 }}>
                           {data.alerts.unassignedGuide.map((d) => (
                             <li key={d._id}>
                               <Link to={`/admin/bookings/${d._id}`}>
-                                {d.tourName} — {d.customer_name} (
-                                {dayjs(d.startDate).format("DD/MM/YYYY")})
+                                {d.tourName} — {d.customer_name} ({dayjs(d.startDate).format("DD/MM/YYYY")})
                               </Link>
                             </li>
                           ))}
@@ -864,29 +1031,18 @@ const Dashboard: React.FC = () => {
                       }
                     />
                   )}
-                  {(data.alerts.resourceFlags.roomsTight ||
-                    data.alerts.resourceFlags.vehiclesTight ||
-                    data.alerts.resourceFlags.ticketsBusy) && (
+                  {(data.alerts.resourceFlags.roomsTight || data.alerts.resourceFlags.vehiclesTight || data.alerts.resourceFlags.ticketsBusy) && (
                     <Alert
                       type="warning"
                       showIcon
                       message="Tài nguyên"
                       description={
-                        <ul className="mb-0 pl-4">
-                          {data.alerts.resourceFlags.roomsTight && (
-                            <li>Phòng khách sạn: tỷ lệ sử dụng cao hôm nay (≥85%).</li>
-                          )}
-                          {data.alerts.resourceFlags.vehiclesTight && (
-                            <li>Xe: tỷ lệ phân bổ cao hôm nay (≥85%).</li>
-                          )}
-                          {data.alerts.resourceFlags.ticketsBusy && (
-                            <li>
-                              Vé/dịch vụ: có đơn dùng vé add-on nhưng chưa có loại vé trong hệ thống.
-                            </li>
-                          )}
-                          <li className="text-slate-600 text-xs mt-1">
-                            Phân bổ 7 ngày tới: {data.alerts.resourceFlags.roomAllocationsNextWeek}{" "}
-                            lượt phòng (ước lượng).
+                        <ul style={{ margin: 0, paddingLeft: 16 }}>
+                          {data.alerts.resourceFlags.roomsTight && <li>Phòng khách sạn: tỷ lệ sử dụng cao hôm nay (≥85%).</li>}
+                          {data.alerts.resourceFlags.vehiclesTight && <li>Xe: tỷ lệ phân bổ cao hôm nay (≥85%).</li>}
+                          {data.alerts.resourceFlags.ticketsBusy && <li>Vé/dịch vụ: có đơn dùng vé add-on nhưng chưa có loại vé trong hệ thống.</li>}
+                          <li style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>
+                            Phân bổ 7 ngày tới: {data.alerts.resourceFlags.roomAllocationsNextWeek} lượt phòng (ước lượng).
                           </li>
                         </ul>
                       }
@@ -898,113 +1054,187 @@ const Dashboard: React.FC = () => {
                     !data.alerts.resourceFlags.roomsTight &&
                     !data.alerts.resourceFlags.vehiclesTight &&
                     !data.alerts.resourceFlags.ticketsBusy && (
-                      <Text type="secondary">Không có cảnh báo hiện tại.</Text>
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        background: "#f8fafc", borderRadius: 8,
+                        padding: "10px 14px", fontSize: 13, color: "#64748b",
+                      }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#94a3b8", flexShrink: 0 }} />
+                        Không có cảnh báo hiện tại.
+                      </div>
                     )}
                 </Space>
               </Card>
             </Col>
           </Row>
 
-          <Row gutter={[20, 20]} className="mt-2">
+          {/* ══ CUSTOMERS + RESOURCES ══ */}
+          <Row gutter={[20, 20]} style={{ marginTop: 8 }}>
+            {/* Khách hàng */}
             <Col xs={24} md={12} lg={8}>
               <Card
                 title={
-                  <span className="text-base font-semibold text-slate-900">
-                    Khách hàng (kỳ hiện tại)
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 38, height: 38, borderRadius: 10,
+                      background: "#dcfce7", color: "#15803d", flexShrink: 0,
+                    }}>
+                      <TeamOutlined style={{ fontSize: 16 }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Khách hàng (kỳ hiện tại)</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>Mới vs quay lại trong kỳ lọc</div>
+                    </div>
+                  </div>
                 }
                 bordered={false}
-                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                style={{ ...baseCard, border: "1px solid #d1fae5", height: "100%" }}
                 styles={{
-                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 24px" },
-                  body: { padding: 24 },
+                  header: { borderBottom: "1px solid #d1fae5", padding: "16px 20px", background: "#f0fdf4" },
+                  body: { padding: 20 },
                 }}
               >
-                <Row gutter={[12, 12]}>
+                <Row gutter={[10, 10]} style={{ marginBottom: 16 }}>
                   <Col span={12}>
-                    <Card size="small" className="bg-emerald-50 border-0">
-                      <StatisticMini label="Khách mới (SĐT)" value={data.customers.newInPeriod} />
-                    </Card>
+                    <div style={{ background: "#f0fdf4", border: "1px solid #d1fae5", borderRadius: 10, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>Khách mới (SĐT)</div>
+                      <div style={{ fontSize: 22, fontWeight: 600, color: "#0f172a" }}>{data.customers.newInPeriod}</div>
+                    </div>
                   </Col>
                   <Col span={12}>
-                    <Card size="small" className="bg-sky-50 border-0">
-                      <StatisticMini
-                        label="Khách quay lại"
-                        value={data.customers.returningInPeriod}
-                      />
-                    </Card>
+                    <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>Khách quay lại</div>
+                      <div style={{ fontSize: 22, fontWeight: 600, color: "#0f172a" }}>{data.customers.returningInPeriod}</div>
+                    </div>
                   </Col>
                 </Row>
-                <Divider className="my-3" />
-                <Text strong className="text-sm">
+                <Divider style={{ margin: "0 0 12px", borderColor: "#f1f5f9" }} />
+                <Text style={{ fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 8 }}>
                   Top khách (mọi thời điểm)
                 </Text>
                 <Table
-                  className="mt-2"
                   size="small"
                   rowKey="phone"
                   columns={topCustomerColumns}
                   dataSource={data.customers.top}
                   pagination={false}
+                  style={{ fontSize: 13 }}
                 />
               </Card>
             </Col>
+
+            {/* Tài nguyên */}
             <Col xs={24} md={12} lg={16}>
               <Card
                 title={
-                  <span className="text-base font-semibold text-slate-900">
-                    <InboxOutlined className="mr-2 text-slate-500" />
-                    Trạng thái tài nguyên (hôm nay)
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 38, height: 38, borderRadius: 10,
+                      background: "#f1f5f9", color: "#334155", flexShrink: 0,
+                    }}>
+                      <InboxOutlined style={{ fontSize: 16 }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Trạng thái tài nguyên (hôm nay)</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>Phòng, xe, vé — mức sử dụng ước lượng</div>
+                    </div>
+                  </div>
                 }
                 bordered={false}
-                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                style={{ ...baseCard, height: "100%" }}
                 styles={{
-                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 24px" },
-                  body: { padding: 24 },
+                  header: { borderBottom: "1px solid #e2e8f0", padding: "16px 20px", background: "#f8fafc" },
+                  body: { padding: 20 },
                 }}
               >
                 <Row gutter={[16, 16]}>
+                  {/* Phòng */}
                   <Col xs={24} md={8}>
-                    <Text strong>Khách sạn — phòng</Text>
-                    <div className="mt-2">
+                    <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "14px 16px", height: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 30, height: 30, borderRadius: 8,
+                          background: "#e0f2fe", color: "#0369a1",
+                        }}>
+                          <HomeOutlined style={{ fontSize: 14 }} />
+                        </span>
+                        <Text strong style={{ fontSize: 13 }}>Khách sạn — phòng</Text>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                        {data.resources.rooms.usagePct}%
+                      </div>
                       <Progress
                         percent={data.resources.rooms.usagePct}
                         status={data.resources.rooms.usagePct >= 85 ? "exception" : "active"}
                         strokeColor="#0ea5e9"
+                        showInfo={false}
+                        size="small"
+                        style={{ marginBottom: 8 }}
                       />
-                      <Text type="secondary" className="text-xs block">
-                        Đã dùng {data.resources.rooms.usedTodayDistinct} / {data.resources.rooms.total}{" "}
-                        phòng (ước lượng theo phân bổ)
+                      <Text style={{ display: "block", fontSize: 11, color: "#64748b" }}>
+                        Đã dùng {data.resources.rooms.usedTodayDistinct} / {data.resources.rooms.total} phòng
                       </Text>
-                      <Text className="text-xs">Còn trống ~{data.resources.rooms.freeApprox}</Text>
+                      <Text style={{ fontSize: 12, color: "#0f172a" }}>Còn trống ~{data.resources.rooms.freeApprox}</Text>
                     </div>
                   </Col>
+
+                  {/* Xe */}
                   <Col xs={24} md={8}>
-                    <Text strong>Xe</Text>
-                    <div className="mt-2">
+                    <div style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 10, padding: "14px 16px", height: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 30, height: 30, borderRadius: 8,
+                          background: "#ede9fe", color: "#6d28d9",
+                        }}>
+                          <CarOutlined style={{ fontSize: 14 }} />
+                        </span>
+                        <Text strong style={{ fontSize: 13 }}>Xe</Text>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
+                        {data.resources.vehicles.usagePct}%
+                      </div>
                       <Progress
                         percent={data.resources.vehicles.usagePct}
                         status={data.resources.vehicles.usagePct >= 85 ? "exception" : "active"}
                         strokeColor="#8b5cf6"
+                        showInfo={false}
+                        size="small"
+                        style={{ marginBottom: 8 }}
                       />
-                      <Text type="secondary" className="text-xs block">
-                        Đã phân bổ {data.resources.vehicles.usedTodayDistinct} /{" "}
-                        {data.resources.vehicles.total} xe
+                      <Text style={{ display: "block", fontSize: 11, color: "#64748b" }}>
+                        Đã phân bổ {data.resources.vehicles.usedTodayDistinct} / {data.resources.vehicles.total} xe
                       </Text>
-                      <Text className="text-xs">Còn trống ~{data.resources.vehicles.freeApprox}</Text>
+                      <Text style={{ fontSize: 12, color: "#0f172a" }}>Còn trống ~{data.resources.vehicles.freeApprox}</Text>
                     </div>
                   </Col>
+
+                  {/* Vé */}
                   <Col xs={24} md={8}>
-                    <Text strong>Vé tham quan (sản phẩm)</Text>
-                    <div className="mt-2 space-y-1">
-                      <Text className="block text-sm">
-                        Loại vé đang active:{" "}
-                        <b>{data.resources.tickets.activeProducts}</b>
+                    <div style={{ background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: 10, padding: "14px 16px", height: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 30, height: 30, borderRadius: 8,
+                          background: "#fef3c7", color: "#92400e",
+                        }}>
+                          <IdcardOutlined style={{ fontSize: 14 }} />
+                        </span>
+                        <Text strong style={{ fontSize: 13 }}>Vé tham quan</Text>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                        <Tag style={{ borderRadius: 20, border: "1px solid #fef3c7", background: "#fef9ec", color: "#92400e", fontSize: 12, margin: 0, padding: "2px 10px" }}>
+                          Active: {data.resources.tickets.activeProducts} loại
+                        </Tag>
+                      </div>
+                      <Text style={{ display: "block", fontSize: 12, color: "#0f172a", marginBottom: 4 }}>
+                        Đơn có vé add-on: <strong>{data.resources.tickets.bookingsWithOptionalTickets}</strong>
                       </Text>
-                      <Text type="secondary" className="text-xs block">
-                        Đơn có vé add-on: {data.resources.tickets.bookingsWithOptionalTickets}{" "}
-                        (hệ thống không quản tồn vé chi tiết)
+                      <Text style={{ fontSize: 11, color: "#94a3b8" }}>
+                        Hệ thống không quản lý tồn vé chi tiết
                       </Text>
                     </div>
                   </Col>
@@ -1016,26 +1246,10 @@ const Dashboard: React.FC = () => {
       )}
 
       <FloatButton.Group shape="circle" style={{ right: 24, bottom: 24 }}>
-        <FloatButton
-          icon={<PlusOutlined />}
-          tooltip="Tạo tour"
-          onClick={() => navigate("/admin/tours/create")}
-        />
-        <FloatButton
-          icon={<ShoppingOutlined />}
-          tooltip="Tạo booking"
-          onClick={() => navigate("/admin/bookings/create")}
-        />
-        <FloatButton
-          icon={<GlobalOutlined />}
-          tooltip="Nhà cung cấp"
-          onClick={() => navigate("/admin/providers/create")}
-        />
-        <FloatButton
-          icon={<ThunderboltOutlined />}
-          tooltip="Phân bổ (danh sách booking)"
-          onClick={() => navigate("/admin/bookings")}
-        />
+        <FloatButton icon={<PlusOutlined />} tooltip="Tạo tour" onClick={() => navigate("/admin/tours/create")} />
+        <FloatButton icon={<ShoppingOutlined />} tooltip="Tạo booking" onClick={() => navigate("/admin/bookings/create")} />
+        <FloatButton icon={<GlobalOutlined />} tooltip="Nhà cung cấp" onClick={() => navigate("/admin/providers/create")} />
+        <FloatButton icon={<ThunderboltOutlined />} tooltip="Phân bổ (danh sách booking)" onClick={() => navigate("/admin/bookings")} />
       </FloatButton.Group>
     </div>
   );
@@ -1044,10 +1258,8 @@ const Dashboard: React.FC = () => {
 function StatisticMini({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <Text type="secondary" className="text-xs">
-        {label}
-      </Text>
-      <div className="text-xl font-semibold">{value}</div>
+      <Text type="secondary" style={{ fontSize: 12 }}>{label}</Text>
+      <div style={{ fontSize: 20, fontWeight: 600 }}>{value}</div>
     </div>
   );
 }
