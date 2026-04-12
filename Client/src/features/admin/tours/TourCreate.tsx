@@ -407,9 +407,8 @@ const TourCreate = () => {
 
     if (Array.isArray(finalValues.secondary_guide_ids)) {
       const p = finalValues.primary_guide_id ? String(finalValues.primary_guide_id) : '';
-      finalValues.secondary_guide_ids = [...new Set(finalValues.secondary_guide_ids.map((x: any) => String(x)))].filter(
-        (id: string) => id && id !== p
-      );
+      const secondaryIds = [...new Set(finalValues.secondary_guide_ids.map((x: unknown) => String(x)))] as string[];
+      finalValues.secondary_guide_ids = secondaryIds.filter((id) => id.length > 0 && id !== p);
     }
 
     // Admin chỉ hiển thị tên có ngày, DB vẫn lưu tên gốc

@@ -307,9 +307,10 @@ const TourEdit = () => {
     payload.images = imageUrls;
     if (Array.isArray((payload as any).secondary_guide_ids)) {
       const p = (payload as any).primary_guide_id ? String((payload as any).primary_guide_id) : '';
-      (payload as any).secondary_guide_ids = [
-        ...new Set((payload as any).secondary_guide_ids.map((x: any) => String(x))),
-      ].filter((id: string) => id && id !== p);
+      const secondaryIds = [
+        ...new Set((payload as any).secondary_guide_ids.map((x: unknown) => String(x))),
+      ] as string[];
+      (payload as any).secondary_guide_ids = secondaryIds.filter((id) => id.length > 0 && id !== p);
     }
     mutation.mutate(payload);
   };

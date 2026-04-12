@@ -641,6 +641,30 @@ const Dashboard: React.FC = () => {
           <Text style={{ display: "block", marginTop: 4, fontSize: 12, color: "#64748b" }}>
             Chi tiết số liệu và badge trạng thái (đồng bộ với khối tóm tắt phía trên).
           </Text>
+          {isLoading ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+                marginTop: 14,
+              }}
+            >
+              {[0, 1, 2].map((k) => (
+                <div
+                  key={k}
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 12,
+                    padding: 18,
+                  }}
+                >
+                  <Skeleton active title={{ width: "45%" }} paragraph={{ rows: 2 }} />
+                </div>
+              ))}
+            </div>
+          ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 14 }}>
             {[
               {
@@ -734,6 +758,7 @@ const Dashboard: React.FC = () => {
               </div>
             ))}
           </div>
+          )}
         </div>
       </Card>
 
@@ -1271,7 +1296,13 @@ const Dashboard: React.FC = () => {
         </>
       )}
 
-      <FloatButton.Group shape="circle" style={{ right: 24, bottom: 24 }}>
+      <FloatButton.Group
+        shape="circle"
+        style={{
+          right: 20,
+          bottom: "max(24px, calc(16px + env(safe-area-inset-bottom, 0px)))",
+        }}
+      >
         <FloatButton icon={<PlusOutlined />} tooltip="Tạo tour" onClick={() => navigate("/admin/tours/create")} />
         <FloatButton icon={<ShoppingOutlined />} tooltip="Tạo booking" onClick={() => navigate("/admin/bookings/create")} />
         <FloatButton icon={<GlobalOutlined />} tooltip="Nhà cung cấp" onClick={() => navigate("/admin/providers/create")} />
