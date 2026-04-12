@@ -12,6 +12,7 @@ import {
   ShopOutlined,
   MessageOutlined,
   CalendarOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -35,6 +36,7 @@ const AdminSidebar = () => {
     if (pathname.includes("/admin/guides")) keys.push("guide-management");
     if (pathname.includes("/admin/providers")) keys.push("provider-management");
     if (pathname.includes("/admin/holiday-pricing")) keys.push("holiday-pricing-management");
+    if (pathname.includes("/admin/guide-reviews")) keys.push("guide-review-management");
     return keys;
   };
 
@@ -176,6 +178,19 @@ const AdminSidebar = () => {
                 key: "/admin/holiday-pricing/create",
                 icon: <PlusCircleOutlined />,
                 label: <Link to="/admin/holiday-pricing/create">Thêm Ngày lễ</Link>,
+              },
+            ],
+          },
+
+          {
+            key: "guide-review-management",
+            icon: <StarOutlined />,
+            label: "Quản lý đánh giá",
+            children: [
+              {
+                key: "/admin/guide-reviews",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/guide-reviews">Đánh giá hướng dẫn viên</Link>,
               },
             ],
           },

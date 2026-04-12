@@ -172,7 +172,8 @@ export const getMyBookingDetailForUser = async (req: AuthRequest, res: Response)
     const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const booking: any = await Booking.findById(bookingId)
       .populate({ path: 'tour_id', select: 'name images duration_days price schedule slug' })
-      .populate({ path: 'user_id', select: 'name email phone' });
+      .populate({ path: 'user_id', select: 'name email phone' })
+      .populate({ path: 'guide_id', select: 'name email phone avatar' });
 
     if (!booking) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });

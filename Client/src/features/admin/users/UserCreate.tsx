@@ -1,9 +1,10 @@
 // import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Form, Input, Select, Button, Card, Typography, message, Space } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+import { useState } from 'react';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -12,23 +13,21 @@ const UserCreate = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [submitting, setSubmitting] = useState(false);
 
-  const createUserMutation = useMutation({
-    mutationFn: async (values: any) => {
+  const onFinish = async (values: any) => {
+    setSubmitting(true);
+    try {
       await axios.post('http://localhost:5000/api/v1/auth/register', values);
-    },
-    onSuccess: () => {
       message.success('Tạo tài khoản thành công!');
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      navigate('/admin/users'); 
-    },
-    onError: (error: any) => {
+      form.resetFields();
+      navigate('/admin/users', { replace: true });
+    } catch (error: any) {
       message.error(error.response?.data?.message || 'Lỗi khi tạo tài khoản!');
+    } finally {
+      setSubmitting(false);
     }
-  });
-
-  const onFinish = (values: any) => {
-    createUserMutation.mutate(values);
   };
 
   return (
@@ -86,7 +85,6 @@ const UserCreate = () => {
             <Select size="large">
               <Option value="user">Khách hàng (User)</Option>
               <Option value="guide">Hướng dẫn viên (Guide)</Option>
-              <Option value="hdv">HDV</Option>
               <Option value="admin">Quản trị viên (Admin)</Option>
             </Select>
           </Form.Item>
@@ -97,7 +95,7 @@ const UserCreate = () => {
             block 
             size="large" 
             icon={<SaveOutlined />}
-            loading={createUserMutation.isPending}
+            loading={submitting}
             className="mt-4 bg-blue-600 h-12"
           >
             TẠO TÀI KHOẢN NÀY

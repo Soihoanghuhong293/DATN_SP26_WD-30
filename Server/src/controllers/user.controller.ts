@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import User from "../models/user.model";
+import Guide from "../models/Guide";
 
 //Lấy danh sách user
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -29,6 +30,25 @@ export const updateRole = async (req: Request, res: Response) => {
     ).select("-password");
 
     if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
+
+    // Đồng bộ: nếu user được set role guide/hdv mà chưa có Guide doc thì tạo
+    if (role === "guide" || role === "hdv") {
+      const exists = await Guide.findOne({ user_id: user._id }).select("_id");
+      if (!exists) {
+        await Guide.create({
+          user_id: user._id,
+          name: (user as any).name || (user as any).email || "Hướng dẫn viên",
+          email: (user as any).email,
+          phone: `AUTO-${String(user._id)}`,
+          languages: ["Vietnamese"],
+          experience: { years: 0 },
+          group_type: "domestic",
+          health_status: "healthy",
+          history: [],
+          rating: { average: 0, totalReviews: 0, reviews: [] },
+        });
+      }
+    }
 
     res.json({ status: "success", message: "Cập nhật quyền thành công", data: user });
   } catch (error) {
