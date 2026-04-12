@@ -14,6 +14,8 @@ import {
   Progress,
   Divider,
   FloatButton,
+  Tooltip,
+  Tag,
 } from "antd";
 import {
   ArrowUpOutlined,
@@ -28,6 +30,7 @@ import {
   PlusOutlined,
   WarningOutlined,
   InboxOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import axios from "axios";
@@ -40,11 +43,29 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
 } from "recharts";
 
 const { Title, Text } = Typography;
+
+/** Cảnh báo khi biến động % so với kỳ trước rất mạnh (ví dụ &gt; 90%) */
+const SEVERE_PERCENT_DROP = 90;
+
+function isSeverePercentDrop(delta: number) {
+  return delta < 0 && Math.abs(delta) >= SEVERE_PERCENT_DROP;
+}
+
+function HintTip({ text }: { text: string }) {
+  return (
+    <Tooltip title={text} placement="topLeft">
+      <QuestionCircleOutlined
+        className="cursor-help text-slate-400 hover:text-slate-500"
+        aria-label="Giải thích"
+      />
+    </Tooltip>
+  );
+}
 
 const API_V1 =
   (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
@@ -125,6 +146,9 @@ interface OverviewPayload {
   };
 }
 
+const DELTA_UP = "#16a34a";
+const DELTA_DOWN = "#ef4444";
+
 function Delta({
   value,
   suffix = "%",
@@ -134,22 +158,41 @@ function Delta({
 }) {
   if (value === 0) {
     return (
-      <span className="text-sm text-slate-500 inline-flex items-center gap-1">
-        <span className="font-medium text-slate-600">Bằng kỳ trước</span>
-        <span className="text-slate-400">(0{suffix})</span>
-      </span>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-semibold tabular-nums text-slate-600">
+          0{suffix}
+        </span>
+        <Tooltip title="Không đổi so với kỳ liền trước (cùng độ dài kỳ).">
+          <span className="inline-flex w-fit cursor-default items-center gap-1 text-xs text-slate-400">
+            Bằng kỳ trước
+            <QuestionCircleOutlined className="text-[11px]" />
+          </span>
+        </Tooltip>
+      </div>
     );
   }
   const up = value > 0;
+  const color = up ? DELTA_UP : DELTA_DOWN;
   return (
-    <span
-      className={`text-sm font-medium inline-flex items-center gap-1 ${up ? "text-emerald-600" : "text-rose-600"}`}
-    >
-      {up ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-      {up ? "+" : ""}
-      {value}
-      {suffix} <span className="font-normal text-slate-500">so với kỳ trước</span>
-    </span>
+    <div className="flex flex-col gap-1">
+      <span
+        className="inline-flex items-center gap-1.5 text-base font-bold tabular-nums leading-tight"
+        style={{ color }}
+      >
+        {up ? <ArrowUpOutlined className="text-sm" /> : <ArrowDownOutlined className="text-sm" />}
+        <span>
+          {up ? "+" : ""}
+          {value}
+          {suffix}
+        </span>
+      </span>
+      <Tooltip title="So sánh với kỳ liền trước (cùng độ dài): ngày/tháng/năm tương ứng.">
+        <span className="inline-flex w-fit cursor-default items-center gap-1 text-xs text-slate-500">
+          So với kỳ trước
+          <QuestionCircleOutlined className="text-[11px] text-slate-400" />
+        </span>
+      </Tooltip>
+    </div>
   );
 }
 
@@ -229,7 +272,7 @@ function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
             allowDecimals={false}
             domain={[0, "auto"]}
           />
-          <Tooltip
+          <RechartsTooltip
             contentStyle={{
               borderRadius: 12,
               border: "1px solid #e2e8f0",
@@ -279,28 +322,43 @@ function RevenueBookingComposedChart({ data }: { data: RevBookPoint[] }) {
 function OccupancyDelta({ value }: { value: number | null }) {
   if (value === null) {
     return (
-      <Text type="secondary" className="text-sm">
-        Cần lịch khởi hành có slots
-      </Text>
+      <Tooltip title="Cần lịch khởi hành có slot để ước tính và so sánh tỉ lệ lấp đầy giữa hai kỳ.">
+        <span className="inline-flex cursor-default items-center gap-1 text-sm text-slate-500">
+          Chưa so sánh được
+          <QuestionCircleOutlined className="text-slate-400" />
+        </span>
+      </Tooltip>
     );
   }
   if (value === 0) {
     return (
-      <span className="text-sm text-slate-500">
-        <span className="font-medium text-slate-600">Bằng kỳ trước</span>
-      </span>
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-semibold tabular-nums text-slate-600">0 điểm %</span>
+        <span className="text-xs text-slate-400">Bằng kỳ trước</span>
+      </div>
     );
   }
   const up = value > 0;
+  const color = up ? DELTA_UP : DELTA_DOWN;
   return (
-    <span
-      className={`text-sm font-medium inline-flex items-center gap-1 ${up ? "text-emerald-600" : "text-rose-600"}`}
-    >
-      {up ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-      {up ? "+" : ""}
-      {value} điểm %{" "}
-      <span className="font-normal text-slate-500">so với kỳ trước</span>
-    </span>
+    <div className="flex flex-col gap-1">
+      <span
+        className="inline-flex items-center gap-1.5 text-base font-bold tabular-nums leading-tight"
+        style={{ color }}
+      >
+        {up ? <ArrowUpOutlined className="text-sm" /> : <ArrowDownOutlined className="text-sm" />}
+        <span>
+          {up ? "+" : ""}
+          {value} điểm %
+        </span>
+      </span>
+      <Tooltip title="Chênh lệch điểm phần trăm lấp đầy so với kỳ liền trước.">
+        <span className="inline-flex w-fit cursor-default items-center gap-1 text-xs text-slate-500">
+          So với kỳ trước
+          <QuestionCircleOutlined className="text-[11px] text-slate-400" />
+        </span>
+      </Tooltip>
+    </div>
   );
 }
 
@@ -335,39 +393,41 @@ const Dashboard: React.FC = () => {
     return [
       {
         title: "Booking trong kỳ",
-        hint: "Theo ngày tạo đơn, không tính đã hủy",
+        hintTooltip:
+          "Số booking được tạo trong kỳ đang chọn, theo ngày tạo đơn. Không tính các đơn đã hủy.",
         value: kpi.totalBookings,
-        icon: <ShoppingOutlined className="text-2xl text-violet-600" />,
+        icon: <ShoppingOutlined className="text-lg text-slate-400" />,
         delta: <Delta value={kpi.totalBookingsDelta} />,
-        accent: "border-l-violet-500",
-        iconBg: "bg-violet-50",
+        deltaRaw: kpi.totalBookingsDelta,
+        deltaType: "percent" as const,
       },
       {
         title: "Doanh thu",
-        hint: "Đã cọc / đã thanh toán",
+        hintTooltip: "Tổng tiền đã cọc và đã thanh toán trong kỳ (theo quy tắc tính doanh thu trên server).",
         value: `${kpi.revenue.toLocaleString("vi-VN")} đ`,
-        icon: <DollarOutlined className="text-2xl text-rose-600" />,
+        icon: <DollarOutlined className="text-lg text-slate-400" />,
         delta: <Delta value={kpi.revenueDelta} />,
-        accent: "border-l-rose-500",
-        iconBg: "bg-rose-50",
+        deltaRaw: kpi.revenueDelta,
+        deltaType: "percent" as const,
       },
       {
         title: "Khách (chỗ)",
-        hint: "Tổng chỗ đặt trong kỳ",
+        hintTooltip: "Tổng số chỗ (group size) trên các booking trong kỳ.",
         value: kpi.passengersServed,
-        icon: <TeamOutlined className="text-2xl text-emerald-600" />,
+        icon: <TeamOutlined className="text-lg text-slate-400" />,
         delta: <Delta value={kpi.passengersDelta} />,
-        accent: "border-l-emerald-500",
-        iconBg: "bg-emerald-50",
+        deltaRaw: kpi.passengersDelta,
+        deltaType: "percent" as const,
       },
       {
         title: "Tỉ lệ lấp đầy",
-        hint: "Ước tính theo slot tour & chỗ đặt",
+        hintTooltip:
+          "Ước tính theo slot lịch khởi hành của tour và số chỗ đã đặt trong kỳ. Không hiển thị nếu thiếu dữ liệu slot.",
         value: kpi.occupancyPct != null ? `${kpi.occupancyPct}%` : "—",
-        icon: <PieChartOutlined className="text-2xl text-amber-600" />,
+        icon: <PieChartOutlined className="text-lg text-slate-400" />,
         delta: <OccupancyDelta value={kpi.occupancyDelta} />,
-        accent: "border-l-amber-500",
-        iconBg: "bg-amber-50",
+        deltaRaw: kpi.occupancyDelta,
+        deltaType: "occupancy" as const,
       },
     ];
   }, [data]);
@@ -409,88 +469,98 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 pb-24">
+    <div className="min-h-screen bg-slate-50 pb-24">
       <Card
         bordered={false}
-        className="mb-4 shadow-sm rounded-2xl border-0 bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-500 text-white"
-        styles={{ body: { padding: "20px 24px" } }}
+        className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
+        styles={{ body: { padding: 24 } }}
       >
-        <Row gutter={[16, 16]} align="middle" justify="space-between">
-          <Col flex="auto">
-            <div className="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full mb-2">
-              <ThunderboltOutlined />
-              <span className="text-xs font-semibold uppercase tracking-wide">
-                Khu vực quản trị
-              </span>
+        <Row gutter={[24, 24]} align="middle" justify="space-between">
+          <Col flex="auto" xs={24} lg={13}>
+            <div className="mb-2 flex items-center gap-2 text-slate-500">
+              <ThunderboltOutlined className="text-slate-400" />
+              <span className="text-xs font-semibold uppercase tracking-wide">Admin</span>
             </div>
-            <Title level={3} style={{ color: "#fff", margin: "0 0 4px" }}>
+            <Title level={2} className="!mb-2 !mt-0 !text-xl !font-bold !text-slate-900 md:!text-2xl">
               Tổng quan vận hành
             </Title>
-            <Text style={{ color: "rgba(255,255,255,0.9)" }}>
-              KPI, xu hướng, cảnh báo và tài nguyên — theo kỳ bạn chọn
+            <Text className="block max-w-xl text-sm text-slate-500">
+              Chọn kỳ thời gian để xem chỉ số, biểu đồ và cảnh báo.
             </Text>
           </Col>
-          <Col>
-            <Space wrap className="bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-              <Radio.Group
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-                buttonStyle="solid"
-              >
-                <Radio.Button value="day">Ngày</Radio.Button>
-                <Radio.Button value="month">Tháng</Radio.Button>
-                <Radio.Button value="year">Năm</Radio.Button>
-              </Radio.Group>
-              {period === "day" && (
-                <DatePicker
-                  value={anchor}
-                  onChange={(v) => v && setAnchor(v)}
-                  allowClear={false}
-                  format="DD/MM/YYYY"
-                />
-              )}
-              {period === "month" && (
-                <DatePicker
-                  picker="month"
-                  value={anchor}
-                  onChange={(v) => v && setAnchor(v)}
-                  allowClear={false}
-                  format="MM/YYYY"
-                />
-              )}
-              {period === "year" && (
-                <DatePicker
-                  picker="year"
-                  value={anchor}
-                  onChange={(v) => v && setAnchor(v)}
-                  allowClear={false}
-                  format="YYYY"
-                />
-              )}
-              <Divider type="vertical" className="border-white/30 h-8 m-0 hidden md:inline-block" />
-              <Space wrap className="hidden lg:flex">
+          <Col xs={24} lg={11}>
+            <div className="w-full rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-left">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Radio.Group
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value)}
+                  buttonStyle="solid"
+                  className="flex flex-wrap shadow-sm"
+                >
+                  <Radio.Button value="day" className="!px-3">
+                    Ngày
+                  </Radio.Button>
+                  <Radio.Button value="month" className="!px-3">
+                    Tháng
+                  </Radio.Button>
+                  <Radio.Button value="year" className="!px-3">
+                    Năm
+                  </Radio.Button>
+                </Radio.Group>
+                {period === "day" && (
+                  <DatePicker
+                    value={anchor}
+                    onChange={(v) => v && setAnchor(v)}
+                    allowClear={false}
+                    format="DD/MM/YYYY"
+                    className="min-w-[140px] flex-1 sm:flex-initial"
+                  />
+                )}
+                {period === "month" && (
+                  <DatePicker
+                    picker="month"
+                    value={anchor}
+                    onChange={(v) => v && setAnchor(v)}
+                    allowClear={false}
+                    format="MM/YYYY"
+                    className="min-w-[120px] flex-1 sm:flex-initial"
+                  />
+                )}
+                {period === "year" && (
+                  <DatePicker
+                    picker="year"
+                    value={anchor}
+                    onChange={(v) => v && setAnchor(v)}
+                    allowClear={false}
+                    format="YYYY"
+                    className="min-w-[100px] flex-1 sm:flex-initial"
+                  />
+                )}
+              </div>
+              <Divider className="my-0 border-slate-100" />
+              <Space wrap size={[8, 8]} className="w-full">
                 <Link to="/admin/tours/create">
-                  <Button size="small" icon={<PlusOutlined />}>
+                  <Button size="middle" icon={<PlusOutlined />}>
                     Tour mới
                   </Button>
                 </Link>
                 <Link to="/admin/bookings/create">
-                  <Button size="small" icon={<PlusOutlined />}>
+                  <Button size="middle" icon={<PlusOutlined />}>
                     Booking
                   </Button>
                 </Link>
                 <Link to="/admin/providers/create">
-                  <Button size="small" icon={<PlusOutlined />}>
+                  <Button size="middle" icon={<PlusOutlined />}>
                     Nhà cung cấp
                   </Button>
                 </Link>
                 <Link to="/admin/bookings">
-                  <Button size="small" type="primary" ghost>
+                  <Button size="middle" type="primary">
                     Phân bổ xe/phòng
                   </Button>
                 </Link>
               </Space>
-            </Space>
+            </div>
           </Col>
         </Row>
       </Card>
@@ -509,94 +579,164 @@ const Dashboard: React.FC = () => {
         <Skeleton active paragraph={{ rows: 12 }} />
       ) : (
         <>
-          <Card
-            bordered={false}
-            className="mb-4 rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-          >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-4 min-w-0">
-                <div className="shrink-0 w-14 h-14 rounded-2xl bg-sky-50 flex items-center justify-center border border-sky-100">
-                  <GlobalOutlined className="text-2xl text-sky-600" />
-                </div>
-                <div className="min-w-0">
-                  <Text className="text-xs uppercase tracking-wider text-slate-500 font-semibold block">
-                    Tour trong hệ thống
-                  </Text>
-                  <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="text-3xl font-bold text-slate-900 tabular-nums">
-                      {data.kpi.totalTours}
-                    </span>
-                    <span className="text-slate-400 text-lg">·</span>
-                    <span className="text-lg text-slate-700">
-                      <span className="font-semibold text-emerald-600 tabular-nums">
-                        {data.kpi.activeTours}
-                      </span>{" "}
-                      <span className="text-slate-500 font-normal text-base">đang hoạt động</span>
-                    </span>
-                  </div>
-                  <Text type="secondary" className="text-sm block mt-1">
-                    Tổng số tour và tour trạng thái active — gọn một dòng để dễ quét.
-                  </Text>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 pl-0 sm:pl-4 sm:border-l sm:border-slate-100">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
-                  <CalendarOutlined className="text-xl text-blue-600" />
-                </div>
-                <div>
-                  <Text className="text-xs text-slate-500 block">Trạng thái</Text>
-                  <Text strong className="text-base text-slate-800">
-                    {data.kpi.activeTours === data.kpi.totalTours && data.kpi.totalTours > 0
-                      ? "Toàn bộ đang mở bán"
-                      : data.kpi.activeTours > 0
-                        ? "Có tour đang mở bán"
-                        : "Chưa có tour active"}
-                  </Text>
-                </div>
+          <div className="mb-8 border-b border-[#f1f5f9] pb-8">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <Text className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Tổng quan tour
+                </Text>
+                <Title level={4} className="!mb-0 !text-lg !font-semibold !text-slate-900">
+                  Số lượng & trạng thái
+                </Title>
               </div>
             </div>
-          </Card>
-
-          <Row gutter={[16, 16]}>
-            {kpiCards.map((c) => (
-              <Col xs={24} sm={12} xl={6} key={c.title}>
-                <Card
-                  bordered={false}
-                  className={`h-full rounded-2xl shadow-sm hover:shadow-md transition-shadow border-0 border-l-4 ${c.accent} bg-white`}
-                  styles={{ body: { padding: "20px 20px 18px" } }}
-                >
-                  <div className="relative pl-0">
-                    <div
-                      className={`absolute top-0 right-0 w-11 h-11 rounded-xl flex items-center justify-center ${c.iconBg}`}
-                    >
-                      {c.icon}
-                    </div>
-                    <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 pr-14">
-                      {c.title}
-                    </Text>
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2 truncate tabular-nums pr-2">
-                      {c.value}
-                    </div>
-                    <div className="mt-3 min-h-[1.5rem] flex items-start">{c.delta}</div>
-                    <Text type="secondary" className="text-xs block mt-2 leading-relaxed">
-                      {c.hint}
-                    </Text>
+            <Card
+              bordered={false}
+              className="rounded-lg border border-slate-200 bg-white shadow-sm"
+              styles={{ body: { padding: 24 } }}
+            >
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 flex-1 flex-col gap-6 sm:flex-row sm:items-center">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
+                    <GlobalOutlined className="text-2xl" />
                   </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+                  <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-6">
+                      <div className="text-[28px] font-bold leading-none tabular-nums text-slate-900 md:text-[30px]">
+                        {data.kpi.totalTours}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+                        Tổng tour
+                        <HintTip text="Tổng số tour trong hệ thống (mọi trạng thái)." />
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 p-6">
+                      <div className="text-[28px] font-bold leading-none tabular-nums text-emerald-800 md:text-[30px]">
+                        {data.kpi.activeTours}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-sm text-emerald-800/80">
+                        Đang hoạt động
+                        <HintTip text="Số tour đang ở trạng thái active (mở cho đặt)." />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0 border-t border-slate-100 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+                  <div className="mb-3 flex items-center gap-2 text-slate-500">
+                    <CalendarOutlined />
+                    <Text className="text-sm font-medium text-slate-600">Trạng thái</Text>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Tag color="blue" className="m-0 inline-flex rounded-full border-0 px-3 py-1 text-sm">
+                      {data.kpi.activeTours === data.kpi.totalTours && data.kpi.totalTours > 0
+                        ? "Mở bán · toàn bộ"
+                        : data.kpi.activeTours > 0
+                          ? "Mở bán · một phần"
+                          : "Chưa mở bán"}
+                    </Tag>
+                    <Tag color="success" className="m-0 inline-flex rounded-full border-0 px-3 py-1 text-sm">
+                      Hoạt động · {data.kpi.activeTours}
+                    </Tag>
+                    {Math.max(0, data.kpi.totalTours - data.kpi.activeTours) > 0 && (
+                      <Tag className="m-0 inline-flex rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-sm text-slate-600">
+                        Không hoạt động · {data.kpi.totalTours - data.kpi.activeTours}
+                      </Tag>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
 
-          <Row gutter={[16, 16]} className="mt-4">
+          <div className="mb-8 border-b border-[#f1f5f9] pb-8">
+            <div className="mb-5 flex flex-wrap items-start gap-2">
+              <div>
+                <Text className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Hiệu suất kỳ chọn
+                </Text>
+                <Title level={4} className="!mb-0 !text-lg !font-semibold !text-slate-900">
+                  Chỉ số chính
+                </Title>
+              </div>
+              <Tooltip title="Các chỉ số so sánh với kỳ liền trước (cùng độ dài: ngày / tháng / năm). Giảm mạnh được tô đỏ để dễ quét.">
+                <QuestionCircleOutlined className="mt-1 cursor-help text-slate-400 hover:text-slate-500" />
+              </Tooltip>
+            </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {kpiCards.map((c) => {
+                const severe =
+                  c.deltaType === "percent"
+                    ? isSeverePercentDrop(c.deltaRaw)
+                    : c.deltaRaw != null &&
+                      c.deltaRaw < 0 &&
+                      Math.abs(c.deltaRaw) >= 40;
+                return (
+                  <Card
+                    key={c.title}
+                    bordered={false}
+                    className={`flex h-full min-h-0 flex-col rounded-lg border bg-white shadow-sm ${
+                      severe
+                        ? "border-red-200 bg-[#fef2f2]/80"
+                        : "border-slate-200"
+                    }`}
+                    styles={{
+                      body: {
+                        padding: 24,
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                      },
+                    }}
+                  >
+                    <div className="mb-4 flex justify-end text-slate-400">{c.icon}</div>
+                    <div className="text-[28px] font-bold leading-tight tracking-tight text-slate-900 md:text-[30px]">
+                      <span className="tabular-nums">{c.value}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                      <span>{c.title}</span>
+                      <HintTip text={c.hintTooltip} />
+                    </div>
+                    <div
+                      className={`mt-5 rounded-md px-3 py-3 ${
+                        severe ? "bg-red-100/60 ring-1 ring-red-200/80" : "bg-slate-50 ring-1 ring-slate-100"
+                      }`}
+                    >
+                      {c.delta}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <Text className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Xu hướng
+            </Text>
+            <Title level={4} className="!mb-0 !text-lg !font-semibold !text-slate-900">
+              Biểu đồ & top tour
+            </Title>
+          </div>
+          <Row gutter={[20, 20]} className="mt-0">
             <Col xs={24} lg={16}>
               <Card
-                title="Doanh thu & số booking theo thời gian"
+                title={
+                  <span className="text-base font-semibold text-slate-900">
+                    Doanh thu & số booking theo thời gian
+                  </span>
+                }
                 bordered={false}
-                className="rounded-2xl shadow-sm"
-                styles={{ body: { paddingTop: 12 } }}
+                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                styles={{
+                  header: {
+                    borderBottom: "1px solid #f1f5f9",
+                    padding: "16px 24px",
+                  },
+                  body: { paddingTop: 12, paddingLeft: 24, paddingRight: 24, paddingBottom: 20 },
+                }}
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <Text type="secondary" className="text-sm">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <Text type="secondary" className="text-[13px]">
                     {period === "day"
                       ? "14 ngày quanh ngày chọn"
                       : period === "month"
@@ -604,9 +744,9 @@ const Dashboard: React.FC = () => {
                         : "5 năm gần nhất"}
                   </Text>
                   {!chartHasValues && (
-                    <Text className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
-                      Chưa có dữ liệu booking/doanh thu trong các mốc này
-                    </Text>
+                    <span className="inline-flex items-center rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-[12px] text-amber-900/90">
+                      Chưa có dữ liệu trong các mốc thời gian này
+                    </span>
                   )}
                 </div>
                 <div className="w-full min-w-0" style={{ minHeight: CHART_FIXED_HEIGHT }}>
@@ -625,10 +765,20 @@ const Dashboard: React.FC = () => {
             </Col>
             <Col xs={24} lg={8}>
               <Card
-                title="Top tour bán chạy (90 ngày)"
+                title={
+                  <span className="text-base font-semibold text-slate-900">
+                    Top tour bán chạy (90 ngày)
+                  </span>
+                }
                 bordered={false}
-                className="rounded-2xl shadow-sm h-full lg:mr-2"
-                styles={{ body: { paddingBottom: 16 } }}
+                className="h-full rounded-lg border border-slate-200 bg-white shadow-sm lg:mr-2"
+                styles={{
+                  header: {
+                    borderBottom: "1px solid #f1f5f9",
+                    padding: "16px 24px",
+                  },
+                  body: { paddingBottom: 20, paddingLeft: 24, paddingRight: 24, paddingTop: 12 },
+                }}
               >
                 <Table
                   size="small"
@@ -641,17 +791,21 @@ const Dashboard: React.FC = () => {
             </Col>
           </Row>
 
-          <Row gutter={[16, 16]} className="mt-4">
+          <Row gutter={[20, 20]} className="mt-10">
             <Col xs={24}>
               <Card
                 title={
-                  <span>
-                    <WarningOutlined className="text-amber-500 mr-2" />
+                  <span className="text-base font-semibold text-slate-900">
+                    <WarningOutlined className="mr-2 text-amber-500" />
                     Cảnh báo nhanh
                   </span>
                 }
                 bordered={false}
-                className="rounded-2xl shadow-sm"
+                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                styles={{
+                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 24px" },
+                  body: { padding: 24 },
+                }}
               >
                 <Space direction="vertical" className="w-full" size="middle">
                   {data.alerts.departuresSoon.length > 0 && (
@@ -751,9 +905,21 @@ const Dashboard: React.FC = () => {
             </Col>
           </Row>
 
-          <Row gutter={[16, 16]} className="mt-4">
+          <Row gutter={[20, 20]} className="mt-2">
             <Col xs={24} md={12} lg={8}>
-              <Card title="Khách hàng (kỳ hiện tại)" bordered={false} className="rounded-2xl shadow-sm">
+              <Card
+                title={
+                  <span className="text-base font-semibold text-slate-900">
+                    Khách hàng (kỳ hiện tại)
+                  </span>
+                }
+                bordered={false}
+                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                styles={{
+                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 24px" },
+                  body: { padding: 24 },
+                }}
+              >
                 <Row gutter={[12, 12]}>
                   <Col span={12}>
                     <Card size="small" className="bg-emerald-50 border-0">
@@ -786,13 +952,17 @@ const Dashboard: React.FC = () => {
             <Col xs={24} md={12} lg={16}>
               <Card
                 title={
-                  <span>
-                    <InboxOutlined className="mr-2" />
+                  <span className="text-base font-semibold text-slate-900">
+                    <InboxOutlined className="mr-2 text-slate-500" />
                     Trạng thái tài nguyên (hôm nay)
                   </span>
                 }
                 bordered={false}
-                className="rounded-2xl shadow-sm"
+                className="rounded-lg border border-slate-200 bg-white shadow-sm"
+                styles={{
+                  header: { borderBottom: "1px solid #f1f5f9", padding: "16px 24px" },
+                  body: { padding: 24 },
+                }}
               >
                 <Row gutter={[16, 16]}>
                   <Col xs={24} md={8}>
