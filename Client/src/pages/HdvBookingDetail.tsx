@@ -233,24 +233,6 @@ const HdvBookingDetail = () => {
   ];
   const currentStageIndex = STAGES.findIndex((s) => s.key === tourStage);
 
-  const validateNextStage = (nextStageKey: string) => {
-    const nextStage = STAGES.find((s) => s.key === nextStageKey);
-    if (!nextStage) return { ok: false, reason: "Trạng thái không hợp lệ." as const };
-    const nextIndex = STAGES.findIndex((s) => s.key === nextStageKey);
-
-    if (nextIndex < currentStageIndex) {
-      return { ok: false, reason: "Không thể chuyển trạng thái ngược lại." as const };
-    }
-    if (nextIndex === currentStageIndex) {
-      return { ok: false, reason: "Tour đang ở trạng thái này." as const };
-    }
-    if (nextIndex !== currentStageIndex + 1) {
-      return { ok: false, reason: "Chỉ được chuyển sang trạng thái tiếp theo." as const };
-    }
-
-    return { ok: true, label: nextStage.label as string };
-  };
-
   // Danh sách hiển thị: Trưởng đoàn + passengers
   const displayList = [
     {
@@ -309,6 +291,33 @@ const HdvBookingDetail = () => {
         return status === true || (status === false && cp.reasons?.passengers?.[pIdx]);
       });
     });
+  };
+
+  const allCheckpointDaysFinished = checkpointDays.every((d: any) => isDayFinished(d.day));
+
+  const validateNextStage = (nextStageKey: string) => {
+    const nextStage = STAGES.find((s) => s.key === nextStageKey);
+    if (!nextStage) return { ok: false, reason: "Trạng thái không hợp lệ." as const };
+    const nextIndex = STAGES.findIndex((s) => s.key === nextStageKey);
+
+    if (nextIndex < currentStageIndex) {
+      return { ok: false, reason: "Không thể chuyển trạng thái ngược lại." as const };
+    }
+    if (nextIndex === currentStageIndex) {
+      return { ok: false, reason: "Tour đang ở trạng thái này." as const };
+    }
+    if (nextIndex !== currentStageIndex + 1) {
+      return { ok: false, reason: "Chỉ được chuyển sang trạng thái tiếp theo." as const };
+    }
+
+    if (nextStageKey === "completed" && checkpointDays.length > 0 && !allCheckpointDaysFinished) {
+      return {
+        ok: false,
+        reason: "Bắt buộc điểm danh đủ tất cả các ngày và lịch trình trước khi kết thúc tour.",
+      } as const;
+    }
+
+    return { ok: true, label: nextStage.label as string };
   };
 
   const tabItems = [
@@ -813,7 +822,15 @@ const HdvBookingDetail = () => {
                   );
 
                   if (isCurrent) return btn;
-                  if (!isNext) return btn;
+                  if (!isNext) {
+                    return (v as any)?.reason ? (
+                      <Tooltip title={(v as any).reason}>
+                        <span>{btn}</span>
+                      </Tooltip>
+                    ) : (
+                      btn
+                    );
+                  }
 
                   return (
                     <Popconfirm
