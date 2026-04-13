@@ -239,6 +239,27 @@
   margin-bottom:6px;
   font-size:14px;
   }
+
+  /* ===== REVIEW OVERVIEW ===== */
+
+  .tour-review-section{
+    margin-top:18px;
+  }
+
+  .tour-review-row{
+    margin-top:14px;
+  }
+
+  .tour-review-question{
+    font-size:15px;
+    font-weight:650;
+    color:#111827;
+    margin-bottom:8px;
+  }
+
+  .tour-review-actions{
+    margin-top:16px;
+  }
   
   /* ===== PRICE TABLE ===== */
   

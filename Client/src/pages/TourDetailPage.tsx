@@ -9,6 +9,9 @@ import {
   Divider,
   message,
   Modal,
+  Rate,
+  Radio,
+  Space,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -58,6 +61,10 @@ const TourDetailPage = () => {
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
+  const [overallRating, setOverallRating] = useState<number>(0);
+  const [satisfaction, setSatisfaction] = useState<
+    "very_satisfied" | "satisfied" | "normal" | "not_satisfied" | null
+  >(null);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -331,6 +338,23 @@ const TourDetailPage = () => {
 
   const durationDays = tour?.duration_days ?? tour?.duration_;
 
+  const handleSubmitReviewOverview = async () => {
+    if (!overallRating || !satisfaction) {
+      message.warning("Vui lòng chọn số sao và mức độ hài lòng");
+      return;
+    }
+
+    try {
+      // Chưa có endpoint đánh giá tour trong project → tạm xử lý UI/UX trước.
+      // Khi có API, có thể POST (tourId, overallRating, satisfaction) tại đây.
+      message.success("Cảm ơn bạn đã đánh giá!");
+      setOverallRating(0);
+      setSatisfaction(null);
+    } catch (e) {
+      message.error("Gửi đánh giá thất bại, vui lòng thử lại");
+    }
+  };
+
   if (loading) {
     return (
       <div className="tour-detail-loading">
@@ -587,6 +611,42 @@ const TourDetailPage = () => {
               ))}
             </section>
           )}
+
+          <section className="detail-section tour-review-section">
+            <h2>Đánh giá tổng quan</h2>
+
+            <div className="tour-review-row">
+              <div className="tour-review-question">
+                Bạn đánh giá tour này bao nhiêu sao? (1–5 <span aria-hidden="true">⭐</span>)
+              </div>
+              <Rate value={overallRating} onChange={setOverallRating} />
+            </div>
+
+            <div className="tour-review-row">
+              <div className="tour-review-question">Bạn có hài lòng với chuyến đi không?</div>
+              <Radio.Group
+                value={satisfaction}
+                onChange={(e) => setSatisfaction(e.target.value)}
+              >
+                <Space direction="vertical">
+                  <Radio value="very_satisfied">Rất hài lòng</Radio>
+                  <Radio value="satisfied">Hài lòng</Radio>
+                  <Radio value="normal">Bình thường</Radio>
+                  <Radio value="not_satisfied">Không hài lòng</Radio>
+                </Space>
+              </Radio.Group>
+            </div>
+
+            <div className="tour-review-actions">
+              <Button
+                type="primary"
+                onClick={handleSubmitReviewOverview}
+                disabled={!overallRating || !satisfaction}
+              >
+                Gửi đánh giá
+              </Button>
+            </div>
+          </section>
         </div>
       </div>
 
