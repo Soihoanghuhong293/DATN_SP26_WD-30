@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Spin, Empty, Pagination, Select, Input, Button, DatePicker } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import { SearchOutlined } from '@ant-design/icons';
@@ -7,6 +7,7 @@ import type { ICategory, ITour } from '../types/tour.types';
 import TourCard from '../components/Client/TourCard';
 import CategoryMegaFilter from '../components/Client/CategoryMegaFilter';
 import { collectDescendantIds, getTourCategoryId } from '../utils/categoryTree';
+import { useLocation } from 'react-router-dom';
 import './styles/ToursPage.css';
 
 const normalizeGroupName = (name?: string) => {
@@ -19,18 +20,32 @@ const normalizeGroupName = (name?: string) => {
 };
 
 const ToursPage = () => {
+  const location = useLocation();
   const [tours, setTours] = useState<ITour[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [total, setTotal] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
+  const initialParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const [searchTerm, setSearchTerm] = useState(() => initialParams.get('search') || '');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [budgetFilter, setBudgetFilter] = useState<string>(''); // dưới 5tr, 5-10tr...
-  const [departureDate, setDepartureDate] = useState<string>('');
+  const [budgetFilter, setBudgetFilter] = useState<string>(() => initialParams.get('budget') || ''); // dưới 5tr, 5-10tr...
+  const [departureDate, setDepartureDate] = useState<string>(() => initialParams.get('date') || '');
   const [categoryTree, setCategoryTree] = useState<ICategory[]>([]);
   const [categoryTreeLoading, setCategoryTreeLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  // Sync filters from query params (when navigated from chat widget)
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+    const qSearch = p.get('search') || '';
+    const qBudget = p.get('budget') || '';
+    const qDate = p.get('date') || '';
+    setSearchTerm(qSearch);
+    setBudgetFilter(qBudget);
+    setDepartureDate(qDate);
+    setCurrentPage(1);
+  }, [location.search]);
 
   useEffect(() => {
     let cancelled = false;
