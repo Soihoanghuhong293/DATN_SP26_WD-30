@@ -440,7 +440,7 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
             const leaderOk = cp.leader === true || (cp.leader === false && hasReason(cp?.reasons?.leader));
             if (!leaderOk) {
               return res.status(400).json({
-                status: 'fail',
+                status: 'fail', 
                 message: `Trưởng đoàn vắng mặt nhưng chưa có lý do ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
               });
             }
