@@ -18,6 +18,26 @@ const { Title } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
+const stableJson = (v: any) => {
+  try {
+    return JSON.stringify(v ?? null);
+  } catch {
+    return String(v);
+  }
+};
+
+const isEqualLoose = (a: any, b: any) => {
+  if (a === b) return true;
+  // compare primitives after string-coercion (helps ObjectId vs string)
+  if (
+    (typeof a === 'string' || typeof a === 'number' || typeof a === 'boolean' || a == null) &&
+    (typeof b === 'string' || typeof b === 'number' || typeof b === 'boolean' || b == null)
+  ) {
+    return String(a ?? '') === String(b ?? '');
+  }
+  return stableJson(a) === stableJson(b);
+};
+
 type CategoryNode = {
   _id?: string;
   id?: string;
@@ -252,18 +272,45 @@ const TourEdit = () => {
         }))
       : [];
 
-    const payload = {
-      ...values,
-      schedule: schedulePayload,
-      suppliers: Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []),
-      departure_schedule: values.departure_schedule?.map((item: any) => ({
-        ...item,
-        date: item.date ? item.date.format('YYYY-MM-DD') : null
-      })).filter((item: any) => item.date) || []
+    // Build a minimal PATCH-like payload (only changed fields) to avoid backend rejecting updates
+    // when the tour already has bookings (backend allows only a limited set of keys then).
+    const baseTour: any = tour || {};
+    const nextSuppliers = Array.isArray(values.suppliers)
+      ? values.suppliers
+      : values.suppliers
+        ? [values.suppliers]
+        : [];
+    const nextDepartureSchedule =
+      values.departure_schedule
+        ?.map((item: any) => ({
+          ...item,
+          date: item.date ? item.date.format('YYYY-MM-DD') : null,
+        }))
+        .filter((item: any) => item.date) || [];
+
+    const payload: any = {};
+    const maybeSet = (key: string, nextValue: any, currentValue: any) => {
+      if (nextValue === undefined) return;
+      if (!isEqualLoose(nextValue, currentValue)) payload[key] = nextValue;
     };
-    // Backend không cho sửa itinerary (schedule) khi update tour
-    // => không gửi schedule lên để tránh bị reject
-    delete (payload as any).schedule;
+
+    // NOTE: schedule is intentionally never sent (backend rejects it on update).
+    maybeSet('name', values.name, baseTour.name);
+    maybeSet('description', values.description, baseTour.description);
+    maybeSet(
+      'category_id',
+      values.category_id,
+      baseTour.category_id?._id || baseTour.category_id
+    );
+    maybeSet('policies', values.policies, baseTour.policies);
+    maybeSet('suppliers', nextSuppliers, baseTour.suppliers);
+    maybeSet('price', values.price, baseTour.price);
+    maybeSet('prices', values.prices, baseTour.prices);
+    maybeSet('status', values.status, baseTour.status);
+    maybeSet('duration_days', values.duration_days, baseTour.duration_days);
+    maybeSet('seasonalPrices', values.seasonalPrices, baseTour.seasonalPrices);
+    maybeSet('template_id', values.template_id, baseTour.template_id?._id || baseTour.template_id);
+    maybeSet('departure_schedule', nextDepartureSchedule, baseTour.departure_schedule);
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)
@@ -272,6 +319,7 @@ const TourEdit = () => {
       message.error('Vui lòng upload ít nhất 1 ảnh!');
       return;
     }
+    // Always keep images in sync (and it's allowed even when has booking)
     payload.images = imageUrls;
     mutation.mutate(payload);
   };

@@ -433,11 +433,14 @@ const Dashboard: React.FC = () => {
                       />
                       <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
                       <Tooltip
-                        formatter={(val: number, name: string) =>
-                          name === "revenue"
-                            ? [`${val.toLocaleString("vi-VN")} đ`, "Doanh thu"]
-                            : [val, "Booking"]
-                        }
+                        formatter={(value: any, name: any) => {
+                          const n = String(name ?? '');
+                          const vNum = typeof value === 'number' ? value : Number(value ?? 0);
+                          if (n === 'revenue') {
+                            return [`${Number.isFinite(vNum) ? vNum.toLocaleString('vi-VN') : '0'} đ`, 'Doanh thu'];
+                          }
+                          return [Number.isFinite(vNum) ? vNum : 0, 'Booking'];
+                        }}
                       />
                       <Legend />
                       <Bar

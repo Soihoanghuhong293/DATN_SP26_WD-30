@@ -224,6 +224,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   margin-bottom: 40px;
+  align-items: stretch;
 }
 
 .tours-grid .tour-card {
