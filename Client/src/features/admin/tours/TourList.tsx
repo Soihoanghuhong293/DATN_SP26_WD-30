@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
-  Table, Button, Space, Popconfirm, message, 
+  Table, Button, Space, Popconfirm,
+  App as AntdApp,
   Typography, Input, Tooltip
 } from 'antd';
 import { 
@@ -30,6 +31,7 @@ interface ITour {
 }
 
 const TourList = () => {
+  const { message } = AntdApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = useState('');
@@ -54,11 +56,10 @@ const TourList = () => {
   }, [tours, searchText]);
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => axios.delete(`http://localhost:5000/api/v1/tours/${id}`),
-    onSuccess: () => {
-      message.success('Đã chuyển tour vào thùng rác');
-      queryClient.invalidateQueries({ queryKey: ['tours'] });
-    },
+    mutationFn: (id: string) =>
+      axios.delete(`http://localhost:5000/api/v1/tours/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      }),
   });
 
   const columns: ColumnsType<ITour> = [
@@ -171,13 +172,26 @@ const TourList = () => {
           <Popconfirm
             title="Xoá tour này?"
             description="Thao tác này không thể hoàn tác."
-            onConfirm={() => deleteMutation.mutate(record._id)}
+            onConfirm={async () => {
+              try {
+                await deleteMutation.mutateAsync(record._id);
+                message.success('Đã xoá tour thành công');
+                queryClient.invalidateQueries({ queryKey: ['tours'] });
+              } catch (error: any) {
+                const serverMsg =
+                  error?.response?.data?.message ||
+                  error?.response?.data?.error ||
+                  error?.response?.data?.msg ||
+                  error?.message;
+                message.error(serverMsg || 'Không thể xoá tour. Vui lòng thử lại.');
+              }
+            }}
             okText="Xoá"
             cancelText="Huỷ"
             okButtonProps={{ danger: true }}
           >
             <Tooltip title="Xoá">
-              <Button type="text" danger icon={<DeleteOutlined />} />
+              <Button type="text" danger icon={<DeleteOutlined />} loading={deleteMutation.isPending} />
             </Tooltip>
           </Popconfirm>
         </Space>
