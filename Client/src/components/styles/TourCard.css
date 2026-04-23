@@ -17,6 +17,7 @@
   background: white;
   border: 1px solid rgba(148, 163, 184, 0.3);
   min-height: 200px;
+  height: 100%;
 }
 
 .tour-card:hover {
@@ -103,19 +104,8 @@
   margin-bottom: 8px;
 }
 
-.tour-meta-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
-  font-weight: 600;
-  color: #4b5563;
-}
-
 .tour-meta-duration {
   font-weight: 500;
-}
-
-.tour-meta-separator {
-  opacity: 0.5;
 }
 
 .tour-card-description {
@@ -151,6 +141,7 @@
   margin: 10px 0 4px 0;
   padding: 10px 0;
   border-top: 1px solid #e5e7eb;
+  min-height: 86px; /* keep cards equal even when schedule missing */
 }
 
 .schedule-title {
@@ -193,6 +184,13 @@
 .more-days {
   margin: 6px 0 0 0;
   font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.schedule-empty {
+  margin: 0;
+  font-size: 12px;
   color: #9ca3af;
   font-style: italic;
 }

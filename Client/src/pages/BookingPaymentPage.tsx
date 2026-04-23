@@ -5,8 +5,9 @@ import axios from "axios";
 
 const { Title, Text } = Typography;
 
-/** Hỗ trợ cả VITE_API_URL = .../api/v1 và chỉ ...:5000 */
-const RAW_BASE = (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "";
+
+
+const RAW_BASE = ((import.meta.env?.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
 const API_V1 = RAW_BASE
   ? RAW_BASE.endsWith("/api/v1")
     ? RAW_BASE
@@ -79,6 +80,10 @@ const BookingPaymentPage: React.FC = () => {
   };
 
   useEffect(() => {
+    baselinePaymentRef.current = null;
+  }, [id]);
+
+  useEffect(() => {
     const fetchBooking = async () => {
       if (!id) return;
       try {
@@ -112,22 +117,35 @@ const BookingPaymentPage: React.FC = () => {
     navigate(`/booking/success/${id}`, { replace: true });
   }, [booking, loading, id, navigate, useMomoMock]);
 
+
+
   const totalPrice = booking?.total_price || booking?.totalPrice || 0;
   const paymentMethod = booking?.paymentMethod || "full";
   const paymentStatus = booking ? getPaymentStatus(booking) : "unpaid";
 
   const breakdown = useMemo(() => {
     const total = Number(totalPrice || 0);
-    const depositAmount = Number(booking?.deposit_amount || Math.round(total * 0.3));
-    const remaining = Math.max(0, total - depositAmount);
+    const estimate30 = total > 0 ? Math.round(total * 0.3) : 0;
+    const depField = Number(booking?.deposit_amount || 0);
+    const paidSoFar = Number(booking?.paid_amount || 0);
+    /** fallback cọc 30% */
+    let credited = Math.max(
+      Number.isFinite(paidSoFar) ? paidSoFar : 0,
+      Number.isFinite(depField) ? depField : 0
+    );
+    if (paymentStatus === "deposit" && !credited && total > 0) {
+      credited = estimate30;
+    }
+    const firstDepositAmount = depField > 0 ? depField : estimate30;
+    const remaining = Math.max(0, total - credited);
 
     if (paymentStatus === "paid") return { payType: "full" as const, amount: 0, label: "Đã thanh toán đủ" };
     if (paymentStatus === "deposit")
       return { payType: "remaining" as const, amount: remaining, label: "Thanh toán phần còn lại" };
     if (paymentMethod === "deposit")
-      return { payType: "deposit" as const, amount: depositAmount, label: "Thanh toán đặt cọc (30%)" };
+      return { payType: "deposit" as const, amount: firstDepositAmount, label: "Thanh toán đặt cọc (30%)" };
     return { payType: "full" as const, amount: total, label: "Thanh toán toàn bộ (100%)" };
-  }, [booking?.deposit_amount, paymentMethod, paymentStatus, totalPrice]);
+  }, [booking?.deposit_amount, booking?.paid_amount, paymentMethod, paymentStatus, totalPrice]);
 
   const paymentAmountRaw = Number((breakdown as any)?.amount);
   const paymentAmount = Number.isFinite(paymentAmountRaw) ? paymentAmountRaw : 0;
@@ -166,15 +184,22 @@ const BookingPaymentPage: React.FC = () => {
     };
   }, [id, booking, payType, paymentAmount, paymentStatus, useMomoMock]);
 
-  // chuyển khoản không redirect được như ví
   useEffect(() => {
-    if (useMomoMock || !id || paymentStatus === "paid") return;
+    if (useMomoMock || !id || loading || !booking || paymentStatus === "paid") return;
+
+    if (baselinePaymentRef.current === null) {
+      baselinePaymentRef.current = getPaymentStatus(booking);
+    }
 
     const tick = async () => {
-      const baseline = baselinePaymentRef.current || "unpaid";
       try {
         const b = await refreshBooking();
         if (!b) return;
+        if (baselinePaymentRef.current === null) {
+          baselinePaymentRef.current = getPaymentStatus(b);
+        }
+        const baseline = baselinePaymentRef.current;
+        if (baseline == null) return;
         const next = getPaymentStatus(b);
         if (pollPaymentReached(baseline, next)) {
           if (hasNavigatedToSuccessRef.current) return;
@@ -202,7 +227,7 @@ const BookingPaymentPage: React.FC = () => {
         pollRef.current = null;
       }
     };
-  }, [id, navigate, paymentStatus, useMomoMock]);
+  }, [id, navigate, paymentStatus, useMomoMock, loading, booking?._id]);
 
   const handleConfirmScanned = async () => {
     if (!id) return;

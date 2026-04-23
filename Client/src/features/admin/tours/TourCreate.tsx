@@ -248,6 +248,36 @@ const TourCreate = () => {
     },
   });
 
+  const { data: usersList = [] } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/users', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data?.data ?? res.data ?? [];
+    },
+  });
+
+  const primaryGuideIdWatch = Form.useWatch('primary_guide_id', form);
+  const departureDateWatch = Form.useWatch('departure_date', form);
+  const hasDepartureDate = Boolean(departureDateWatch);
+
+  const guideUserOptions = useMemo(() => {
+    const arr = Array.isArray(usersList) ? usersList : [];
+    return arr
+      .filter((u: any) => u.role === 'guide' || u.role === 'hdv')
+      .filter((u: any) => u.status !== 'inactive')
+      .map((u: any) => ({
+        value: String(u._id),
+        label: [u.name, u.email].filter(Boolean).join(' — ') || String(u._id),
+      }));
+  }, [usersList]);
+
+  const secondaryGuideOptions = useMemo(() => {
+    const p = primaryGuideIdWatch ? String(primaryGuideIdWatch) : '';
+    return guideUserOptions.filter((o) => o.value !== p);
+  }, [guideUserOptions, primaryGuideIdWatch]);
+
   const mutation = useMutation({
     mutationFn: async (values: any) => {
       return await axios.post('http://localhost:5000/api/v1/tours', values);
@@ -265,6 +295,10 @@ const TourCreate = () => {
 
   // tự động tính giá
   const handleValuesChange = (changedValues: any) => {
+    if (Object.prototype.hasOwnProperty.call(changedValues, 'departure_date') && !changedValues.departure_date) {
+      form.setFieldsValue({ primary_guide_id: undefined, secondary_guide_ids: [] });
+    }
+
     if (changedValues.price !== undefined) {
       const basePrice = changedValues.price || 0;
       const currentPrices = form.getFieldValue('prices') || [];
@@ -279,6 +313,14 @@ const TourCreate = () => {
     }
 
     // Tự động sinh lịch trình dựa trên số ngày
+    if (changedValues.primary_guide_id !== undefined) {
+      const p = changedValues.primary_guide_id ? String(changedValues.primary_guide_id) : '';
+      const sec = form.getFieldValue('secondary_guide_ids');
+      if (Array.isArray(sec) && p) {
+        form.setFieldsValue({ secondary_guide_ids: sec.filter((id: string) => String(id) !== p) });
+      }
+    }
+
     if (changedValues.duration_days !== undefined) {
       const duration = changedValues.duration_days || 1;
       const currentSchedule = form.getFieldValue('schedule') || [];
@@ -348,9 +390,25 @@ const TourCreate = () => {
     const finalValues = { ...values };
     finalValues.suppliers = deriveSupplierIdsFromSchedule(values.schedule, allRestaurants, allTickets);
 
+    // Phải có ngày khởi hành trước (kể cả khi gán HDV) để tránh trùng lịch
+    if (!values.departure_date || !values.departure_slots) {
+      message.error('Vui lòng chọn 1 ngày khởi hành và nhập số chỗ trước khi hoàn tất (và trước khi gán HDV).');
+      return;
+    }
+
     // template tồn tại (backend validate); frontend gửi template_id nếu chọn template
     if (selectedTemplateId) {
       finalValues.template_id = selectedTemplateId;
+      if (!finalValues.primary_guide_id) {
+        message.error('Khi tạo tour từ template, bắt buộc chọn HDV chính cho trip (sau khi đã chọn ngày khởi hành).');
+        return;
+      }
+    }
+
+    if (Array.isArray(finalValues.secondary_guide_ids)) {
+      const p = finalValues.primary_guide_id ? String(finalValues.primary_guide_id) : '';
+      const secondaryIds = [...new Set(finalValues.secondary_guide_ids.map((x: unknown) => String(x)))] as string[];
+      finalValues.secondary_guide_ids = secondaryIds.filter((id) => id.length > 0 && id !== p);
     }
 
     // Admin chỉ hiển thị tên có ngày, DB vẫn lưu tên gốc
@@ -359,10 +417,6 @@ const TourCreate = () => {
     }
 
     // Mỗi tour instance chỉ có 1 ngày khởi hành
-    if (!values.departure_date || !values.departure_slots) {
-      message.error('Vui lòng chọn 1 ngày khởi hành và nhập số chỗ.');
-      return;
-    }
     finalValues.departure_schedule = [
       {
         date: values.departure_date.format('YYYY-MM-DD'),
@@ -607,6 +661,9 @@ const TourCreate = () => {
                           className="w-full"
                           onChange={(v) => {
                             setSelectedDepartureDate(v);
+                            if (!v) {
+                              form.setFieldsValue({ primary_guide_id: undefined, secondary_guide_ids: [] });
+                            }
                             const currentName = form.getFieldValue('name') || '';
                             const base = (rawTourName || currentName || '').split('(')[0].trim();
                             setRawTourName(base);
@@ -630,12 +687,63 @@ const TourCreate = () => {
                       </Form.Item>
                     </Col>
                   </Row>
-                  {selectedDepartureDate ? (
-                    <div className="text-xs text-gray-500 mt-3">
-                      Admin hiển thị: <b>{rawTourName || form.getFieldValue('name')}</b> — Khách hàng chỉ thấy tên gốc.
-                    </div>
-                  ) : null}
+                  
                 </div>
+              </Card>
+
+              <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
+                
+                
+                <Form.Item
+                  name="primary_guide_id"
+                  label={<span className="font-medium text-gray-600">HDV chính</span>}
+                  tooltip="Gán trên tour instance. Đơn đặt mặc định lấy HDV này. Bắt buộc khi tạo từ template."
+                  rules={[
+                    {
+                      validator: async (_, value) => {
+                        if (selectedTemplateId && hasDepartureDate && !value) {
+                          throw new Error('Khi chọn template, bắt buộc chọn HDV chính sau khi đã chọn ngày khởi hành.');
+                        }
+                        if (value && !hasDepartureDate) {
+                          throw new Error('Vui lòng chọn ngày khởi hành trước khi gán HDV.');
+                        }
+                      },
+                    },
+                  ]}
+                >
+                  <Select
+                    size="large"
+                    showSearch
+                    allowClear
+                    disabled={!hasDepartureDate}
+                    placeholder={
+                      hasDepartureDate ? 'Chọn HDV chính...' : 'Chọn ngày khởi hành trước...'
+                    }
+                    className="rounded-lg"
+                    options={guideUserOptions}
+                    optionFilterProp="label"
+                    notFoundContent="Chưa có tài khoản HDV — gán role guide/hdv cho user"
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="secondary_guide_ids"
+                  label={<span className="font-medium text-gray-600">HDV phụ (tuỳ chọn)</span>}
+                  tooltip="Khi đoàn đông hoặc cần thêm người hỗ trợ. Không trùng HDV chính."
+                >
+                  <Select
+                    mode="multiple"
+                    size="large"
+                    showSearch
+                    allowClear
+                    disabled={!hasDepartureDate}
+                    placeholder={
+                      hasDepartureDate ? 'Thêm HDV phụ...' : 'Chọn ngày khởi hành trước...'
+                    }
+                    className="rounded-lg"
+                    options={secondaryGuideOptions}
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
               </Card>
             </Col>
 

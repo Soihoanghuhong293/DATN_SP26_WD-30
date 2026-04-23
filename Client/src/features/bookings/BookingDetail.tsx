@@ -12,17 +12,10 @@ import {
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,
-  FileExcelOutlined, PlusOutlined, UploadOutlined, ShopOutlined, CarOutlined
+  FileExcelOutlined,   PlusOutlined, UploadOutlined, ShopOutlined, CarOutlined, BookOutlined, PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import isBetween from 'dayjs/plugin/isBetween';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import * as XLSX from 'xlsx';
-
-dayjs.extend(isBetween);
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -39,8 +32,6 @@ const BookingDetail = () => {
   const [guestList, setGuestList] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form] = Form.useForm();
-  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
-  const [selectedGuideId, setSelectedGuideId] = useState<string | undefined>();
 
   // 1. API GET DATA
   const { data: booking, isLoading } = useQuery({
@@ -77,14 +68,6 @@ const BookingDetail = () => {
   });
   const providers = Array.isArray(providersData) ? providersData : [];
 
-  const { data: allBookings } = useQuery({
-    queryKey: ['bookings'],
-    queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/bookings', getAuthHeader());
-      return res.data?.data || res.data?.results || [];
-    }
-  });
-
   const formatBirthDate = (val: any) => {
     if (!val) return null;
     const d = dayjs(val);
@@ -111,7 +94,14 @@ const BookingDetail = () => {
 
   const tourInfo = useMemo(() => {
     if (!booking) return null;
-    return toursData?.find((t: any) => t._id === (booking.tour_id?._id || booking.tour_id)) || booking.tour_id;
+    const tidRaw = booking.tour_id?._id || booking.tour_id;
+    const fromList = toursData?.find((t: any) => String(t._id) === String(tidRaw));
+    const fromPopulate =
+      booking.tour_id && typeof booking.tour_id === 'object' ? (booking.tour_id as any) : null;
+    if (!fromList && !fromPopulate) {
+      return typeof tidRaw === 'string' ? ({ _id: tidRaw } as any) : null;
+    }
+    return { ...(fromList || {}), ...(fromPopulate || {}) };
   }, [booking, toursData]);
 
   const displayEndDate = useMemo(() => {
@@ -133,30 +123,6 @@ const BookingDetail = () => {
     if (!booking) return null;
     return usersData?.find((u: any) => u._id === (booking.guide_id?._id || booking.guide_id)) || booking.guide_id;
   }, [booking, usersData]);
-
-  const allGuides = useMemo(() => usersData?.filter((u: any) => u.role === 'guide' || u.role === 'hdv') || [], [usersData]);
-
-  const availableGuides = useMemo(() => {
-    if (!booking?.startDate || !displayEndDate) return allGuides;
-
-    return allGuides.filter((guide: any) => {
-      const isBusy = allBookings?.some((b: any) => {
-        if (b._id === booking._id) return false;
-        if (b.status === 'cancelled') return false;
-
-        const currentGuideId = b.guide_id?._id || b.guide_id;
-        if (!currentGuideId || currentGuideId !== guide._id) return false;
-
-        const bStart = dayjs(b.startDate);
-        const bEnd = b.endDate ? dayjs(b.endDate) : dayjs(b.startDate).add(Math.max(0, Number((b.tour_id as any)?.duration_days ?? 1) - 1), 'day');
-        const currentStart = dayjs(booking.startDate);
-        const currentEnd = displayEndDate;
-
-        return currentStart.isSameOrBefore(bEnd, 'day') && currentEnd.isSameOrAfter(bStart, 'day');
-      });
-      return !isBusy;
-    });
-  }, [allGuides, allBookings, booking, displayEndDate]);
 
   const allocatedCars = useMemo(() => {
     const rows = booking?.allocated_services?.cars;
@@ -226,18 +192,6 @@ const BookingDetail = () => {
       navigate('/admin/bookings');
     },
     onError: () => message.error('Xóa thất bại')
-  });
-
-  const assignGuideMutation = useMutation({
-    mutationFn: async (guideId: string | null) => {
-      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { guide_id: guideId }, getAuthHeader());
-    },
-    onSuccess: () => {
-      message.success('Đã cập nhật Hướng dẫn viên!');
-      queryClient.invalidateQueries({ queryKey: ['booking', id] });
-      setIsGuideModalOpen(false);
-    },
-    onError: () => message.error('Cập nhật HDV thất bại!'),
   });
 
   const autoAllocateCarsMutation = useMutation({
@@ -414,6 +368,95 @@ const BookingDetail = () => {
       })),
     ];
 
+    const diaryEntries: any[] = Array.isArray((booking as any)?.diary_entries)
+      ? (booking as any).diary_entries
+      : [];
+
+    const getDiaryForDay = (dayNum: number) =>
+      diaryEntries.find((e: any) => Number(e?.day_no ?? 1) === Number(dayNum));
+
+    const renderDiaryForDay = (dayNum: number) => {
+      const entry = getDiaryForDay(dayNum);
+      if (!entry) {
+        return (
+          <div style={{ marginTop: 16, padding: '12px 14px', background: '#f9fafb', borderRadius: 10, border: '1px dashed #e5e7eb' }}>
+            <Space size={8}>
+              <BookOutlined style={{ color: '#94a3b8' }} />
+              <Text type="secondary" italic>Chưa có nhật ký hành trình từ HDV cho ngày này.</Text>
+            </Space>
+          </div>
+        );
+      }
+      const imgs = Array.isArray(entry.images) ? entry.images.filter((x: any) => x?.url) : [];
+      return (
+        <Card
+          size="small"
+          title={
+            <Space>
+              <BookOutlined style={{ color: '#2563eb' }} />
+              <span>Nhật ký hành trình (HDV)</span>
+              {entry.created_by ? <Tag color="blue">{String(entry.created_by)}</Tag> : null}
+            </Space>
+          }
+          style={{ marginTop: 16, background: '#f8fafc', borderColor: '#e2e8f0' }}
+        >
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            {entry.date ? (
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {dayjs(entry.date).format('DD/MM/YYYY')}
+                {entry.title ? ` · ${entry.title}` : ''}
+              </Text>
+            ) : entry.title ? (
+              <Text strong>{entry.title}</Text>
+            ) : null}
+            {entry.highlight ? (
+              <div
+                style={{
+                  padding: '8px 10px',
+                  background: '#fffbeb',
+                  borderLeft: '3px solid #f59e0b',
+                  borderRadius: 4,
+                  fontWeight: 600,
+                  color: '#92400e',
+                }}
+              >
+                {entry.highlight}
+              </div>
+            ) : null}
+            {entry.content ? (
+              <div style={{ whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.65 }}>{entry.content}</div>
+            ) : !entry.highlight ? (
+              <Text type="secondary" italic>HDV chưa nhập nội dung chi tiết.</Text>
+            ) : null}
+            {imgs.length > 0 ? (
+              <div>
+                <Divider orientation="left" plain style={{ margin: '12px 0 8px', fontSize: 12 }}>
+                  <PictureOutlined /> Hình ảnh ({imgs.length})
+                </Divider>
+                <Space wrap size={[8, 8]}>
+                  {imgs.map((img: any, ii: number) => (
+                    <a key={ii} href={img.url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={img.url}
+                        alt={img.name || `Ảnh ${ii + 1}`}
+                        style={{
+                          width: 96,
+                          height: 96,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '1px solid #e2e8f0',
+                        }}
+                      />
+                    </a>
+                  ))}
+                </Space>
+              </div>
+            ) : null}
+          </Space>
+        </Card>
+      );
+    };
+
     if (checkpointDays.length === 0) {
       return <Empty description="Chưa có dữ liệu checkpoint để hiển thị điểm danh." />;
     }
@@ -500,6 +543,7 @@ const BookingDetail = () => {
                   }}
                 />
               )}
+              {renderDiaryForDay(d.day)}
             </div>
           ),
         }))}
@@ -747,14 +791,6 @@ const BookingDetail = () => {
                             {guideInfo.phone && <div style={{ fontSize: 12, color: '#6b7280' }}>{guideInfo.phone}</div>}
                           </>
                         ) : <span style={{color: '#9ca3af'}}>Chưa phân công</span>}
-                        <div style={{ marginTop: 4 }}>
-                          <Button type="link" size="small" onClick={() => {
-                            setSelectedGuideId(guideInfo?._id || guideInfo?.id || undefined);
-                            setIsGuideModalOpen(true);
-                          }}>
-                            Thay đổi/Phân công
-                          </Button>
-                        </div>
                       </div>
                   </div>
               </Space>
@@ -792,24 +828,144 @@ const BookingDetail = () => {
     );
   };
 
-  const DetailsTab = () => (
-    <Row gutter={24}>
-       <Col span={12}>
-          <Card title={<Space><ProfileOutlined /> Lịch trình chi tiết</Space>} bordered={true} className="saas-card">
-              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: '1.6' }}>
-                  {booking.schedule_detail || <Text type="secondary" italic>Chưa có dữ liệu lịch trình.</Text>}
+  const DetailsTab = () => {
+    const tour = tourInfo as any;
+    const scheduleFromTour: any[] = Array.isArray(tour?.schedule) ? tour.schedule : [];
+
+    const renderScheduleFromTour = () => {
+      if (scheduleFromTour.length === 0) return null;
+      const rows = scheduleFromTour
+        .map((d: any, idx: number) => ({
+          day: Number(d?.day ?? idx + 1),
+          title: d?.title || `Ngày ${idx + 1}`,
+          activities: Array.isArray(d?.activities) ? d.activities.filter((x: any) => typeof x === 'string' && x.trim()) : [],
+        }))
+        .sort((a, b) => a.day - b.day);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {rows.map((d) => (
+            <div
+              key={d.day}
+              style={{
+                padding: 14,
+                background: '#f9fafb',
+                borderRadius: 10,
+                border: '1px solid #e5e7eb',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 10, color: '#111827' }}>
+                <Tag color="blue" style={{ marginRight: 8 }}>Ngày {d.day}</Tag>
+                {d.title}
               </div>
-          </Card>
-       </Col>
-       <Col span={12}>
-          <Card title={<Space><ProfileOutlined /> Dịch vụ & Chính sách</Space>} bordered={true} className="saas-card">
-              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: '1.6' }}>
-                  {booking.service_detail || <Text type="secondary" italic>Chưa có dữ liệu chính sách.</Text>}
+              {d.activities.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 20, color: '#374151', lineHeight: 1.65 }}>
+                  {d.activities.map((act: string, i: number) => (
+                    <li key={i} style={{ marginBottom: 4 }}>
+                      {act}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Text type="secondary">Chưa khai báo hoạt động chi tiết cho ngày này.</Text>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    const policiesList: string[] = Array.isArray(tour?.policies)
+      ? tour.policies.filter((x: any) => typeof x === 'string' && x.trim())
+      : [];
+    const tourDesc = tour?.description ? String(tour.description).trim() : '';
+    const hasBookingSchedule = !!String(booking.schedule_detail || '').trim();
+    const hasBookingService = !!String(booking.service_detail || '').trim();
+
+    const renderPoliciesFromTour = () => {
+      if (!tourDesc && policiesList.length === 0) return null;
+      return (
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          {tourDesc ? (
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                Mô tả tour
+              </Text>
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.65 }}>
+                {tourDesc}
               </div>
+            </div>
+          ) : null}
+          {policiesList.length > 0 ? (
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                Chính sách &amp; lưu ý
+              </Text>
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#374151', lineHeight: 1.65 }}>
+                {policiesList.map((p: string, i: number) => (
+                  <li key={i} style={{ marginBottom: 6 }}>
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Space>
+      );
+    };
+
+    return (
+      <Row gutter={24}>
+        <Col xs={24} lg={12}>
+          <Card title={<Space><ProfileOutlined /> Lịch trình chi tiết</Space>} bordered className="saas-card">
+            {hasBookingSchedule ? (
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.65 }}>
+                {booking.schedule_detail}
+              </div>
+            ) : scheduleFromTour.length > 0 ? (
+              <>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 14, fontSize: 13 }}>
+                  Hiển thị theo lịch trình tour đã đặt
+                  {tour?.name ? (
+                    <>
+                      {' '}
+                      (<Text strong>{tour.name}</Text>)
+                    </>
+                  ) : null}
+                  .
+                </Text>
+                {renderScheduleFromTour()}
+              </>
+            ) : (
+              <Text type="secondary" italic>
+                Chưa có lịch trình (booking không ghi chữ và tour chưa có mục schedule).
+              </Text>
+            )}
           </Card>
-       </Col>
-    </Row>
-  );
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title={<Space><ProfileOutlined /> Dịch vụ &amp; chính sách</Space>} bordered className="saas-card">
+            {hasBookingService ? (
+              <div style={{ whiteSpace: 'pre-wrap', color: '#374151', lineHeight: 1.65 }}>
+                {booking.service_detail}
+              </div>
+            ) : renderPoliciesFromTour() ? (
+              <>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 14, fontSize: 13 }}>
+                  Hiển thị mô tả và chính sách từ tour đã đặt.
+                </Text>
+                {renderPoliciesFromTour()}
+              </>
+            ) : (
+              <Text type="secondary" italic>
+                Chưa có dữ liệu (booking không ghi chữ và tour chưa có mô tả/chính sách).
+              </Text>
+            )}
+          </Card>
+        </Col>
+      </Row>
+    );
+  };
 
   return (
     <ConfigProvider
@@ -902,40 +1058,6 @@ const BookingDetail = () => {
             <Form.Item name="room" label="Số phòng"><Input placeholder="VD: P.201" /></Form.Item>
             <Form.Item name="note" label="Ghi chú"><Input.TextArea rows={2} placeholder="Ăn chay, dị ứng..." /></Form.Item>
           </Form>
-        </Modal>
-
-        <Modal
-          title="Phân công Hướng dẫn viên"
-          open={isGuideModalOpen}
-          onOk={() => assignGuideMutation.mutate(selectedGuideId || null)}
-          onCancel={() => setIsGuideModalOpen(false)}
-          okText="Cập nhật"
-          cancelText="Hủy"
-          confirmLoading={assignGuideMutation.isPending}
-        >
-          <div style={{ marginBottom: 16 }}>
-            <Text type="secondary">Chọn HDV cho tour này (Hệ thống tự động lọc HDV rảnh):</Text>
-          </div>
-          <Select
-            style={{ width: '100%' }}
-            placeholder="-- Chọn Hướng dẫn viên --"
-            value={selectedGuideId}
-            onChange={setSelectedGuideId}
-            allowClear
-            showSearch
-            optionFilterProp="children"
-          >
-            {availableGuides.map((g: any) => (
-              <Option key={g._id} value={g._id}>
-                {g.name} - {g.email || g.phone}
-              </Option>
-            ))}
-          </Select>
-          <div style={{ marginTop: 12 }}>
-             <Text type="secondary" style={{ fontSize: 12 }}>
-               Lưu ý: Bỏ chọn (nhấn dấu x trên ô chọn) rồi Cập nhật để gỡ phân công HDV hiện tại.
-             </Text>
-          </div>
         </Modal>
 
         <style>{`

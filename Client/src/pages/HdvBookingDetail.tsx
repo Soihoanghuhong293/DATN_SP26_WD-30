@@ -233,24 +233,6 @@ const HdvBookingDetail = () => {
   ];
   const currentStageIndex = STAGES.findIndex((s) => s.key === tourStage);
 
-  const validateNextStage = (nextStageKey: string) => {
-    const nextStage = STAGES.find((s) => s.key === nextStageKey);
-    if (!nextStage) return { ok: false, reason: "Trạng thái không hợp lệ." as const };
-    const nextIndex = STAGES.findIndex((s) => s.key === nextStageKey);
-
-    if (nextIndex < currentStageIndex) {
-      return { ok: false, reason: "Không thể chuyển trạng thái ngược lại." as const };
-    }
-    if (nextIndex === currentStageIndex) {
-      return { ok: false, reason: "Tour đang ở trạng thái này." as const };
-    }
-    if (nextIndex !== currentStageIndex + 1) {
-      return { ok: false, reason: "Chỉ được chuyển sang trạng thái tiếp theo." as const };
-    }
-
-    return { ok: true, label: nextStage.label as string };
-  };
-
   // Danh sách hiển thị: Trưởng đoàn + passengers
   const displayList = [
     {
@@ -288,6 +270,24 @@ const HdvBookingDetail = () => {
     return getCheckpointStatus(day, cpIndex, type, passengerIdx) === true;
   };
 
+  const isCheckpointFinished = (dayNum: number, cpIdx: number) => {
+    const dayData = checkpointDays.find((d) => d.day === dayNum);
+    if (!dayData) return true;
+    if (cpIdx < 0 || cpIdx >= (dayData.checkpoints?.length || 0)) return true;
+
+    const cp = checkpointCheckins?.[String(dayNum)]?.[String(cpIdx)];
+    if (!cp || cp.leader === undefined) return false;
+
+    const leaderOk = cp.leader === true || (cp.leader === false && cp.reasons?.leader);
+    if (!leaderOk) return false;
+
+    return passengers.every((_: any, pIdx: number) => {
+      const status = cp.passengers?.[pIdx];
+      if (status === undefined) return false;
+      return status === true || (status === false && cp.reasons?.passengers?.[pIdx]);
+    });
+  };
+
   const isDayFinished = (dayNum: number) => {
     const dayData = checkpointDays.find((d) => d.day === dayNum);
     if (!dayData) return true;
@@ -309,6 +309,33 @@ const HdvBookingDetail = () => {
         return status === true || (status === false && cp.reasons?.passengers?.[pIdx]);
       });
     });
+  };
+
+  const allCheckpointDaysFinished = checkpointDays.every((d: any) => isDayFinished(d.day));
+
+  const validateNextStage = (nextStageKey: string) => {
+    const nextStage = STAGES.find((s) => s.key === nextStageKey);
+    if (!nextStage) return { ok: false, reason: "Trạng thái không hợp lệ." as const };
+    const nextIndex = STAGES.findIndex((s) => s.key === nextStageKey);
+
+    if (nextIndex < currentStageIndex) {
+      return { ok: false, reason: "Không thể chuyển trạng thái ngược lại." as const };
+    }
+    if (nextIndex === currentStageIndex) {
+      return { ok: false, reason: "Tour đang ở trạng thái này." as const };
+    }
+    if (nextIndex !== currentStageIndex + 1) {
+      return { ok: false, reason: "Chỉ được chuyển sang trạng thái tiếp theo." as const };
+    }
+
+    if (nextStageKey === "completed" && checkpointDays.length > 0 && !allCheckpointDaysFinished) {
+      return {
+        ok: false,
+        reason: "Bắt buộc điểm danh đủ tất cả các ngày và lịch trình trước khi kết thúc tour.",
+      } as const;
+    }
+
+    return { ok: true, label: nextStage.label as string };
   };
 
   const tabItems = [
@@ -402,6 +429,10 @@ const HdvBookingDetail = () => {
                           };
                         })}
                         renderItem={(item: any) => (
+                          (() => {
+                            const isLockedByPrevCheckpoint = item.cpIndex > 0 && !isCheckpointFinished(d.day, item.cpIndex - 1);
+                            const disabled = !canCheckin || isLockedByPrevCheckpoint;
+                            return (
                           <List.Item
                             style={{
                               background: "#fff",
@@ -410,21 +441,23 @@ const HdvBookingDetail = () => {
                               padding: "12px 14px",
                               marginBottom: 10,
                               boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
-                              cursor: canCheckin ? "pointer" : "not-allowed",
-                              opacity: canCheckin ? 1 : 0.7,
+                              cursor: disabled ? "not-allowed" : "pointer",
+                              opacity: disabled ? 0.6 : 1,
                             }}
                             onClick={() =>
-                              canCheckin
+                              !disabled
                                 ? setOpenPoint({
                                     day: d.day,
                                     checkpointIndex: item.cpIndex,
                                     title: item.cp,
                                   })
-                                : message.warning(
-                                    tourStage === "completed"
-                                      ? "Tour đã kết thúc nên không thể điểm danh."
-                                      : "Tour đang ở trạng thái sắp khởi hành nên chưa thể điểm danh."
-                                  )
+                                : isLockedByPrevCheckpoint
+                                  ? message.warning(`Bạn cần điểm danh xong lịch trình ${item.cpIndex} trước khi điểm danh lịch trình ${item.cpIndex + 1}.`)
+                                  : message.warning(
+                                      tourStage === "completed"
+                                        ? "Tour đã kết thúc nên không thể điểm danh."
+                                        : "Tour đang ở trạng thái sắp khởi hành nên chưa thể điểm danh."
+                                    )
                             }
                             actions={[
                               <Tag key="count" color={item.totalChecked === item.totalPeople ? "green" : "blue"} style={{ margin: 0 }}>
@@ -435,6 +468,8 @@ const HdvBookingDetail = () => {
                           >
                             <div style={{ fontWeight: 700, color: "#111827" }}>{item.cp}</div>
                           </List.Item>
+                            );
+                          })()
                         )}
                       />
                     )}
@@ -813,7 +848,15 @@ const HdvBookingDetail = () => {
                   );
 
                   if (isCurrent) return btn;
-                  if (!isNext) return btn;
+                  if (!isNext) {
+                    return (v as any)?.reason ? (
+                      <Tooltip title={(v as any).reason}>
+                        <span>{btn}</span>
+                      </Tooltip>
+                    ) : (
+                      btn
+                    );
+                  }
 
                   return (
                     <Popconfirm

@@ -44,6 +44,11 @@ export interface ITour extends Document {
   }[];
 
   template_id?: mongoose.Types.ObjectId;
+
+  // mặc định có hdv chính
+  primary_guide_id?: mongoose.Types.ObjectId;
+  // hdv phụ
+  secondary_guide_ids?: mongoose.Types.ObjectId[];
 }
 
 
@@ -109,7 +114,10 @@ departure_schedule: [{
   duration_days: { type: Number, required: true }
 
   ,
-  template_id: { type: Schema.Types.ObjectId, ref: 'TourTemplate' }
+  template_id: { type: Schema.Types.ObjectId, ref: 'TourTemplate' },
+
+  primary_guide_id: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+  secondary_guide_ids: [{ type: Schema.Types.ObjectId, ref: 'User' }],
 
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

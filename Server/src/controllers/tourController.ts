@@ -79,6 +79,8 @@ export const getAllTours = async (req: Request, res: Response) => {
     // .populate('category_id') để lấy luôn thông tin danh mục thay vì chỉ hiện ID
     const tours = await Tour.find(filter)
       .populate('category_id')
+      .populate({ path: 'primary_guide_id', select: 'name email phone role' })
+      .populate({ path: 'secondary_guide_ids', select: 'name email phone role' })
       .populate({ path: 'schedule.lunch_restaurant_id', select: 'name location phone' })
       .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone' })
       .populate({
@@ -107,6 +109,8 @@ export const getTour = async (req: Request, res: Response) => {
   try {
     const tour = await Tour.findById(req.params.id)
       .populate('category_id')
+      .populate({ path: 'primary_guide_id', select: 'name email phone role' })
+      .populate({ path: 'secondary_guide_ids', select: 'name email phone role' })
       .populate({ path: 'schedule.lunch_restaurant_id', select: 'name location phone capacity' })
       .populate({ path: 'schedule.dinner_restaurant_id', select: 'name location phone capacity' })
       .populate({
@@ -143,6 +147,19 @@ export const createTour = async (req: Request, res: Response) => {
       if (!tpl) {
         return res.status(400).json({ status: 'fail', message: 'Template không tồn tại' });
       }
+      if (!payload.primary_guide_id) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Tạo tour từ template bắt buộc chọn HDV chính cho trip.',
+        });
+      }
+    }
+
+    if (payload.primary_guide_id && Array.isArray(payload.secondary_guide_ids)) {
+      const p = String(payload.primary_guide_id);
+      payload.secondary_guide_ids = [...new Set(payload.secondary_guide_ids.map((x: any) => String(x)))].filter(
+        (id) => id && id !== p
+      );
     }
 
     // validate giá > 0
@@ -222,6 +239,8 @@ export const updateTour = async (req: Request, res: Response) => {
         'status',
         'images',
         'policies',
+        'primary_guide_id',
+        'secondary_guide_ids',
       ]);
       const incomingKeys = Object.keys(req.body || {}).filter((k) => req.body?.[k] !== undefined);
       const invalid = incomingKeys.filter((k) => !allowedWhenHasBooking.has(k));
@@ -295,6 +314,12 @@ export const updateTour = async (req: Request, res: Response) => {
     }
 
     // apply other fields (allow-list)
+    if (req.body?.primary_guide_id && Array.isArray(req.body?.secondary_guide_ids)) {
+      const p = String(req.body.primary_guide_id);
+      const secIds = [...new Set(req.body.secondary_guide_ids.map((x: any) => String(x)))] as string[];
+      req.body.secondary_guide_ids = secIds.filter((id) => id.length > 0 && id !== p);
+    }
+
     const allowed = [
       'name',
       'description',
@@ -309,6 +334,8 @@ export const updateTour = async (req: Request, res: Response) => {
       'seasonalPrices',
       'template_id',
       'schedule',
+      'primary_guide_id',
+      'secondary_guide_ids',
     ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) (tour as any)[key] = req.body[key];

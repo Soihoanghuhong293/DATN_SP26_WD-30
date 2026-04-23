@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Spin, Empty, Pagination, Select, Input, Button, DatePicker } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import { SearchOutlined } from '@ant-design/icons';
-import { getTours } from '../services/api';
-import { ITour } from '../types/tour.types';
+import { getTours, getCategoryTree } from '../services/api';
+import type { ICategory, ITour } from '../types/tour.types';
 import TourCard from '../components/Client/TourCard';
+import CategoryMegaFilter from '../components/Client/CategoryMegaFilter';
+import { collectDescendantIds, getTourCategoryId } from '../utils/categoryTree';
+import { useLocation } from 'react-router-dom';
 import './styles/ToursPage.css';
 
 const normalizeGroupName = (name?: string) => {
@@ -17,15 +20,53 @@ const normalizeGroupName = (name?: string) => {
 };
 
 const ToursPage = () => {
+  const location = useLocation();
   const [tours, setTours] = useState<ITour[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [total, setTotal] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
+  const initialParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const [searchTerm, setSearchTerm] = useState(() => initialParams.get('search') || '');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [budgetFilter, setBudgetFilter] = useState<string>(''); // dưới 5tr, 5-10tr...
-  const [departureDate, setDepartureDate] = useState<string>('');
+  const [budgetFilter, setBudgetFilter] = useState<string>(() => initialParams.get('budget') || ''); // dưới 5tr, 5-10tr...
+  const [departureDate, setDepartureDate] = useState<string>(() => initialParams.get('date') || '');
+  const [categoryTree, setCategoryTree] = useState<ICategory[]>([]);
+  const [categoryTreeLoading, setCategoryTreeLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  // Sync filters from query params (when navigated from chat widget)
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+    const qSearch = p.get('search') || '';
+    const qBudget = p.get('budget') || '';
+    const qDate = p.get('date') || '';
+    setSearchTerm(qSearch);
+    setBudgetFilter(qBudget);
+    setDepartureDate(qDate);
+    setCurrentPage(1);
+  }, [location.search]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadTree = async () => {
+      try {
+        setCategoryTreeLoading(true);
+        const res = await getCategoryTree({ status: 'active' });
+        const list = res.data?.categories;
+        if (!cancelled) setCategoryTree(Array.isArray(list) ? list : []);
+      } catch (e) {
+        console.error('Error loading categories:', e);
+        if (!cancelled) setCategoryTree([]);
+      } finally {
+        if (!cancelled) setCategoryTreeLoading(false);
+      }
+    };
+    loadTree();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -93,10 +134,19 @@ const ToursPage = () => {
           return bv - av;
         });
 
-        setTotal(grouped.length);
+        let filtered = grouped;
+        if (categoryFilter && categoryTree.length) {
+          const allowed = collectDescendantIds(categoryTree, categoryFilter);
+          filtered = grouped.filter((t) => {
+            const cid = getTourCategoryId(t);
+            return !!cid && allowed.has(cid);
+          });
+        }
+
+        setTotal(filtered.length);
 
         const startIdx = (currentPage - 1) * pageSize;
-        const pageItems = grouped.slice(startIdx, startIdx + pageSize);
+        const pageItems = filtered.slice(startIdx, startIdx + pageSize);
         setTours(pageItems);
       } catch (error) {
         console.error('Error fetching tours:', error);
@@ -107,12 +157,13 @@ const ToursPage = () => {
     };
 
     fetchTours();
-  }, [currentPage, pageSize, debouncedSearch, budgetFilter, departureDate]);
+  }, [currentPage, pageSize, debouncedSearch, budgetFilter, departureDate, categoryFilter, categoryTree]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setBudgetFilter('');
     setDepartureDate('');
+    setCategoryFilter(null);
     setCurrentPage(1);
   };
 
@@ -170,6 +221,18 @@ const ToursPage = () => {
                   { label: '12 tour', value: 12 },
                   { label: '24 tour', value: 24 },
                 ]}
+              />
+            </div>
+            <div className="filter-group filter-group-destination">
+              <label className="filter-label">Điểm đến</label>
+              <CategoryMegaFilter
+                tree={categoryTree}
+                loading={categoryTreeLoading}
+                value={categoryFilter}
+                onChange={(id) => {
+                  setCategoryFilter(id);
+                  setCurrentPage(1);
+                }}
               />
             </div>
             <Button type="link" className="filter-reset-btn" onClick={handleResetFilters}>

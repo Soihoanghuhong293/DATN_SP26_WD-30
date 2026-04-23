@@ -28,7 +28,7 @@ const HdvDashboard = () => {
   const upcomingBookings = bookings.filter(
     (b: any) =>
       b.status !== "cancelled" &&
-      dayjs(b.startDate).isSameOrAfter(dayjs(), "day")
+      !dayjs(b.startDate).startOf("day").isBefore(dayjs().startOf("day")),
   );
 
   const stats = [

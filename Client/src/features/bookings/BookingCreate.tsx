@@ -12,7 +12,11 @@ import {
   CalculatorOutlined, SettingOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-
+import {
+  groupToursForAdminBooking,
+  mergeDepartureRowsForInstances,
+  getTourInstanceForDepartureDate,
+} from '../../utils/adminTourGroups';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -79,20 +83,29 @@ const BookingCreate = () => {
   // users ->Khách hàng và HDV
   const customers = useMemo(() => usersData?.filter((u: any) => u.role === 'user') || [], [usersData]);
 
+  /** Một dòng / tour logic (gộp nhiều instance cùng template hoặc cùng tên) */
+  const groupedTours = useMemo(() => groupToursForAdminBooking(tours || []), [tours]);
+
   // chọn tour ra các số ngày khởi hành
   const watchedTourId = Form.useWatch('tour_id', form);
-  
-  const selectedTourForDates = useMemo(() => {
-    return tours?.find((t: any) => t._id === watchedTourId);
-  }, [tours, watchedTourId]);
 
-  // tính số chỗ
+  const selectedGroup = useMemo(() => {
+    if (!watchedTourId) return null;
+    return groupedTours.find((g: any) => String(g._id) === String(watchedTourId)) || null;
+  }, [groupedTours, watchedTourId]);
+
+  const instanceIdsInSelectedGroup = useMemo(() => {
+    if (!selectedGroup?._instances) return new Set<string>();
+    return new Set((selectedGroup._instances as any[]).map((i: any) => String(i._id)));
+  }, [selectedGroup]);
+
+  // tính số chỗ — gộp booking của mọi instance trong nhóm
   const bookedSlotsByDate = useMemo(() => {
-    if (!watchedTourId || !allBookings) return {};
+    if (!instanceIdsInSelectedGroup.size || !allBookings) return {};
     const grouped: Record<string, number> = {};
     allBookings.forEach((b: any) => {
       const bTourId = b?.tour_id?._id || b?.tour_id;
-      if (String(bTourId) !== String(watchedTourId)) return;
+      if (!instanceIdsInSelectedGroup.has(String(bTourId))) return;
       if (b?.status === 'cancelled') return;
 
       const dateStr = b.startDate ? (b.startDate.includes('T') ? b.startDate.split('T')[0] : dayjs(b.startDate).format('YYYY-MM-DD')) : '';
@@ -102,24 +115,21 @@ const BookingCreate = () => {
       grouped[dateStr] = (grouped[dateStr] || 0) + size;
     });
     return grouped;
-  }, [watchedTourId, allBookings]);
+  }, [instanceIdsInSelectedGroup, allBookings]);
 
   const availableDepartureDates = useMemo(() => {
-    if (!selectedTourForDates || !Array.isArray(selectedTourForDates.departure_schedule)) return [];
-    return selectedTourForDates.departure_schedule.map((s: any) => {
-      const dateStr = s.date.includes('T') ? s.date.split('T')[0] : dayjs(s.date).format('YYYY-MM-DD');
-      
-      const baseSlots = Number(s.slots ?? 0);
+    if (!selectedGroup?._instances?.length) return [];
+    const rows = mergeDepartureRowsForInstances(selectedGroup._instances);
+    return rows.map(({ dateStr, baseSlots }) => {
       const booked = bookedSlotsByDate[dateStr] || 0;
       const remaining = Math.max(0, baseSlots - booked);
-
       return {
         label: `${dayjs(dateStr).format('DD/MM/YYYY')} (Còn ${remaining} chỗ)`,
         value: dateStr,
-        slots: remaining
+        slots: remaining,
       };
     });
-  }, [selectedTourForDates, bookedSlotsByDate]);
+  }, [selectedGroup, bookedSlotsByDate]);
 
   const watchedStartDate = Form.useWatch('startDate', form);
   const availableSlotsForSelectedDate = useMemo(() => {
@@ -137,7 +147,13 @@ const BookingCreate = () => {
       const { files, provider_detail, ...restValues } = values;
 
       const payload: any = { ...restValues };
-      
+
+      const group = groupedTours.find((g: any) => String(g._id) === String(values.tour_id));
+      if (group?._instances?.length && values.startDate) {
+        const inst = getTourInstanceForDepartureDate(group._instances, values.startDate);
+        if (inst?._id) payload.tour_id = inst._id;
+      }
+
       payload.startDate = values.startDate ? dayjs(values.startDate).format('YYYY-MM-DD') : undefined;
       payload.endDate = values.endDate ? values.endDate.format('YYYY-MM-DD') : undefined;
 
@@ -157,7 +173,15 @@ const BookingCreate = () => {
   });
 
   const handleValuesChange = (changedValues: any, allValues: any) => {
-    const selectedTour = tours?.find((t: any) => t._id === allValues.tour_id);
+    const group =
+      allValues.tour_id != null
+        ? groupedTours.find((g: any) => String(g._id) === String(allValues.tour_id))
+        : null;
+    const instanceForDate =
+      group && allValues.startDate
+        ? getTourInstanceForDepartureDate(group._instances || [], allValues.startDate)
+        : null;
+    const selectedTour = instanceForDate || group || tours?.find((t: any) => t._id === allValues.tour_id);
     const fieldsToUpdate: any = {};
 
     // Nếu đổi tour, reset lại ngày khởi hành
@@ -176,9 +200,10 @@ const BookingCreate = () => {
     }
 
     // tự động fill chi tiết dịch vụ và chính sách
-    if (changedValues.tour_id && selectedTour) {
-      if (selectedTour.schedule?.length > 0) {
-        fieldsToUpdate.schedule_detail = selectedTour.schedule
+    if (changedValues.tour_id && group) {
+      const tourForStaticFields = group;
+      if (tourForStaticFields.schedule?.length > 0) {
+        fieldsToUpdate.schedule_detail = tourForStaticFields.schedule
           .map((day: any) => {
             const acts = day.activities ? day.activities.map((act: string) => `- ${act}`).join('\n') : '';
             const lunchName =
@@ -212,14 +237,14 @@ const BookingCreate = () => {
         fieldsToUpdate.schedule_detail = ''; 
       }
 
-      if (selectedTour.policies?.length > 0) {
-        fieldsToUpdate.service_detail = selectedTour.policies.map((p: string) => `- ${p}`).join('\n');
+      if (tourForStaticFields.policies?.length > 0) {
+        fieldsToUpdate.service_detail = tourForStaticFields.policies.map((p: string) => `- ${p}`).join('\n');
       } else {
         fieldsToUpdate.service_detail = '';
       }
 
       // Tự động fill nhà cung cấp
-      const tourSuppliers = selectedTour.suppliers || [];
+      const tourSuppliers = tourForStaticFields.suppliers || [];
       if (tourSuppliers.length > 0) {
         const foundProviders = tourSuppliers.map((supplier: any) => {
           const actualId = typeof supplier === 'object' ? (supplier._id || supplier.id) : supplier;
@@ -236,7 +261,7 @@ const BookingCreate = () => {
       }
     }
 
-    //  Tính tiền
+    //  Tính tiền (dùng instance đúng ngày để giá có thể khác nhau theo đợt)
     if (allValues.tour_id && allValues.startDate && selectedTour) {
       const selectedDateStr = dayjs(allValues.startDate).format('YYYY-MM-DD');
       const targetTime = new Date(selectedDateStr + 'T12:00:00Z').getTime();
@@ -246,8 +271,13 @@ const BookingCreate = () => {
           : [{ name: 'Người lớn', price: selectedTour.price || 0 }];
       let holidayName = null;
 
+      const instanceIdSet = group
+        ? new Set((group._instances || []).map((i: any) => String(i._id)))
+        : new Set(selectedTour._id ? [String(selectedTour._id)] : []);
+
       const applicableRules = holidayRules.filter((rule: any) => {
-        const isForTour = !rule.tour_id || rule.tour_id?._id === selectedTour._id || rule.tour_id === selectedTour._id;
+        const rid = rule.tour_id?._id || rule.tour_id;
+        const isForTour = !rid || instanceIdSet.has(String(rid));
         if (!isForTour) return false;
 
         let end = new Date(rule.end_date).getTime();
@@ -366,8 +396,8 @@ const BookingCreate = () => {
             <Card title={<><EnvironmentOutlined className="text-blue-500 mr-2" /> Thông tin Tour & Thời gian</>} className="mb-6 shadow-sm">
               <Form.Item name="tour_id" label="Chọn Tour" rules={[{ required: true, message: 'Vui lòng chọn tour!' }]}>
                 <Select showSearch placeholder="-- Vui lòng chọn Tour --" loading={isToursLoading} optionFilterProp="children" size="large">
-                  {Array.isArray(tours) && tours.map((t: any) => (
-                    <Option key={t._id} value={t._id}>{t.name}</Option>
+                  {groupedTours.map((t: any) => (
+                    <Option key={t._groupKey} value={t._id}>{t.name}</Option>
                   ))}
                 </Select>
               </Form.Item>
