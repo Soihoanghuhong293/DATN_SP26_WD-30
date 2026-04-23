@@ -47,6 +47,7 @@ import BookingDetail from '../features/bookings/BookingDetail';
 import BookingHistory from '../features/bookings/BookingHistory';
 import HolidayPricingList from '../components/layout/HolidayPricingList';
 import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
+import HolidayPricingEdit from '../components/layout/HolidayPricingEdit';
 import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
 import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
 import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
@@ -118,6 +119,7 @@ const AppRoutes = () => {
         <Route path="contact-messages" element={<ContactMessageList />} />
         <Route path="/admin/holiday-pricing" element={<HolidayPricingList />} />
         <Route path="holiday-pricing/create" element={<HolidayPricingCreate />} />
+        <Route path="holiday-pricing/edit/:id" element={<HolidayPricingEdit />} />
 
       </Route>
 
