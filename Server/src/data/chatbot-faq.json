@@ -6,9 +6,39 @@
     "category": "general"
   },
   {
+    "intentId": "intro-help",
+    "keywords": ["bạn làm được gì", "giúp gì", "hướng dẫn", "help", "tư vấn", "tư vấn tour", "tôi nên hỏi gì"],
+    "response": "Mình có thể giúp bạn: tìm tour theo điểm đến/ngân sách/thời gian, xem lịch khởi hành, hướng dẫn đặt tour & thanh toán, chính sách đổi/huỷ, và cách kiểm tra trạng thái booking. Bạn muốn đi đâu và dự kiến đi tháng mấy ạ?",
+    "category": "general"
+  },
+  {
     "intentId": "tour-price",
     "keywords": ["giá tour", "bao nhiêu tiền", "chi phí", "phí tour", "giá cả", "cost", "bao nhiêu"],
     "response": "Giá tour phụ thuộc vào từng chuyến đi và loại tour. Bạn vui lòng chọn tour cụ thể trên trang để xem giá chi tiết. Hoặc gọi hotline 0364902031 để được tư vấn báo giá nhanh nhất.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-cheap",
+    "keywords": ["tour giá rẻ", "tour rẻ", "tour tiết kiệm", "giá rẻ", "rẻ nhất", "dưới 5 triệu", "duoi 5 trieu", "under 5m"],
+    "response": "Bạn có thể xem các tour giá tốt tại trang Tour và lọc theo ngân sách (ví dụ: Dưới 5 triệu / 5-10 triệu). Nếu bạn cho mình biết điểm đến + tháng khởi hành, mình sẽ gợi ý vài tour phù hợp ngay.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-by-budget",
+    "keywords": ["ngân sách", "budget", "tư vấn theo ngân sách", "toi co", "tôi có", "triệu", "trieu", "m", "mtr"],
+    "response": "Bạn cho mình ngân sách dự kiến (ví dụ: 5 triệu/10 triệu), số người đi và điểm đến (hoặc bạn muốn mình gợi ý điểm đến). Mình sẽ tư vấn tour phù hợp nhất với ngân sách nhé.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-3n2d",
+    "keywords": ["3 ngày 2 đêm", "3n2d", "3 ngay 2 dem", "tour 3 ngày", "tour 3 ngay", "3 ngày", "3 ngay"],
+    "response": "Bạn muốn tour 3N2Đ đi đâu ạ (Hạ Long/Đà Nẵng/Phú Quốc/Đà Lạt...)? Bạn vào mục Tour và lọc theo thời gian, hoặc gửi mình điểm đến + tháng đi để mình gợi ý nhanh.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-departure-date",
+    "keywords": ["tháng", "thang", "ngày", "ngay", "ngày khởi hành", "lịch khởi hành", "khi nào đi", "khoi hanh"],
+    "response": "Lịch khởi hành và số chỗ còn trống hiển thị trong trang chi tiết tour. Bạn mở tour muốn đi → chọn ngày khởi hành → bấm Đặt ngay để giữ chỗ.",
     "category": "tour"
   },
   {
@@ -18,9 +48,75 @@
     "category": "tour"
   },
   {
+    "intentId": "tour-destinations",
+    "keywords": ["điểm đến", "diem den", "đi đâu", "đi du lịch ở đâu", "gợi ý điểm đến", "goi y diem den"],
+    "response": "Bạn cho mình 3 thông tin: ngân sách, số ngày (ví dụ 3N2Đ), và tháng đi. Mình sẽ gợi ý điểm đến + tour phù hợp (Hạ Long/Đà Nẵng/Phú Quốc/Đà Lạt/Nha Trang...).",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-by-days",
+    "keywords": ["theo số ngày", "theo so ngay", "tour mấy ngày", "tour may ngay", "1 ngày", "1 ngay", "2 ngày 1 đêm", "2 ngay 1 dem", "3 ngày 2 đêm", "3 ngay 2 dem", "4 ngày 3 đêm", "4 ngay 3 dem"],
+    "response": "Bạn muốn đi mấy ngày ạ (ví dụ 3N2Đ/4N3Đ) và muốn đi đâu? Bạn có thể vào trang Tour và lọc theo thời gian. Nếu bạn gửi mình “điểm đến + số ngày + tháng đi”, mình sẽ gợi ý nhanh vài tour phù hợp.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-family",
+    "keywords": ["đi gia đình", "di gia dinh", "tour gia đình", "tour gia dinh", "có trẻ em", "co tre em", "em bé", "em be", "gia đình có bé", "gia dinh co be"],
+    "response": "Tour đi gia đình thường ưu tiên lịch trình nhẹ, thời gian di chuyển hợp lý và dịch vụ phù hợp trẻ em. Bạn cho mình: số người lớn + số bé + độ tuổi bé + tháng đi + ngân sách, mình sẽ gợi ý tour phù hợp nhất nhé.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-include-exclude",
+    "keywords": ["bao gồm", "bao gom", "không bao gồm", "khong bao gom", "dịch vụ", "dich vu", "đã gồm gì", "chưa gồm gì"],
+    "response": "Mỗi tour có mục “Dịch vụ bao gồm/không bao gồm” trong trang chi tiết. Thông thường gồm xe di chuyển, vé tham quan theo chương trình, khách sạn (nếu có), hướng dẫn viên; không gồm chi tiêu cá nhân. Bạn gửi tên tour hoặc link tour để mình giải thích chi tiết hơn nhé.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-hotel",
+    "keywords": ["khách sạn", "khach san", "ở đâu", "o dau", "tiêu chuẩn", "tieu chuan", "mấy sao", "may sao", "phòng", "phong"],
+    "response": "Thông tin khách sạn/tiêu chuẩn phòng sẽ nằm trong mô tả tour hoặc phần lịch trình. Nếu bạn cho mình tên tour, mình sẽ hướng dẫn bạn xem đúng mục và giải thích tiêu chuẩn lưu trú.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-transport",
+    "keywords": ["di chuyển", "di chuyen", "xe", "máy bay", "may bay", "tàu", "tau", "phương tiện", "phuong tien"],
+    "response": "Phương tiện di chuyển của tour hiển thị trong phần mô tả/lịch trình. Nếu là tour có vé máy bay, giá có thể thay đổi theo thời điểm. Bạn gửi tên tour hoặc điểm đến + ngày đi để mình tư vấn cụ thể.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-meeting-point",
+    "keywords": ["điểm đón", "diem don", "đón ở đâu", "don o dau", "meeting point", "tập trung", "tap trung"],
+    "response": "Điểm đón/tập trung thường được thông báo khi xác nhận booking. Nếu bạn cho mình tour + khu vực đón (Hà Nội/TP.HCM/Đà Nẵng...), mình sẽ hướng dẫn bạn kiểm tra thông tin hoặc liên hệ tư vấn viên để chốt điểm đón nhanh.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-visa",
+    "keywords": ["visa", "hộ chiếu", "ho chieu", "giấy tờ", "giay to", "cmnd", "cccd", "passport"],
+    "response": "Với tour trong nước thường cần CCCD/CMND; với tour nước ngoài cần hộ chiếu (và visa nếu yêu cầu). Bạn cho mình điểm đến để mình tư vấn giấy tờ cần chuẩn bị cho đúng nhé.",
+    "category": "tour"
+  },
+  {
     "intentId": "booking",
     "keywords": ["đặt tour", "đặt vé", "đặt chỗ", "đăng ký tour", "booking", "đặt"],
     "response": "Để đặt tour, bạn chọn tour yêu thích và bấm nút Đặt tour. Bạn cần đăng nhập hoặc đăng ký tài khoản. Nếu cần hỗ trợ đặt tour, vui lòng liên hệ hotline 0364902031.",
+    "category": "booking"
+  },
+  {
+    "intentId": "booking-steps",
+    "keywords": ["cách đặt", "huong dan dat", "hướng dẫn đặt", "đặt như thế nào", "dat nhu the nao", "quy trình đặt", "quy trinh dat"],
+    "response": "Quy trình đặt tour: (1) Mở tour → chọn ngày khởi hành (nếu có) (2) Bấm Đặt ngay (3) Điền thông tin hành khách (4) Xác nhận & thanh toán. Nếu bạn gặp lỗi ở bước nào, gửi mình ảnh/miêu tả để mình hỗ trợ nhanh.",
+    "category": "booking"
+  },
+  {
+    "intentId": "booking-status",
+    "keywords": ["trạng thái booking", "trang thai booking", "đơn của tôi", "don cua toi", "tôi đã đặt", "toi da dat", "kiểm tra booking", "kiem tra booking", "my bookings", "đơn đặt tour"],
+    "response": "Bạn có thể kiểm tra trạng thái đặt tour tại mục “Đơn của tôi / My bookings” sau khi đăng nhập. Nếu bạn cung cấp mã đơn hoặc số điện thoại đặt tour, tư vấn viên có thể hỗ trợ tra cứu nhanh qua hotline 0364902031.",
+    "category": "booking"
+  },
+  {
+    "intentId": "booking-change-info",
+    "keywords": ["sửa thông tin", "sua thong tin", "đổi thông tin", "doi thong tin", "sai tên", "sai ten", "sai số điện thoại", "sai so dien thoai"],
+    "response": "Nếu bạn cần sửa thông tin hành khách/đơn đặt tour, vui lòng liên hệ hotline 0364902031 để được hỗ trợ điều chỉnh nhanh (tùy điều kiện của tour và thời điểm khởi hành).",
     "category": "booking"
   },
   {
@@ -30,10 +126,46 @@
     "category": "payment"
   },
   {
+    "intentId": "payment-when",
+    "keywords": ["khi nào thanh toán", "khi nao thanh toan", "thanh toán lúc nào", "thanh toan luc nao", "cọc", "coc", "đặt cọc", "dat coc"],
+    "response": "Thông thường bạn cần thanh toán/đặt cọc để giữ chỗ (tuỳ tour và ngày khởi hành). Sau khi tạo booking, hệ thống sẽ hiển thị hướng dẫn thanh toán. Nếu bạn muốn giữ chỗ gấp, gọi 0364902031 để được hỗ trợ ngay.",
+    "category": "payment"
+  },
+  {
+    "intentId": "payment-failed",
+    "keywords": ["thanh toán lỗi", "thanh toan loi", "không thanh toán được", "khong thanh toan duoc", "payment failed", "lỗi chuyển khoản", "loi chuyen khoan"],
+    "response": "Nếu thanh toán bị lỗi: bạn thử lại sau vài phút, kiểm tra kết nối mạng và thông tin thanh toán. Nếu vẫn lỗi, bạn gửi mình mã đơn/mã giao dịch (nếu có) hoặc liên hệ 0364902031 để được xử lý nhanh.",
+    "category": "payment"
+  },
+  {
+    "intentId": "invoice",
+    "keywords": ["hoá đơn", "hoa don", "xuất hoá đơn", "xuat hoa don", "vat", "hóa đơn đỏ", "hoa don do"],
+    "response": "Nếu bạn cần xuất hoá đơn VAT, vui lòng cung cấp thông tin xuất hoá đơn (tên công ty, MST, địa chỉ, email nhận). Bạn có thể để lại tin nhắn trong chat hoặc liên hệ hotline 0364902031 để được hỗ trợ.",
+    "category": "payment"
+  },
+  {
     "intentId": "cancel-booking",
     "keywords": ["hủy tour", "hủy đặt", "hủy đặt chỗ", "đổi tour", "hoàn tiền"],
     "response": "Chính sách hủy/đổi tour phụ thuộc thời điểm và loại tour. Bạn vui lòng xem chi tiết tại mục Chính sách trên trang, hoặc liên hệ hotline 0364902031 để được xử lý nhanh nhất.",
     "category": "booking"
+  },
+  {
+    "intentId": "refund-time",
+    "keywords": ["hoàn tiền bao lâu", "hoan tien bao lau", "khi nào hoàn", "khi nao hoan", "refund", "hoàn tiền khi nào"],
+    "response": "Thời gian hoàn tiền phụ thuộc hình thức thanh toán và chính sách của tour. Bạn vui lòng cung cấp mã đơn để tư vấn viên kiểm tra và phản hồi thời gian dự kiến. Hotline: 0364902031.",
+    "category": "booking"
+  },
+  {
+    "intentId": "promotion",
+    "keywords": ["khuyến mãi", "khuyen mai", "giảm giá", "giam gia", "voucher", "mã giảm", "ma giam", "ưu đãi", "uu dai"],
+    "response": "Bạn có thể xem các ưu đãi/giảm giá (nếu có) tại trang Tour hoặc trong phần thanh toán. Nếu bạn cho mình điểm đến + ngân sách, mình sẽ gợi ý tour đang có giá tốt.",
+    "category": "tour"
+  },
+  {
+    "intentId": "support-agent",
+    "keywords": ["tư vấn viên", "tu van vien", "gặp nhân viên", "gap nhan vien", "liên hệ tư vấn", "lien he tu van", "gọi lại", "goi lai"],
+    "response": "Dạ được ạ. Bạn có thể để lại SĐT + nội dung cần tư vấn (điểm đến, tháng đi, ngân sách) để tư vấn viên liên hệ ngay. Hotline: 0364902031.",
+    "category": "contact"
   },
   {
     "intentId": "contact",
@@ -42,10 +174,46 @@
     "category": "contact"
   },
   {
+    "intentId": "working-hours",
+    "keywords": ["giờ làm việc", "gio lam viec", "mấy giờ", "may gio", "làm việc đến mấy giờ", "lam viec den may gio"],
+    "response": "Bạn có thể liên hệ hotline 0364902031 để được hỗ trợ nhanh. Nếu ngoài giờ, bạn để lại tin nhắn trong chat (họ tên, SĐT, nội dung) để tư vấn viên phản hồi sớm nhất.",
+    "category": "contact"
+  },
+  {
     "intentId": "thanks",
     "keywords": ["cảm ơn", "cám ơn", "thank", "thanks"],
     "response": "Không có gì! Chúc bạn có chuyến đi vui vẻ. Nếu cần thêm hỗ trợ, cứ nhắn tin nhé!",
     "category": "general"
+  },
+  {
+    "intentId": "login",
+    "keywords": ["đăng nhập", "dang nhap", "login", "không đăng nhập được", "khong dang nhap duoc", "quên mật khẩu", "quen mat khau"],
+    "response": "Bạn có thể vào trang Đăng nhập để truy cập tài khoản. Nếu quên mật khẩu hoặc đăng nhập lỗi, bạn thử kiểm tra email/số điện thoại đã đăng ký. Nếu vẫn không được, gọi 0364902031 để được hỗ trợ nhanh.",
+    "category": "account"
+  },
+  {
+    "intentId": "register",
+    "keywords": ["đăng ký", "dang ky", "register", "tạo tài khoản", "tao tai khoan"],
+    "response": "Bạn vào trang Đăng ký và nhập thông tin để tạo tài khoản. Sau khi đăng ký, bạn có thể đặt tour và theo dõi trạng thái đơn trong mục “Đơn của tôi”.",
+    "category": "account"
+  },
+  {
+    "intentId": "child-policy",
+    "keywords": ["trẻ em", "tre em", "em bé", "em be", "giá trẻ em", "gia tre em", "chính sách trẻ em", "chinh sach tre em"],
+    "response": "Chính sách trẻ em tuỳ theo tour (độ tuổi, chiều cao, quy định khách sạn/nhà cung cấp). Bạn gửi mình tour + độ tuổi bé để mình hướng dẫn xem đúng chính sách hoặc liên hệ 0364902031 để tư vấn nhanh.",
+    "category": "policy"
+  },
+  {
+    "intentId": "single-room",
+    "keywords": ["phòng đơn", "phong don", "phụ thu phòng đơn", "phu thu phong don", "ở một mình", "o mot minh"],
+    "response": "Phụ thu phòng đơn (nếu có) tuỳ theo tour/khách sạn. Bạn gửi tên tour để mình hướng dẫn kiểm tra phụ thu hoặc liên hệ 0364902031 để báo giá nhanh.",
+    "category": "policy"
+  },
+  {
+    "intentId": "luggage",
+    "keywords": ["hành lý", "hanh ly", "mang gi", "mang gì", "quy định hành lý", "quy dinh hanh ly"],
+    "response": "Bạn nên mang: giấy tờ tuỳ thân, quần áo phù hợp thời tiết, đồ cá nhân. Nếu tour có bay, quy định hành lý theo hãng. Bạn cho mình điểm đến + thời gian đi để mình gợi ý chuẩn hơn.",
+    "category": "policy"
   },
   {
     "intentId": "schedule",
@@ -58,5 +226,23 @@
     "keywords": ["bao lâu", "mấy ngày", "thời gian tour", "duration"],
     "response": "Mỗi tour có thời gian khác nhau, từ 1N2Đ đến nhiều ngày. Bạn xem thông tin \"Số ngày\" trong trang chi tiết tour nhé.",
     "category": "tour"
+  },
+  {
+    "intentId": "weather",
+    "keywords": ["thời tiết", "thoi tiet", "mùa nào đẹp", "mua nao dep", "nên đi tháng mấy", "nen di thang may"],
+    "response": "Bạn cho mình điểm đến + tháng dự kiến đi, mình sẽ gợi ý thời điểm đẹp và loại tour phù hợp (biển/leo núi/nghỉ dưỡng).",
+    "category": "tour"
+  },
+  {
+    "intentId": "safety",
+    "keywords": ["an toàn", "an toan", "bảo hiểm", "bao hiem", "tai nạn", "tai nan"],
+    "response": "Tuỳ tour sẽ có điều kiện bảo hiểm/điều khoản an toàn. Bạn xem mục Chính sách/Điều khoản hoặc gửi mình tên tour để mình hướng dẫn cụ thể. Trường hợp cần hỗ trợ gấp, gọi 0364902031.",
+    "category": "policy"
+  },
+  {
+    "intentId": "goodbye",
+    "keywords": ["tạm biệt", "tam biet", "bye", "bai", "hẹn gặp lại", "hen gap lai"],
+    "response": "Cảm ơn bạn đã ghé thăm! Khi cần tư vấn tour, cứ nhắn mình nhé.",
+    "category": "general"
   }
 ]

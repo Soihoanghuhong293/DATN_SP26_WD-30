@@ -21,6 +21,7 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
   };
 
   const durationDays = tour.duration_days ?? tour.duration_;
+  const scheduleItems = Array.isArray(tour.schedule) ? tour.schedule : [];
 
   return (
     <Link to={`/tours/${tour.id}`} className="tour-card-link">
@@ -43,8 +44,6 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
           <h3 className="tour-card-title">{tour.name}</h3>
 
            <div className="tour-card-meta">
-             <span className="tour-meta-code">Mã tour: {tour.id?.slice(-6).toUpperCase()}</span>
-             <span className="tour-meta-separator">•</span>
              <span className="tour-meta-duration">{durationDays ?? '-'} ngày</span>
            </div>
 
@@ -66,20 +65,24 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
           </div>
 
           <div className="tour-card-schedule">
-            {tour.schedule?.length > 0 && (
-              <div>
-                <p className="schedule-title">Lịch trình:</p>
-                {tour.schedule.slice(0, 2).map((item, index) => (
-                  <div key={index} className="schedule-item">
-                    <span className="day-badge">Ngày {item.day}</span>
-                    <span className="day-title">{item.title}</span>
-                  </div>
-                ))}
-                {tour.schedule.length > 2 && (
-                  <p className="more-days">+{tour.schedule.length - 2} ngày khác</p>
-                )}
-              </div>
-            )}
+            <div>
+              <p className="schedule-title">Lịch trình:</p>
+              {scheduleItems.length > 0 ? (
+                <>
+                  {scheduleItems.slice(0, 2).map((item, index) => (
+                    <div key={index} className="schedule-item">
+                      <span className="day-badge">Ngày {item.day}</span>
+                      <span className="day-title">{item.title}</span>
+                    </div>
+                  ))}
+                  {scheduleItems.length > 2 && (
+                    <p className="more-days">+{scheduleItems.length - 2} ngày khác</p>
+                  )}
+                </>
+              ) : (
+                <p className="schedule-empty">Chưa cập nhật lịch trình</p>
+              )}
+            </div>
           </div>
 
           <div className="tour-card-footer">
