@@ -232,6 +232,16 @@ const TourDetailPage = () => {
     return available[0] || null;
   }, [normalizedSchedule]);
 
+  const hasUpcomingDeparture = useMemo(() => {
+    const today = dayjs().startOf("day");
+    return normalizedSchedule.some((s: any) => {
+      const slots = Number(s?.slots ?? 0);
+      const d = String(s?._date || "");
+      if (!d) return false;
+      return slots > 0 && (dayjs(d).isSame(today) || dayjs(d).isAfter(today));
+    });
+  }, [normalizedSchedule]);
+
   useEffect(() => {
     setSelectedDepartureDate((prev) => prev || defaultDepartureDate);
   }, [defaultDepartureDate]);
@@ -419,7 +429,11 @@ const TourDetailPage = () => {
                   <span style={{ color: "#111827" }}>
                     <b>Ngày khởi hành:</b>{" "}
                     <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
-                      {selectedDepartureDate ? dayjs(selectedDepartureDate).format("DD-MM-YYYY") : "Chưa chọn"}
+                      {selectedDepartureDate
+                        ? dayjs(selectedDepartureDate).format("DD-MM-YYYY")
+                        : hasUpcomingDeparture
+                          ? "Chưa chọn"
+                          : "Không còn lịch"}
                     </span>
                   </span>
                 </div>
@@ -448,20 +462,25 @@ const TourDetailPage = () => {
                   <span style={{ color: "#111827" }}>
                     <b>Số chỗ còn:</b>{" "}
                     <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
-                      {getSlotsForSelectedDate() ?? "—"}
+                      {(() => {
+                        const slots = getSlotsForSelectedDate();
+                        if (typeof slots === "number") return slots;
+                        return hasUpcomingDeparture ? "—" : 0;
+                      })()}
                     </span>
                   </span>
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: 10 }}>
-                <Button block onClick={() => setScheduleModalOpen(true)}>
+                <Button block onClick={() => setScheduleModalOpen(true)} disabled={!hasUpcomingDeparture}>
                   Ngày khác
                 </Button>
                 <Button
                   type="primary"
                   block
                   onClick={handleBookNow}
+                  disabled={!hasUpcomingDeparture}
                   style={{
                     background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                     borderColor: "#dc2626",
@@ -665,7 +684,11 @@ const TourDetailPage = () => {
                     {cells.map(({ date, inMonth }, i) => {
                       const dateStr = date.format("YYYY-MM-DD");
                       const s = scheduleMap.get(dateStr);
-                      const selectable = inMonth && !!s && s.slots > 0;
+                      const selectable =
+                        inMonth &&
+                        !!s &&
+                        s.slots > 0 &&
+                        (date.isSame(dayjs().startOf("day")) || date.isAfter(dayjs().startOf("day")));
                       const selected = selectedDepartureDate === dateStr;
                       const showPrice = inMonth && !!s;
 

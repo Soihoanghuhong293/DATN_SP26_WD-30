@@ -2,18 +2,19 @@ import { Layout } from "antd";
 import { Navigate, Outlet } from "react-router-dom";
 import HdvSidebar from "../components/layout/HdvSidebar";
 import HdvHeader from "../components/layout/HdvHeader";
+import { useAuth } from "../auth/AuthProvider";
+import { isHdvRole } from "../auth/roleHome";
 
 const { Sider, Content } = Layout;
 
 const HdvLayout = () => {
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+  const auth = useAuth();
 
-  if (!token) {
+  if (!auth.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (role !== "hdv" && role !== "guide") {
+  if (!isHdvRole(auth.role)) {
     return <Navigate to="/" replace />;
   }
 

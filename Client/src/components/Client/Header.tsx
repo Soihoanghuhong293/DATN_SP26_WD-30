@@ -2,16 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Layout, Menu, Button, Drawer } from 'antd';
 import { SendOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
+import { useAuth } from '../../auth/AuthProvider';
 const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate(); 
+  const auth = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isLogin, setIsLogin] = useState<boolean>(() => !!localStorage.getItem("token"));
-  const [role, setRole] = useState<string | null>(() => localStorage.getItem("role"));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,30 +21,9 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  
-  useEffect(() => {
-    // Sync trạng thái login khi đổi route (sau login thường navigate("/"))
-    setIsLogin(!!localStorage.getItem("token"));
-    setRole(localStorage.getItem("role"));
-  }, [location.pathname]);
-
-  useEffect(() => {
-    // Sync ngay sau login/logout (cùng tab) qua custom event
-    const onAuthChanged = () => {
-      setIsLogin(!!localStorage.getItem("token"));
-      setRole(localStorage.getItem("role"));
-    };
-    window.addEventListener("auth:changed", onAuthChanged);
-    return () => window.removeEventListener("auth:changed", onAuthChanged);
-  }, []);
-
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    setIsLogin(false);
-    setRole(null);
+    auth.logout();
     setMobileMenuOpen(false);
-    window.dispatchEvent(new Event("auth:changed"));
     navigate("/login");
   };
 
@@ -55,7 +34,7 @@ const Header = () => {
       { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
       { key: '/blog', label: <Link to="/blog">Blog</Link> },
     ];
-    const isCustomer = isLogin && (!role || role === 'user');
+    const isCustomer = auth.isAuthenticated && (!auth.role || auth.role === 'user');
     if (isCustomer) {
       return [
         ...base,
@@ -63,7 +42,7 @@ const Header = () => {
       ];
     }
     return base;
-  }, [isLogin, role]);
+  }, [auth.isAuthenticated, auth.role]);
 
   const menuSelectedKeys = useMemo(() => {
     const p = location.pathname;
@@ -136,7 +115,7 @@ const Header = () => {
         </div>
 
         <div className="desktop-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          {!isLogin ? (
+          {!auth.isAuthenticated ? (
             <>
               <Link to="/login">
                 <Button type="text" style={{ fontWeight: '600', color: '#595959' }}>
@@ -196,7 +175,7 @@ const Header = () => {
         />
         
         <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {!isLogin ? (
+          {!auth.isAuthenticated ? (
             <>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button block size="large" style={{ fontWeight: '600' }}>Đăng nhập</Button>

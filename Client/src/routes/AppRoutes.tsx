@@ -51,6 +51,8 @@ import HolidayPricingEdit from '../components/layout/HolidayPricingEdit';
 import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
 import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
 import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
+import { ProtectedRoute } from '../auth/ProtectedRoute';
+import { PublicOnlyRoute } from '../auth/PublicOnlyRoute';
 
 const AppRoutes = () => {
   return (
@@ -60,19 +62,19 @@ const AppRoutes = () => {
         <Route index element={<HomePage />} />
 
         {/* 👉 THÊM */}
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
+        <Route path="login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+        <Route path="register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
         <Route path="order/booking/:id" element={<BookingPage />} />
         <Route path="booking/payment/:id" element={<BookingPaymentPage />} />
         <Route path="booking/success/:id" element={<BookingSuccessPage />} />
-        <Route path="my-bookings" element={<MyBookingsPage />} />
-        <Route path="my-bookings/:id" element={<MyBookingDetailPage />} />
+        <Route path="my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
+        <Route path="my-bookings/:id" element={<ProtectedRoute><MyBookingDetailPage /></ProtectedRoute>} />
       </Route>
 
       {/* ===== HDV (Hướng dẫn viên) ===== */}
-      <Route path="/hdv" element={<HdvLayout />}>
+      <Route path="/hdv" element={<ProtectedRoute allowRoles={['hdv','guide']}><HdvLayout /></ProtectedRoute>}>
         <Route index element={<HdvDashboard />} />
         <Route path="tours" element={<HdvTours />} />
         <Route path="tours/:id" element={<HdvBookingDetail />} />
@@ -80,7 +82,7 @@ const AppRoutes = () => {
       </Route>
 
       {/* ===== ADMIN ===== */}
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route path="/admin" element={<ProtectedRoute allowRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
@@ -117,7 +119,7 @@ const AppRoutes = () => {
           <Route path="users/create" element={<UserCreate />} />
 
         <Route path="contact-messages" element={<ContactMessageList />} />
-        <Route path="/admin/holiday-pricing" element={<HolidayPricingList />} />
+        <Route path="holiday-pricing" element={<HolidayPricingList />} />
         <Route path="holiday-pricing/create" element={<HolidayPricingCreate />} />
         <Route path="holiday-pricing/edit/:id" element={<HolidayPricingEdit />} />
 

@@ -2,20 +2,20 @@ import { Layout } from "antd";
 import { Outlet, Navigate } from "react-router-dom";
 import AdminSidebar from "../components/layout/AdminSidebar";
 import AdminHeader from "../components/layout/AdminHeader";
+import { useAuth } from "../auth/AuthProvider";
 
 const { Sider, Content } = Layout;
 
 const AdminLayout = () => {
-  const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
-  const role = localStorage.getItem("role");
+  const auth = useAuth();
 
   // ❌ chưa login
-  if (!token) {
+  if (!auth.isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   // ❌ không phải admin
-  if (role !== "admin") {
+  if (auth.role !== "admin") {
     return <Navigate to="/" replace />;
   }
 

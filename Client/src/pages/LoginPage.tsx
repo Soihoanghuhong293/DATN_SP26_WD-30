@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Form, Input, Button, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { loginAPI } from "../services/auth";
 import "./styles/LoginPage.css";
+import { useAuth } from "../auth/AuthProvider";
+import { roleHome } from "../auth/roleHome";
 
 const LoginPage = () => {
+  const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
 
   const onFinish = async (values: { email: string; password: string }) => {
@@ -15,20 +19,12 @@ const LoginPage = () => {
       const res = await loginAPI(values);
       const { token, role } = res.data;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
-      localStorage.setItem("user_email", values.email);
-      window.dispatchEvent(new Event("auth:changed"));
+      auth.login({ token, role, email: values.email });
 
       message.success("Đăng nhập thành công");
 
-      if (role === "admin") {
-        navigate("/admin/dashboard");
-      } else if (role === "hdv" || role === "guide") {
-        navigate("/hdv");
-      } else {
-        navigate("/");
-      }
+      const from = (location.state as any)?.from;
+      navigate(typeof from === "string" && from ? from : roleHome(role), { replace: true });
     } catch (err: any) {
       message.error(err.response?.data?.message || "Đăng nhập thất bại");
     } finally {

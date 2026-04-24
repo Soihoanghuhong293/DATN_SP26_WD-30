@@ -15,16 +15,16 @@ import {
   StarOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 
 const AdminSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const email = localStorage.getItem("user_email") || "Admin";
+  const auth = useAuth();
+  const email = auth.email || "Admin";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("user_email");
+    auth.logout();
     navigate("/login");
   };
 
