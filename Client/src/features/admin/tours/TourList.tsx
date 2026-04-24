@@ -1,94 +1,247 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-import { 
-  Table, Button, Space, Popconfirm, message, 
-  Typography, Input, Tooltip
-} from 'antd';
-import { 
-  DeleteOutlined, EditOutlined, PlusOutlined, 
-  SearchOutlined, EyeOutlined
-} from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button, DatePicker, Empty, Input, InputNumber, Popconfirm, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, TagsOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import AdminPageHeader from '../../../components/admin/AdminPageHeader';
 import AdminListCard from '../../../components/admin/AdminListCard';
 import dayjs from 'dayjs';
+import { deleteTour, getCategories, getGuides, getTours } from '../../../services/api';
+import type { IGuide } from '../../../types/guide.types';
+import type { ICategory, ITour, TourStatus } from '../../../types/tour.types';
+import './TourList.css';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
+const { RangePicker } = DatePicker;
 
-interface ITour {
-  _id: string;
-  name: string;
-  image?: string;
-  images?: string[];
-  price: number;
-  duration_days: number;
-  status: string;
-  category_id?: { name: string } | string;
-  departure_schedule?: { date: string; slots: number }[];
-}
+const getTourId = (t: ITour) => t._id || t.id;
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(d);
+};
+
+const statusLabel = (status?: TourStatus | string) => {
+  if (status === 'active') return 'Hoạt động';
+  if (status === 'inactive') return 'Không hoạt động';
+  return 'Bản nháp';
+};
+
+type TourAdminStatusFilter = 'active' | 'inactive' | 'departed' | 'full';
+type SeatFilter = 'available' | 'near_full' | 'full';
+
+type FilterState = {
+  search: string;
+  departureRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
+  categoryId?: string;
+  status?: TourAdminStatusFilter;
+  priceMin?: number;
+  priceMax?: number;
+  seats?: SeatFilter;
+  guideId?: string;
+};
+
+const emptyFilters = (): FilterState => ({
+  search: '',
+  departureRange: [null, null],
+  categoryId: undefined,
+  status: undefined,
+  priceMin: undefined,
+  priceMax: undefined,
+  seats: undefined,
+  guideId: undefined,
+});
 
 const TourList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchText, setSearchText] = useState('');
+  const [draft, setDraft] = useState<FilterState>(() => emptyFilters());
+  const [applied, setApplied] = useState<FilterState>(() => emptyFilters());
 
-  const { data: tours = [], isLoading } = useQuery({
-    queryKey: ['tours'],
-    queryFn: async () => {
-      const response = await axios.get('http://localhost:5000/api/v1/tours', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      return response.data.data || [];
-    },
+  const { data: categoriesResp, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories', { status: 'active' }],
+    queryFn: () => getCategories({ status: 'active' }),
   });
+
+  const { data: guidesResp, isLoading: isLoadingGuides } = useQuery({
+    queryKey: ['guides', { limit: 200 }],
+    queryFn: () => getGuides({ limit: 200 }),
+  });
+
+  const apiStatus: TourStatus | undefined =
+    applied.status === 'active' || applied.status === 'inactive' ? applied.status : undefined;
+
+  const departureStartISO =
+    applied.departureRange?.[0] ? applied.departureRange[0].startOf('day').toISOString() : undefined;
+
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['tours', applied],
+    queryFn: () =>
+      getTours({
+        search: applied.search || undefined,
+        status: apiStatus,
+        category_id: applied.categoryId,
+        minPrice: applied.priceMin,
+        maxPrice: applied.priceMax,
+        departureDate: departureStartISO,
+      }),
+  });
+
+  const tours = (data?.data ?? []) as ITour[];
+
+  const categoryOptions = useMemo(() => {
+    const categories = ((categoriesResp as any)?.data?.categories ?? []) as ICategory[];
+    return categories.map((c) => ({ value: c._id || c.id, label: c.name }));
+  }, [categoriesResp]);
+
+  const guideOptions = useMemo(() => {
+    const guides = ((guidesResp as any)?.data?.guides ?? []) as IGuide[];
+    return guides.map((g) => ({ value: g._id || g.id, label: `${g.name} · ${g.phone}` }));
+  }, [guidesResp]);
 
   const filteredData = useMemo(() => {
-    if (!searchText) return tours;
-    const lower = searchText.toLowerCase();
-    return tours.filter((t: ITour) => 
-      t.name.toLowerCase().includes(lower) || 
-      t.price.toString().includes(lower)
-    );
-  }, [tours, searchText]);
+    const { search, departureRange, status, seats, guideId } = applied;
+    const [from, to] = departureRange ?? [null, null];
+    const lower = (search || '').trim().toLowerCase();
+
+    return tours.filter((t) => {
+      if (lower) {
+        const id = String(getTourId(t) || '').toLowerCase();
+        const name = String(t.name || '').toLowerCase();
+        if (!name.includes(lower) && !id.includes(lower)) return false;
+      }
+
+      const departure = (t as any)?.departure_schedule?.[0]?.date as string | undefined;
+      if (from || to) {
+        if (!departure) return false;
+        const d = dayjs(departure);
+        if (from && d.isBefore(from.startOf('day'))) return false;
+        if (to && d.isAfter(to.endOf('day'))) return false;
+      }
+
+      if (status === 'departed') {
+        if (!departure) return false;
+        if (!dayjs(departure).isBefore(dayjs(), 'day')) return false;
+      }
+      if (status === 'full') {
+        const slots = Number((t as any)?.slots ?? (t as any)?.totalSlots ?? NaN);
+        const remaining = Number((t as any)?.slotsRemaining ?? (t as any)?.remainingSlots ?? NaN);
+        if (Number.isFinite(remaining)) {
+          if (remaining > 0) return false;
+        } else if (Number.isFinite(slots)) {
+          const booked = Number((t as any)?.bookedSlots ?? NaN);
+          if (Number.isFinite(booked) && booked < slots) return false;
+        }
+      }
+
+      if (seats) {
+        const slots = Number((t as any)?.slots ?? (t as any)?.totalSlots ?? NaN);
+        const remaining = Number((t as any)?.slotsRemaining ?? (t as any)?.remainingSlots ?? NaN);
+        const booked = Number((t as any)?.bookedSlots ?? NaN);
+        const rem = Number.isFinite(remaining)
+          ? remaining
+          : Number.isFinite(slots) && Number.isFinite(booked)
+            ? Math.max(slots - booked, 0)
+            : NaN;
+        if (Number.isFinite(rem) && Number.isFinite(slots)) {
+          const ratio = slots > 0 ? rem / slots : 0;
+          if (seats === 'full' && rem !== 0) return false;
+          if (seats === 'available' && rem <= 0) return false;
+          if (seats === 'near_full' && !(rem > 0 && ratio <= 0.2)) return false;
+        }
+      }
+
+      if (guideId) {
+        const g = (t as any)?.primaryGuide || (t as any)?.guide_id || (t as any)?.guide;
+        const gid = typeof g === 'object' ? String(g?._id || g?.id || '') : String(g || '');
+        if (gid && gid !== guideId) return false;
+        if (!gid) return false;
+      }
+
+      return true;
+    });
+  }, [applied, tours]);
+
+  const appliedTags = useMemo(() => {
+    const tags: { key: keyof FilterState; label: string }[] = [];
+    if (applied.search?.trim()) tags.push({ key: 'search', label: `Từ khóa: ${applied.search.trim()}` });
+    if (applied.categoryId) {
+      const cat = categoryOptions.find((o) => o.value === applied.categoryId);
+      tags.push({ key: 'categoryId', label: cat ? `Danh mục: ${cat.label}` : 'Danh mục' });
+    }
+    if (applied.status) {
+      const map: Record<TourAdminStatusFilter, string> = {
+        active: 'Hoạt động',
+        inactive: 'Không hoạt động',
+        departed: 'Đã khởi hành',
+        full: 'Hết chỗ',
+      };
+      tags.push({ key: 'status', label: `Trạng thái: ${map[applied.status]}` });
+    }
+    if (applied.priceMin != null || applied.priceMax != null) {
+      const min = applied.priceMin != null ? `${applied.priceMin.toLocaleString('vi-VN')}đ` : '—';
+      const max = applied.priceMax != null ? `${applied.priceMax.toLocaleString('vi-VN')}đ` : '—';
+      tags.push({ key: 'priceMin', label: `Giá: ${min} - ${max}` });
+    }
+    if (applied.departureRange?.[0] || applied.departureRange?.[1]) {
+      const [f, t] = applied.departureRange;
+      const fLabel = f ? f.format('DD/MM/YYYY') : '—';
+      const tLabel = t ? t.format('DD/MM/YYYY') : '—';
+      tags.push({ key: 'departureRange', label: `Khởi hành: ${fLabel} - ${tLabel}` });
+    }
+    if (applied.seats) {
+      const map: Record<SeatFilter, string> = {
+        available: 'Còn chỗ',
+        near_full: 'Gần đầy',
+        full: 'Hết chỗ',
+      };
+      tags.push({ key: 'seats', label: `Số chỗ: ${map[applied.seats]}` });
+    }
+    if (applied.guideId) {
+      const g = guideOptions.find((o) => o.value === applied.guideId);
+      tags.push({ key: 'guideId', label: g ? `HDV: ${g.label}` : 'HDV' });
+    }
+    return tags;
+  }, [applied, categoryOptions, guideOptions]);
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => axios.delete(`http://localhost:5000/api/v1/tours/${id}`),
+    mutationFn: (id: string) => deleteTour(id),
     onSuccess: () => {
-      message.success('Đã chuyển tour vào thùng rác');
+      message.success('Đã xoá tour');
       queryClient.invalidateQueries({ queryKey: ['tours'] });
     },
+    onError: () => message.error('Xoá tour thất bại'),
   });
 
-  const columns: ColumnsType<ITour> = [
+  const columns: ColumnsType<ITour> = useMemo(() => [
     {
-      title: 'TOUR',
-      dataIndex: 'name',
-      key: 'name',
-      width: 350,
+      title: 'Tour',
+      key: 'tour',
       render: (_, record) => {
-        const imgLink = record.image || (record.images && record.images[0]);
-        const departureDate = record.departure_schedule?.[0]?.date
-          ? dayjs(record.departure_schedule[0].date).format('DD/MM/YYYY')
-          : null;
-        const displayName = departureDate ? `${record.name} (${departureDate})` : record.name;
+        const imgLink = record.images?.[0];
+        const id = getTourId(record);
+        const shortId = id ? String(id).slice(-6).toUpperCase() : '';
+        const departure = (record as any)?.departure_schedule?.[0]?.date as string | undefined;
+        const departureLabel = departure ? dayjs(departure).format('DD/MM/YYYY') : undefined;
+        const baseName = record.name || '—';
+        const displayName = departureLabel ? `${baseName} (${departureLabel})` : baseName;
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ 
-                width: 48, height: 48, borderRadius: 8, overflow: 'hidden', 
-                border: '1px solid #e5e7eb', flexShrink: 0 
-            }}>
-                <img 
-                    src={imgLink || 'https://placehold.co/100x100?text=Kh%C3%B4ng+%E1%BA%A3nh'} 
-                    alt={record.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+          <div className="tour-list-name-cell">
+            <div className="tour-list-name-avatar" aria-hidden>
+              <img
+                src={imgLink || 'https://placehold.co/100x100?text=Tour'}
+                alt={displayName}
+              />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text strong style={{ fontSize: 14, color: '#111827' }}>{displayName}</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                ID: <span style={{ fontFamily: 'monospace' }}>{record._id.slice(-6).toUpperCase()}</span>
+            <div className="tour-list-name-text">
+              <Tooltip title={id ? `ID: ${id}` : undefined}>
+                <div className="tour-list-name-title">{displayName}</div>
+              </Tooltip>
+              <Text type="secondary" className="tour-list-id">
+                ID: <span className="tour-list-id-mono">{shortId || '—'}</span>
               </Text>
             </div>
           </div>
@@ -96,97 +249,117 @@ const TourList = () => {
       },
     },
     {
-      title: 'GIÁ TOUR',
+      title: 'Giá tour',
       dataIndex: 'price',
       key: 'price',
-      sorter: (a, b) => a.price - b.price,
-      render: (price) => (
-        <Text style={{ fontWeight: 500, color: '#374151' }}>
-          {price ? price.toLocaleString('vi-VN') : 0} ₫
+      width: 160,
+      sorter: (a, b) => (a.price ?? 0) - (b.price ?? 0),
+      render: (price: number) => (
+        <Text style={{ fontWeight: 500, color: '#334155' }}>
+          {(price ?? 0).toLocaleString('vi-VN')} ₫
         </Text>
       ),
     },
     {
-      title: 'THỜI LƯỢNG',
+      title: 'Thời lượng',
       dataIndex: 'duration_days',
       key: 'duration_days',
-      render: (days) => (
-        <span style={{ 
-            padding: '4px 10px', 
-            backgroundColor: '#f3f4f6', 
-            borderRadius: 6, 
-            fontSize: 12, 
-            fontWeight: 600, 
-            color: '#4b5563' 
-        }}>
-            {days} ngày
-        </span>
-      ),
+      width: 150,
+      render: (_v: unknown, record) => {
+        const days = (record.duration_days ?? record.duration_ ?? 0) as number;
+        if (!days) return <Text type="secondary">—</Text>;
+        return <span className="tour-list-duration">{days} ngày</span>;
+      },
     },
     {
-      title:'TRẠNG THÁI',
+      title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
+      width: 160,
       render: (status) => {
-        const isActive = status === 'active';
+        const s = String(status || 'draft') as TourStatus | string;
+        const active = s === 'active';
+        const inactive = s === 'inactive';
+        const cls = active ? 'tour-list-status--active' : inactive ? 'tour-list-status--inactive' : 'tour-list-status--draft';
+        const dot = active ? '#10b981' : inactive ? '#94a3b8' : '#94a3b8';
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ 
-                width: 8, height: 8, borderRadius: '50%', 
-                backgroundColor: isActive ? '#10b981' : '#f59e0b',
-                boxShadow: isActive ? '0 0 0 2px rgba(16, 185, 129, 0.2)' : 'none'
-            }} />
-            <Text style={{ fontSize: 13, color: isActive ? '#065f46' : '#92400e' }}>
-              {isActive ? 'Đang hoạt động' : 'Bản nháp'}
-            </Text>
-          </div>
+          <span className={`tour-list-status ${cls}`}>
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />
+            {statusLabel(s)}
+          </span>
         );
       },
     },
     {
-      title: '',
-      key: 'action',
-      width: 140,
-      align: 'right',
-      render: (_, record) => (
-        <Space size={4}>
-          <Tooltip title="Xem chi tiết">
-            <Link to={`/admin/tours/${record._id}`}>
-                <Button 
-                  type="text" 
-                  style={{ color: '#2563eb', backgroundColor: '#eff6ff' }} // Xanh dương nhẹ
-                  icon={<EyeOutlined />} 
-                />
-            </Link>
-          </Tooltip>
-
-          <Tooltip title="Chỉnh sửa">
-            <Button 
-              type="text" 
-              icon={<EditOutlined style={{ color: '#6b7280' }} />} 
-              onClick={() => navigate(`/admin/tours/${record._id}/edit`)}
-            />
-          </Tooltip>
-          
-          <Popconfirm
-            title="Xoá tour này?"
-            description="Thao tác này không thể hoàn tác."
-            onConfirm={() => deleteMutation.mutate(record._id)}
-            okText="Xoá"
-            cancelText="Huỷ"
-            okButtonProps={{ danger: true }}
-          >
-            <Tooltip title="Xoá">
-              <Button type="text" danger icon={<DeleteOutlined />} />
+      title: 'Danh mục',
+      dataIndex: 'category_id',
+      key: 'category_id',
+      width: 220,
+      responsive: ['sm'],
+      render: (value: unknown) => {
+        if (!value) return <Text type="secondary">—</Text>;
+        const v: any = value;
+        const name = typeof v === 'object' ? (v?.name as string | undefined) : undefined;
+        const label = name || String(value);
+        return (
+          <span className="tour-list-category">
+            <TagsOutlined className="tour-list-category-icon" />
+            <Tooltip title={label}>
+              <span className="tour-list-category-text">{label}</span>
             </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+          </span>
+        );
+      },
     },
-  ];
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 112,
+      align: 'right',
+      fixed: 'right',
+      render: (_, record) => {
+        const id = getTourId(record);
+        const rowDeleting = deleteMutation.isPending && deleteMutation.variables === id;
+        return (
+          <Space size={6} className="tour-list-actions">
+            <Tooltip title="Sửa">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                aria-label="Sửa tour"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/admin/tours/${id}/edit`);
+                }}
+                disabled={!id}
+              />
+            </Tooltip>
+            <Popconfirm
+              title="Xoá tour này?"
+              description="Thao tác không thể hoàn tác."
+              okText="Xoá"
+              cancelText="Huỷ"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => id && deleteMutation.mutate(id)}
+            >
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label="Xoá tour"
+                loading={rowDeleting}
+                disabled={!id}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Popconfirm>
+          </Space>
+        );
+      },
+    },
+  ], [deleteMutation, navigate]);
 
   return (
-    <div>
+    <div className="tour-list-page">
       <AdminPageHeader
         title="Tour"
         subtitle="Quản lý danh sách tour."
@@ -195,7 +368,7 @@ const TourList = () => {
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/tours/create')}>
               Thêm tour
             </Button>
-            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['tours'] })}>
+            <Button icon={<ReloadOutlined />} loading={isFetching && !isLoading} onClick={() => refetch()}>
               Tải lại
             </Button>
           </Space>
@@ -203,28 +376,216 @@ const TourList = () => {
       />
 
       <AdminListCard
+        style={{
+          borderRadius: 14,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+        }}
         toolbar={
-          <Input
-            prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
-            placeholder="Tìm theo tên tour hoặc giá..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ maxWidth: 360 }}
-            allowClear
-          />
+          <div className="tour-filterbar">
+            <div className="tour-filterbar-grid" onClick={(e) => e.stopPropagation()}>
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Tìm kiếm</div>
+                <Input
+                  allowClear
+                  size="middle"
+                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  placeholder="Tìm theo tên hoặc mã tour..."
+                  value={draft.search}
+                  onChange={(e) => setDraft((p) => ({ ...p, search: e.target.value }))}
+                />
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Ngày khởi hành</div>
+                <RangePicker
+                  style={{ width: '100%' }}
+                  value={draft.departureRange}
+                  onChange={(v) => setDraft((p) => ({ ...p, departureRange: (v as any) || [null, null] }))}
+                  format="DD/MM/YYYY"
+                />
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Danh mục</div>
+                <Select
+                  allowClear
+                  size="middle"
+                  placeholder="Chọn danh mục"
+                  loading={isLoadingCategories}
+                  options={categoryOptions}
+                  value={draft.categoryId}
+                  onChange={(v) => setDraft((p) => ({ ...p, categoryId: v }))}
+                />
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Trạng thái</div>
+                <Select
+                  allowClear
+                  size="middle"
+                  placeholder="Trạng thái"
+                  options={[
+                    { value: 'active', label: 'Hoạt động' },
+                    { value: 'inactive', label: 'Không hoạt động' },
+                    { value: 'departed', label: 'Đã khởi hành' },
+                    { value: 'full', label: 'Hết chỗ' },
+                  ]}
+                  value={draft.status}
+                  onChange={(v) => setDraft((p) => ({ ...p, status: v }))}
+                />
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Giá (min – max)</div>
+                <div className="tour-filterbar-range2">
+                  <InputNumber
+                    min={0}
+                    style={{ width: '100%' }}
+                    placeholder="Min"
+                    value={draft.priceMin}
+                    onChange={(v) => setDraft((p) => ({ ...p, priceMin: typeof v === 'number' ? v : undefined }))}
+                  />
+                  <InputNumber
+                    min={0}
+                    style={{ width: '100%' }}
+                    placeholder="Max"
+                    value={draft.priceMax}
+                    onChange={(v) => setDraft((p) => ({ ...p, priceMax: typeof v === 'number' ? v : undefined }))}
+                  />
+                </div>
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Số chỗ</div>
+                <Select
+                  allowClear
+                  size="middle"
+                  placeholder="Chọn"
+                  options={[
+                    { value: 'available', label: 'Còn chỗ' },
+                    { value: 'near_full', label: 'Gần đầy' },
+                    { value: 'full', label: 'Hết chỗ' },
+                  ]}
+                  value={draft.seats}
+                  onChange={(v) => setDraft((p) => ({ ...p, seats: v }))}
+                />
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Hướng dẫn viên</div>
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  size="middle"
+                  placeholder="Chọn HDV"
+                  loading={isLoadingGuides}
+                  options={guideOptions}
+                  value={draft.guideId}
+                  onChange={(v) => setDraft((p) => ({ ...p, guideId: v }))}
+                />
+              </div>
+
+              <div className="tour-filterbar-item tour-filterbar-actions">
+                <div className="tour-filterbar-label">&nbsp;</div>
+                <Space wrap>
+                  <Button
+                    onClick={() => {
+                      const cleared = emptyFilters();
+                      setDraft(cleared);
+                      setApplied(cleared);
+                    }}
+                  >
+                    Xóa bộ lọc
+                  </Button>
+                  <Button
+                    type="primary"
+                    loading={isFetching}
+                    onClick={() => setApplied(draft)}
+                  >
+                    Áp dụng
+                  </Button>
+                </Space>
+              </div>
+            </div>
+
+            <div className="tour-filterbar-footer">
+              <div className="tour-filterbar-tags">
+                {appliedTags.length > 0 ? (
+                  appliedTags.map((t) => (
+                    <Tag
+                      key={String(t.key) + t.label}
+                      closable
+                      onClose={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const nextDraft = { ...draft };
+                        const nextApplied = { ...applied };
+                        if (t.key === 'departureRange') {
+                          nextDraft.departureRange = [null, null];
+                          nextApplied.departureRange = [null, null];
+                        } else if (t.key === 'priceMin') {
+                          nextDraft.priceMin = undefined;
+                          nextDraft.priceMax = undefined;
+                          nextApplied.priceMin = undefined;
+                          nextApplied.priceMax = undefined;
+                        } else {
+                          (nextDraft as any)[t.key] = undefined;
+                          (nextApplied as any)[t.key] = undefined;
+                          if (t.key === 'search') (nextDraft as any)[t.key] = '';
+                          if (t.key === 'search') (nextApplied as any)[t.key] = '';
+                        }
+                        setDraft(nextDraft);
+                        setApplied(nextApplied);
+                      }}
+                    >
+                      {t.label}
+                    </Tag>
+                  ))
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Chưa chọn bộ lọc
+                  </Text>
+                )}
+              </div>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {filteredData.length} mục
+              </Text>
+            </div>
+          </div>
         }
       >
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey="_id"
-          loading={isLoading}
-          pagination={{
-            pageSize: 8,
-            showSizeChanger: false,
-          }}
-          scroll={{ x: 1100 }}
-        />
+        {isError ? (
+          <div style={{ padding: 16 }}>
+            <Text type="secondary">
+              {(error as Error)?.message || 'Không tải được danh sách tour'}
+            </Text>
+          </div>
+        ) : (
+          <Table<ITour>
+            className="tour-list-table"
+            columns={columns}
+            dataSource={filteredData}
+            rowKey={(r) => getTourId(r) || `row-${r.name}`}
+            loading={isLoading}
+            onRow={(record) => {
+              const id = getTourId(record);
+              return {
+                onClick: () => {
+                  if (!id) return;
+                  navigate(`/admin/tours/${id}`);
+                },
+              };
+            }}
+            pagination={{
+              pageSize: 8,
+              showSizeChanger: false,
+            }}
+            locale={{ emptyText: <Empty description="Chưa có tour" /> }}
+            scroll={{ x: 1040 }}
+          />
+        )}
       </AdminListCard>
     </div>
   );
