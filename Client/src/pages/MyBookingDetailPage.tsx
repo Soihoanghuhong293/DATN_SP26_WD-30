@@ -86,6 +86,14 @@ const MyBookingDetailPage: React.FC = () => {
   const [cancelBankAccountName, setCancelBankAccountName] = useState<string>("");
   const [cancelQrFileList, setCancelQrFileList] = useState<UploadFile[]>([]);
   const [cancelQrDataUrl, setCancelQrDataUrl] = useState<string>("");
+  const cancelFormError = useMemo(() => {
+    if (!cancelReason.trim()) return "Vui lòng nhập lý do hủy";
+    if (!cancelBankName.trim()) return "Vui lòng chọn ngân hàng";
+    if (!cancelBankAccountNumber.trim()) return "Vui lòng nhập số tài khoản";
+    if (!cancelBankAccountName.trim()) return "Vui lòng nhập chủ tài khoản";
+    if (!cancelQrDataUrl) return "Vui lòng upload QR ngân hàng";
+    return "";
+  }, [cancelBankAccountName, cancelBankAccountNumber, cancelBankName, cancelQrDataUrl, cancelReason]);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -349,7 +357,7 @@ const MyBookingDetailPage: React.FC = () => {
         title="Xác nhận hủy tour"
         okText="Xác nhận"
         cancelText="Đóng"
-        okButtonProps={{ danger: true, loading: cancelSubmitting, disabled: !canCancel }}
+        okButtonProps={{ danger: true, loading: cancelSubmitting, disabled: !canCancel || !!cancelFormError }}
         onCancel={() => {
           if (cancelSubmitting) return;
           setCancelOpen(false);
@@ -362,6 +370,10 @@ const MyBookingDetailPage: React.FC = () => {
         }}
         onOk={async () => {
           if (!id) return;
+          if (cancelFormError) {
+            message.error(cancelFormError);
+            return;
+          }
           setCancelSubmitting(true);
           try {
             const res = await axios.post(
@@ -408,7 +420,7 @@ const MyBookingDetailPage: React.FC = () => {
           <Input.TextArea
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Lý do hủy (không bắt buộc)"
+            placeholder="Lý do hủy"
             autoSize={{ minRows: 3, maxRows: 6 }}
             maxLength={500}
             showCount
@@ -446,21 +458,29 @@ const MyBookingDetailPage: React.FC = () => {
             maxCount={1}
             accept="image/*"
             beforeUpload={async (file: RcFile) => {
-              const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(String(reader.result || ""));
-                reader.onerror = () => reject(new Error("read-failed"));
-                reader.readAsDataURL(file);
-              });
-              setCancelQrDataUrl(dataUrl);
-              setCancelQrFileList([
-                {
-                  uid: file.uid,
-                  name: file.name,
-                  status: "done",
-                  url: dataUrl,
-                },
-              ]);
+              try {
+                const dataUrl = await new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(String(reader.result || ""));
+                  reader.onerror = () => resolve("");
+                  reader.readAsDataURL(file);
+                });
+                if (!dataUrl) {
+                  message.error("Không đọc được ảnh QR. Vui lòng thử ảnh khác.");
+                  return false;
+                }
+                setCancelQrDataUrl(dataUrl);
+                setCancelQrFileList([
+                  {
+                    uid: file.uid,
+                    name: file.name,
+                    status: "done",
+                    url: dataUrl,
+                  },
+                ]);
+              } catch {
+                message.error("Upload QR thất bại. Vui lòng thử lại.");
+              }
               return false;
             }}
             onRemove={() => {
@@ -470,6 +490,8 @@ const MyBookingDetailPage: React.FC = () => {
           >
             <Button>Upload QR</Button>
           </Upload>
+
+          {cancelFormError ? <Text type="danger">{cancelFormError}</Text> : null}
         </Space>
       </Modal>
     </div>
