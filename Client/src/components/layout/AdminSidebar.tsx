@@ -14,15 +14,35 @@ import {
   CalendarOutlined,
   StarOutlined,
   LogoutOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
-import { useMemo } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./AdminSidebar.css";
 
-const AdminSidebar = () => {
+type Props = {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+};
+
+const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const email = localStorage.getItem("user_email") || "Admin";
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+
+  const rootSubmenuKeys = useMemo(
+    () => [
+      "category-management",
+      "tour-management",
+      "guide-management",
+      "provider-management",
+      "booking-management",
+      "holiday-pricing-management",
+    ],
+    []
+  );
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -43,27 +63,38 @@ const AdminSidebar = () => {
     return keys;
   };
 
+  useEffect(() => {
+    if (collapsed) {
+      setOpenKeys([]);
+      return;
+    }
+    setOpenKeys(getOpenKeys());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, collapsed]);
+
   const menuItems = useMemo(
     () => [
       {
         key: "/admin/dashboard",
         icon: <DashboardOutlined />,
-        label: <Link to="/admin/dashboard">Tổng quan</Link>,
+        label: "Tổng quan",
       },
       {
         key: "category-management",
         icon: <TagsOutlined />,
         label: "Quản lý Danh mục",
+        onTitleClick: () =>
+          setOpenKeys((prev) => (prev.includes("category-management") ? [] : ["category-management"])),
         children: [
           {
             key: "/admin/categories",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/categories">Danh sách danh mục</Link>,
+            label: "Danh sách danh mục",
           },
           {
             key: "/admin/categories/create",
             icon: <PlusCircleOutlined />,
-            label: <Link to="/admin/categories/create">Thêm danh mục</Link>,
+            label: "Thêm danh mục",
           },
         ],
       },
@@ -71,26 +102,28 @@ const AdminSidebar = () => {
         key: "tour-management",
         icon: <AppstoreOutlined />,
         label: "Quản lý Tour",
+        onTitleClick: () =>
+          setOpenKeys((prev) => (prev.includes("tour-management") ? [] : ["tour-management"])),
         children: [
           {
             key: "/admin/tours",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/tours">Danh sách Tour</Link>,
+            label: "Danh sách Tour",
           },
           {
             key: "/admin/tours/create",
             icon: <PlusCircleOutlined />,
-            label: <Link to="/admin/tours/create">Thêm Tour mới</Link>,
+            label: "Thêm Tour mới",
           },
           {
             key: "/admin/tour-templates",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/tour-templates">Tour Templates</Link>,
+            label: "Tour Templates",
           },
           {
             key: "/admin/tour-templates/create",
             icon: <PlusCircleOutlined />,
-            label: <Link to="/admin/tour-templates/create">Thêm Template</Link>,
+            label: "Thêm Template",
           },
         ],
       },
@@ -98,16 +131,18 @@ const AdminSidebar = () => {
         key: "guide-management",
         icon: <TeamOutlined />,
         label: "Quản lý Hướng dẫn viên",
+        onTitleClick: () =>
+          setOpenKeys((prev) => (prev.includes("guide-management") ? [] : ["guide-management"])),
         children: [
           {
             key: "/admin/guides",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/guides">Danh sách HDV</Link>,
+            label: "Danh sách HDV",
           },
           {
             key: "/admin/guide-reviews",
             icon: <StarOutlined />,
-            label: <Link to="/admin/guide-reviews">Quản lý đánh giá</Link>,
+            label: "Quản lý đánh giá",
           },
         ],
       },
@@ -115,33 +150,37 @@ const AdminSidebar = () => {
         key: "provider-management",
         icon: <ShopOutlined />,
         label: "Nhà cung cấp",
+        onTitleClick: () =>
+          setOpenKeys((prev) => (prev.includes("provider-management") ? [] : ["provider-management"])),
         children: [
           {
             key: "/admin/providers",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/providers">Danh sách nhà cung cấp</Link>,
+            label: "Danh sách nhà cung cấp",
           },
           {
             key: "/admin/providers/create",
             icon: <PlusCircleOutlined />,
-            label: <Link to="/admin/providers/create">Thêm nhà cung cấp</Link>,
+            label: "Thêm nhà cung cấp",
           },
         ],
       },
       {
         key: "booking-management",
         icon: <BookOutlined />,
-        label: "Quản lý Đặt chỗ",
+        label: "Quản lý Booking",
+        onTitleClick: () =>
+          setOpenKeys((prev) => (prev.includes("booking-management") ? [] : ["booking-management"])),
         children: [
           {
             key: "/admin/bookings",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/bookings">Danh sách đơn</Link>,
+            label: "Danh sách đơn",
           },
           {
             key: "/admin/bookings/create",
             icon: <PlusCircleOutlined />,
-            label: <Link to="/admin/bookings/create">Tạo đơn mới</Link>,
+            label: "Tạo đơn mới",
           },
         ],
       },
@@ -149,33 +188,37 @@ const AdminSidebar = () => {
         key: "holiday-pricing-management",
         icon: <CalendarOutlined />,
         label: "Quản lý Ngày lễ",
+        onTitleClick: () =>
+          setOpenKeys((prev) =>
+            prev.includes("holiday-pricing-management") ? [] : ["holiday-pricing-management"]
+          ),
         children: [
           {
             key: "/admin/holiday-pricing",
             icon: <UnorderedListOutlined />,
-            label: <Link to="/admin/holiday-pricing">Danh sách Ngày lễ</Link>,
+            label: "Danh sách Ngày lễ",
           },
           {
             key: "/admin/holiday-pricing/create",
             icon: <PlusCircleOutlined />,
-            label: <Link to="/admin/holiday-pricing/create">Thêm Ngày lễ</Link>,
+            label: "Thêm Ngày lễ",
           },
         ],
       },
       {
         key: "/admin/contact-messages",
         icon: <MessageOutlined />,
-        label: <Link to="/admin/contact-messages">Tin nhắn offline</Link>,
+        label: "Tin nhắn offline",
       },
       {
         key: "/admin/users",
         icon: <UserOutlined />,
-        label: <Link to="/admin/users">Người dùng</Link>,
+        label: "Người dùng",
       },
       {
         key: "/admin/settings",
         icon: <SettingOutlined />,
-        label: <Link to="/admin/settings">Cài đặt</Link>,
+        label: "Cài đặt",
       },
     ],
     []
@@ -198,9 +241,23 @@ const AdminSidebar = () => {
           mode="inline"
           theme="dark"
           selectedKeys={[pathname]}
-          defaultOpenKeys={getOpenKeys()}
+          openKeys={openKeys}
+          triggerSubMenuAction="click"
+          onOpenChange={(keys) => {
+            const nextKeys = (keys as string[]) ?? [];
+            const latest = nextKeys.find((k) => !openKeys.includes(k));
+            if (latest && rootSubmenuKeys.includes(latest)) {
+              setOpenKeys([latest]);
+              return;
+            }
+            setOpenKeys(nextKeys.filter((k) => rootSubmenuKeys.includes(k)));
+          }}
           className="admin-sider__menu"
           items={menuItems}
+          onClick={(e) => {
+            const key = String(e.key);
+            if (key.startsWith("/")) navigate(key);
+          }}
         />
       </div>
 
@@ -208,6 +265,19 @@ const AdminSidebar = () => {
         <button type="button" className="admin-sider__logoutBtn" onClick={handleLogout}>
           <LogoutOutlined />
           <span className="admin-sider__logoutText">Đăng xuất</span>
+        </button>
+
+        <button
+          type="button"
+          className="admin-sider__collapseBtn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCollapse();
+          }}
+          aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+        >
+          {collapsed ? <RightOutlined /> : <LeftOutlined />}
+          <span className="admin-sider__collapseText">{collapsed ? "Mở rộng" : "Thu gọn"}</span>
         </button>
       </div>
     </div>

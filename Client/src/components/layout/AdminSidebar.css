@@ -5,7 +5,6 @@
   position: sticky;
   top: 0;
   background: #001529;
-  padding-bottom: 48px; /* avoid AntD Sider trigger overlay */
   box-sizing: border-box;
 }
 
@@ -125,6 +124,8 @@
 .admin-sider__footer {
   padding: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 8px;
 }
 
 .admin-sider__logoutBtn {
@@ -140,6 +141,44 @@
   padding: 0 16px;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-sider__collapseBtn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-sider__collapseBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.admin-sider__collapseBtn .anticon {
+  font-size: 14px;
+}
+
+.admin-sider__collapseText {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ant-layout-sider-collapsed .admin-sider__collapseBtn {
+  justify-content: center;
+  padding: 0;
+}
+
+.ant-layout-sider-collapsed .admin-sider__collapseText {
+  display: none;
 }
 
 .admin-sider__logoutBtn:hover {

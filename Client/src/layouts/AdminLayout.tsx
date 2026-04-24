@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Layout } from "antd";
 import { Outlet, Navigate } from "react-router-dom";
 import AdminSidebar from "../components/layout/AdminSidebar";
@@ -8,6 +9,7 @@ const { Sider, Content } = Layout;
 const AdminLayout = () => {
   const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
   const role = localStorage.getItem("role");
+  const [collapsed, setCollapsed] = useState(false);
 
   // ❌ chưa login
   if (!token) {
@@ -28,9 +30,12 @@ const AdminLayout = () => {
         breakpoint="lg"
         collapsedWidth={80}
         collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        trigger={null}
         style={{ background: "#001529" }}
       >
-        <AdminSidebar />
+        <AdminSidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((v) => !v)} />
       </Sider>
 
       <Layout style={{ minWidth: 0, flex: 1, height: "100vh", overflow: "hidden" }}>
