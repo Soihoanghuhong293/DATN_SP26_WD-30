@@ -1,0 +1,162 @@
+.admin-sider {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  background: #001529;
+  padding-bottom: 48px; /* avoid AntD Sider trigger overlay */
+  box-sizing: border-box;
+}
+
+.admin-sider__brand {
+  height: 64px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-sider__avatar {
+  background: linear-gradient(135deg, #1677ff 0%, #22c55e 100%);
+}
+
+.admin-sider__brandText {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-sider__brandTitle {
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.2;
+}
+
+.admin-sider__brandSub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.admin-sider__menuScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 10px 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+
+.admin-sider__menuScroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.admin-sider__menu {
+  border: none !important;
+  background: transparent !important;
+  width: 100%;
+}
+
+.ant-layout-sider-collapsed .admin-sider__brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.ant-layout-sider-collapsed .admin-sider__brandText {
+  display: none;
+}
+
+.admin-sider__menu .ant-menu-item,
+.admin-sider__menu .ant-menu-submenu-title {
+  margin: 6px 0 !important;
+  border-radius: 8px;
+  height: 44px;
+  line-height: 44px;
+  padding-inline: 16px !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-sider__menu .ant-menu-item .anticon,
+.admin-sider__menu .ant-menu-submenu-title .anticon {
+  font-size: 16px;
+}
+
+.admin-sider__menu .ant-menu-item:hover,
+.admin-sider__menu .ant-menu-submenu-title:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.admin-sider__menu .ant-menu-item-selected {
+  background: linear-gradient(135deg, rgba(22, 119, 255, 0.95) 0%, rgba(34, 197, 94, 0.85) 100%) !important;
+  color: #fff !important;
+}
+
+.admin-sider__menu .ant-menu-item-selected::after {
+  display: none !important;
+}
+
+.admin-sider__menu .ant-menu-sub {
+  background: transparent !important;
+}
+
+.admin-sider__menu .ant-menu-sub .ant-menu-item {
+  color: rgba(255, 255, 255, 0.68) !important;
+  font-size: 13px;
+  padding-inline-start: 44px !important; /* indent children */
+}
+
+.admin-sider__menu .ant-menu-sub .ant-menu-item:hover {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.admin-sider__menu .ant-menu-sub .ant-menu-item-selected {
+  color: #fff !important;
+}
+
+.admin-sider__footer {
+  padding: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-sider__logoutBtn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  border-radius: 8px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-sider__logoutBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.admin-sider__logoutBtn .anticon {
+  font-size: 16px;
+}
+
+.ant-layout-sider-collapsed .admin-sider__logoutBtn {
+  justify-content: center;
+  padding: 0;
+}
+
+.ant-layout-sider-collapsed .admin-sider__logoutText {
+  display: none;
+}
+

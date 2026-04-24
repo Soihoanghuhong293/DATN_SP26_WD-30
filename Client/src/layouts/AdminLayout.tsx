@@ -21,15 +21,29 @@ const AdminLayout = () => {
 
   // ✅ admin hợp lệ
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider width={260} theme="light" breakpoint="lg" collapsedWidth="0">
+    <Layout style={{ height: "100vh", overflow: "hidden" }}>
+      <Sider
+        width={260}
+        theme="dark"
+        breakpoint="lg"
+        collapsedWidth={80}
+        collapsible
+        style={{ background: "#001529" }}
+      >
         <AdminSidebar />
       </Sider>
 
-      <Layout style={{ minWidth: 0, flex: 1 }}>
+      <Layout style={{ minWidth: 0, flex: 1, height: "100vh", overflow: "hidden" }}>
         <AdminHeader />
 
-        <Content style={{ padding: 24, minWidth: 0, width: "100%" }}>
+        <Content
+          style={{
+            padding: 24,
+            minWidth: 0,
+            overflow: "auto",
+            height: "calc(100vh - 64px)",
+          }}
+        >
           <Outlet />
         </Content>
       </Layout>
