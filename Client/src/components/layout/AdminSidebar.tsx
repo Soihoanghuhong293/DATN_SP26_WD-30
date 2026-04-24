@@ -36,7 +36,7 @@ const AdminSidebar = () => {
     if (pathname.includes("/admin/guides")) keys.push("guide-management");
     if (pathname.includes("/admin/providers")) keys.push("provider-management");
     if (pathname.includes("/admin/holiday-pricing")) keys.push("holiday-pricing-management");
-    if (pathname.includes("/admin/guide-reviews")) keys.push("guide-review-management");
+    if (pathname.includes("/admin/guide-reviews")) keys.push("guide-management");
     return keys;
   };
 
@@ -124,6 +124,11 @@ const AdminSidebar = () => {
                 icon: <UnorderedListOutlined />,
                 label: <Link to="/admin/guides">Danh sách HDV</Link>,
               },
+              {
+                key: "/admin/guide-reviews",
+                icon: <StarOutlined />,
+                label: <Link to="/admin/guide-reviews">Quản lý đánh giá</Link>,
+              },
              
             ],
           },
@@ -182,18 +187,7 @@ const AdminSidebar = () => {
             ],
           },
 
-          {
-            key: "guide-review-management",
-            icon: <StarOutlined />,
-            label: "Quản lý đánh giá",
-            children: [
-              {
-                key: "/admin/guide-reviews",
-                icon: <UnorderedListOutlined />,
-                label: <Link to="/admin/guide-reviews">Đánh giá hướng dẫn viên</Link>,
-              },
-            ],
-          },
+          
           
           {
             key: "/admin/contact-messages",

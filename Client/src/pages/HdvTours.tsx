@@ -1,11 +1,16 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Card, Table, Tag, Typography, Empty, Button } from "antd";
-import { CarOutlined, EyeOutlined } from "@ant-design/icons";
+import { Card, DatePicker, Empty, Input, Select, Space, Table, Tag, Typography, Button } from "antd";
+import { CarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import "./HdvTours.css";
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+
+const API_V1 = (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
 
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -34,11 +39,26 @@ const statusMap: Record<string, { color: string; label: string }> = {
 
 const HdvTours = () => {
   const navigate = useNavigate();
+  type FilterState = {
+    search: string;
+    dateRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
+    status?: string;
+  };
+
+  const emptyFilters = (): FilterState => ({
+    search: "",
+    dateRange: [null, null],
+    status: undefined,
+  });
+
+  const [draft, setDraft] = useState<FilterState>(() => emptyFilters());
+  const [applied, setApplied] = useState<FilterState>(() => emptyFilters());
+
   const { data, isLoading } = useQuery({
-    queryKey: ["hdv-bookings"],
+    queryKey: ["hdv-bookings", applied],
     queryFn: async () => {
       const res = await axios.get(
-        "http://localhost:5000/api/v1/bookings/guide/me",
+        `${API_V1}/bookings/guide/me`,
         getAuthHeader()
       );
       return res.data?.data || [];
@@ -46,6 +66,27 @@ const HdvTours = () => {
   });
 
   const bookings: IBooking[] = data || [];
+
+  const filteredBookings = useMemo(() => {
+    const q = applied.search.trim().toLowerCase();
+    const [from, to] = applied.dateRange ?? [null, null];
+    return bookings.filter((b) => {
+      if (applied.status && b.status !== applied.status) return false;
+      if (q) {
+        const tourName = (b.tour_id?.name || "").toLowerCase();
+        const customer = (b.customer_name || "").toLowerCase();
+        const phone = (b.customer_phone || "").toLowerCase();
+        const id = (b._id || "").toLowerCase();
+        if (!tourName.includes(q) && !customer.includes(q) && !phone.includes(q) && !id.includes(q)) return false;
+      }
+      if (from || to) {
+        const d = dayjs(b.startDate);
+        if (from && d.isBefore(from.startOf("day"))) return false;
+        if (to && d.isAfter(to.endOf("day"))) return false;
+      }
+      return true;
+    });
+  }, [bookings, applied]);
 
   const columns = [
     {
@@ -111,19 +152,6 @@ const HdvTours = () => {
         return <Tag color={s.color}>{s.label}</Tag>;
       },
     },
-    {
-      title: "Hành động",
-      key: "actions",
-      render: (_: unknown, record: IBooking) => (
-        <Button
-          type="primary"
-          icon={<EyeOutlined />}
-          onClick={() => navigate(`/hdv/tours/${record._id}`)}
-        >
-          Xem chi tiết
-        </Button>
-      ),
-    },
   ];
 
   return (
@@ -155,7 +183,70 @@ const HdvTours = () => {
           boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         }}
       >
-        {bookings.length === 0 && !isLoading ? (
+        <div className="hdv-bookings-filterbar">
+          <div className="hdv-bookings-filterbar-grid">
+            <div className="hdv-bookings-filterbar-item">
+              <div className="hdv-bookings-filterbar-label">Tìm kiếm</div>
+              <Input
+                allowClear
+                placeholder="Tìm theo tour, khách, SĐT hoặc mã..."
+                value={draft.search}
+                onChange={(e) => setDraft((p: FilterState) => ({ ...p, search: e.target.value }))}
+              />
+            </div>
+
+            <div className="hdv-bookings-filterbar-item">
+              <div className="hdv-bookings-filterbar-label">Ngày khởi hành</div>
+              <RangePicker
+                style={{ width: "100%" }}
+                value={draft.dateRange}
+                onChange={(v) => setDraft((p: FilterState) => ({ ...p, dateRange: (v as any) || [null, null] }))}
+                format="DD/MM/YYYY"
+              />
+            </div>
+
+            <div className="hdv-bookings-filterbar-item">
+              <div className="hdv-bookings-filterbar-label">Trạng thái</div>
+              <Select
+                allowClear
+                placeholder="Tất cả"
+                value={draft.status}
+                onChange={(v) => setDraft((p: FilterState) => ({ ...p, status: v }))}
+                options={[
+                  { value: "pending", label: "Chờ duyệt" },
+                  { value: "confirmed", label: "Đã xác nhận" },
+                  { value: "paid", label: "Đã thanh toán" },
+                  { value: "cancelled", label: "Đã hủy" },
+                ]}
+              />
+            </div>
+
+            <div className="hdv-bookings-filterbar-item hdv-bookings-filterbar-actions">
+              <div className="hdv-bookings-filterbar-label">&nbsp;</div>
+              <Space wrap>
+                <Button
+                  onClick={() => {
+                    const cleared = emptyFilters();
+                    setDraft(cleared);
+                    setApplied(cleared);
+                  }}
+                >
+                  Xóa bộ lọc
+                </Button>
+                <Button type="primary" onClick={() => setApplied(draft)}>
+                  Áp dụng
+                </Button>
+              </Space>
+            </div>
+          </div>
+          <div className="hdv-bookings-filterbar-footer">
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              {filteredBookings.length} tour
+            </Text>
+          </div>
+        </div>
+
+        {filteredBookings.length === 0 && !isLoading ? (
           <Empty
             image={<CarOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
             description="Chưa có tour nào được phân công cho bạn"
@@ -167,7 +258,8 @@ const HdvTours = () => {
           </Empty>
         ) : (
           <Table
-            dataSource={bookings}
+            className="hdv-bookings-table"
+            dataSource={filteredBookings}
             columns={columns}
             rowKey="_id"
             loading={isLoading}
@@ -176,6 +268,10 @@ const HdvTours = () => {
               showSizeChanger: false,
               showTotal: (total) => `Tổng ${total} tour`,
             }}
+            scroll={{ x: 1000 }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/hdv/tours/${record._id}`),
+            })}
           />
         )}
       </Card>
