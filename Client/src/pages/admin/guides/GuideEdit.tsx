@@ -283,7 +283,6 @@ const GuideEdit = () => {
                 <Select
                   options={[
                     { label: 'Nội địa', value: 'domestic' },
-                    { label: 'Quốc tế', value: 'international' },
                     { label: 'Chuyên tuyến', value: 'specialized_line' },
                     { label: 'Chuyên khách đoàn', value: 'group_specialist' },
                   ]}

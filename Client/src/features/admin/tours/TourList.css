@@ -124,6 +124,12 @@
   cursor: default;
 }
 
+.tour-list-table .ant-table-cell-fix-right::after,
+.tour-list-table .ant-table-cell-fix-right-first::after,
+.tour-list-table .ant-table-cell-fix-right-last::after {
+  box-shadow: none !important;
+}
+
 .tour-list-name-cell {
   display: flex;
   align-items: center;
