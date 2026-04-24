@@ -241,6 +241,119 @@ export const getMyBookingDetailForUser = async (req: AuthRequest, res: Response)
   }
 };
 
+/** Khách hàng: tạo yêu cầu hủy (không tự động hủy ngay) */
+export const requestCancelForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+    const role = String((req.user as any)?.role || 'user');
+    if (role !== 'user') {
+      return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới tạo yêu cầu hủy' });
+    }
+
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const booking: any = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const uid = booking.user_id?._id?.toString?.() ?? booking.user_id?.toString?.();
+    const emailRaw = String((req.user as any)?.email || '').trim();
+    const emailRegex = emailRaw ? new RegExp(`^${escapeRegex(emailRaw)}$`, 'i') : null;
+    const bookingEmail = String(booking.customer_email || '').trim();
+
+    const ownsByUser = uid && uid === userId.toString();
+    const ownsByEmail = Boolean(emailRegex && bookingEmail && emailRegex.test(bookingEmail));
+    if (!ownsByUser && !ownsByEmail) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    if (String(booking.status || '') === 'cancelled') {
+      return res.status(400).json({ status: 'fail', message: 'Đơn này đã bị hủy' });
+    }
+
+    if (booking.cancel_request && booking.cancel_request?.status === 'pending') {
+      return res.status(400).json({ status: 'fail', message: 'Yêu cầu hủy đang chờ xử lý' });
+    }
+
+    const paymentStatus = String(booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid');
+    const total = Number(booking.total_price || 0);
+    const depositAmount = Number(booking.deposit_amount || Math.round(total * 0.3));
+
+    // ===== Logic hoàn tiền theo thời gian trước ngày đi =====
+    // > 7 ngày: 100%
+    // 3 - 7 ngày: 50%
+    // < 3 ngày: 0%
+    const startDate = booking.startDate ? new Date(booking.startDate) : null;
+    const now = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysBeforeStart = startDate ? Math.floor((startDate.getTime() - now.getTime()) / msPerDay) : 0;
+
+    let timeRefundPercent = 0;
+    if (daysBeforeStart > 7) timeRefundPercent = 100;
+    else if (daysBeforeStart >= 3) timeRefundPercent = 50;
+    else timeRefundPercent = 0;
+
+    // Số tiền đã thanh toán thực tế để hoàn
+    // unpaid: 0, deposit: deposit_amount, paid: total
+    const paidAmount =
+      paymentStatus === 'paid'
+        ? total
+        : paymentStatus === 'deposit'
+          ? Math.max(0, depositAmount)
+          : 0;
+
+    const refundPercent = timeRefundPercent;
+    const refundAmount = Math.max(0, Math.round((paidAmount * refundPercent) / 100));
+
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 500) : '';
+    const bankName = typeof req.body?.bank_name === 'string' ? req.body.bank_name.trim().slice(0, 120) : '';
+    const bankAccountNumber =
+      typeof req.body?.bank_account_number === 'string' ? req.body.bank_account_number.trim().slice(0, 50) : '';
+    const bankAccountName =
+      typeof req.body?.bank_account_name === 'string' ? req.body.bank_account_name.trim().slice(0, 120) : '';
+    const qrImageDataUrl =
+      typeof req.body?.qr_image_data_url === 'string' ? req.body.qr_image_data_url.trim().slice(0, 2_000_000) : '';
+
+    booking.cancel_request = {
+      status: 'pending',
+      payment_status: paymentStatus,
+      refund_percent: refundPercent,
+      refund_amount: refundAmount,
+      days_before_start: daysBeforeStart,
+      reason,
+      bank: {
+        name: bankName,
+        account_number: bankAccountNumber,
+        account_name: bankAccountName,
+      },
+      qr_image_data_url: qrImageDataUrl,
+      created_at: new Date(),
+    };
+    if (!Array.isArray(booking.logs)) booking.logs = [];
+    booking.logs.push({
+      time: new Date(),
+      user: (req.user as any)?.name || 'Khách hàng',
+      old: 'Yêu cầu hủy',
+      new: 'pending',
+      note: `Khách tạo yêu cầu hủy. Hoàn: ${refundAmount.toLocaleString('vi-VN')}đ (${refundPercent}%)${reason ? `; Lý do: ${reason}` : ''}`,
+    });
+
+    await booking.save();
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        booking_id: bookingId,
+        cancel_request: booking.cancel_request,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi tạo yêu cầu hủy' });
+  }
+};
+
 // HDV: Check-in khách (trưởng đoàn hoặc passenger)
 export const checkInPassenger = async (req: AuthRequest, res: Response) => {
   try {

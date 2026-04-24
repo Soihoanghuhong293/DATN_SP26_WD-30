@@ -16,6 +16,7 @@ router.post('/:id/auto-allocate-services', protect, bookingController.autoAlloca
 
 router.get('/me', protect, bookingController.getMyBookingsForUser);
 router.get('/me/:id', protect, bookingController.getMyBookingDetailForUser);
+router.post('/me/:id/cancel-request', protect, bookingController.requestCancelForUser);
 
 router
   .route('/')

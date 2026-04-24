@@ -6,14 +6,15 @@ import type { UserRole } from './authStorage';
 type Props = {
   children: React.ReactElement;
   allowRoles?: UserRole[];
+  redirectTo?: string;
 };
 
-export const ProtectedRoute: React.FC<Props> = ({ children, allowRoles }) => {
+export const ProtectedRoute: React.FC<Props> = ({ children, allowRoles, redirectTo = '/login' }) => {
   const auth = useAuth();
   const location = useLocation();
 
   if (!auth.isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+    return <Navigate to={redirectTo} replace state={{ from: location.pathname + location.search }} />;
   }
 
   if (allowRoles && allowRoles.length > 0) {

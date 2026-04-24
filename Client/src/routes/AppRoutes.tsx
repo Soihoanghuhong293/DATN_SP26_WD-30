@@ -38,6 +38,7 @@ import BookingSuccessPage from '../pages/BookingSuccessPage';
 import BookingPaymentPage from '../pages/BookingPaymentPage';
 import MyBookingsPage from '../pages/MyBookingsPage';
 import MyBookingDetailPage from '../pages/MyBookingDetailPage';
+import AdminLoginPage from '../pages/AdminLoginPage';
 
 import BookingList from '../features/bookings/BookingList';
 import BookingEdit from '../features/bookings/BookingEdit';
@@ -45,6 +46,7 @@ import UserList from '../features/admin/users/UserList';
 import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
 import BookingHistory from '../features/bookings/BookingHistory';
+import BookingCancelledList from '../features/bookings/BookingCancelledList';
 import HolidayPricingList from '../components/layout/HolidayPricingList';
 import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
 import HolidayPricingEdit from '../components/layout/HolidayPricingEdit';
@@ -82,7 +84,9 @@ const AppRoutes = () => {
       </Route>
 
       {/* ===== ADMIN ===== */}
-      <Route path="/admin" element={<ProtectedRoute allowRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
+      <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
+
+      <Route path="/admin" element={<ProtectedRoute allowRoles={['admin']} redirectTo="/admin/login"><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
@@ -111,6 +115,7 @@ const AppRoutes = () => {
 
 
         <Route path="bookings" element={<BookingList />} />
+        <Route path="bookings/cancelled" element={<BookingCancelledList />} />
         <Route path="bookings/create" element={<BookingCreate />} />
         <Route path="bookings/edit/:id" element={<BookingEdit />} />
         <Route path="bookings/:id/history" element={<BookingHistory />} />

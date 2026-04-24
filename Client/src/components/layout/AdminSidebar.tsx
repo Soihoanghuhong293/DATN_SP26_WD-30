@@ -161,6 +161,11 @@ const AdminSidebar = () => {
                 icon: <PlusCircleOutlined />,
                 label: <Link to="/admin/bookings/create">Tạo đơn mới</Link>,
               },
+              {
+                key: "/admin/bookings/cancelled",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/bookings/cancelled">Quản lý tour hủy</Link>,
+              },
             ],
           },
 
