@@ -117,10 +117,17 @@ const MyBookingsPage: React.FC = () => {
                 const total = Number(b?.total_price || b?.totalPrice || 0);
                 const deposit = Number(b?.deposit_amount || Math.round(total * 0.3));
                 const hasPendingCancel = Boolean(b?.cancel_request?.status === "pending");
-                const canCancel = st.label !== "Đã hủy" && !hasPendingCancel;
+                const tourStage = String(b?.tour_stage || "scheduled");
+                const startDateObj = b?.startDate ? new Date(b.startDate) : null;
+                const isPastOrOnStart = startDateObj ? Date.now() >= startDateObj.getTime() : false;
+                const canCancel =
+                  st.label !== "Đã hủy" &&
+                  !hasPendingCancel &&
+                  tourStage !== "in_progress" &&
+                  tourStage !== "completed" &&
+                  !isPastOrOnStart;
                 const paymentStatusRaw = String(b?.payment_status || "unpaid");
-                const startDate = b?.startDate ? new Date(b.startDate) : null;
-                const daysBeforeStart = startDate ? Math.floor((startDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
+                const daysBeforeStart = startDateObj ? Math.floor((startDateObj.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
                 const timeRefundPercent = daysBeforeStart > 7 ? 100 : daysBeforeStart >= 3 ? 50 : 0;
                 const paidAmount = paymentStatusRaw === "paid" ? total : paymentStatusRaw === "deposit" ? Math.max(0, deposit) : 0;
                 const refundPercent = timeRefundPercent;
@@ -146,7 +153,11 @@ const MyBookingsPage: React.FC = () => {
                       </Button>,
                       <Button
                         key="pay"
-                        disabled={pay.label === "Đã thanh toán" || pay.label === "Đã hoàn tiền" || st.label === "Đã hủy"}
+                        disabled={
+                          st.label === "Đã hủy" ||
+                          pay.label === "Đã hoàn tiền" ||
+                          (pay.label !== "Đã thanh toán" && isPastOrOnStart)
+                        }
                         onClick={() => navigate(`/booking/success/${b?._id || b?.id}`)}
                       >
                         Thanh toán / Hóa đơn

@@ -278,6 +278,19 @@ export const requestCancelForUser = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'Yêu cầu hủy đang chờ xử lý' });
     }
 
+    // Không cho hủy khi tour đã diễn ra/đã hoàn thành/đã qua ngày khởi hành
+    const tourStage = String(booking.tour_stage || 'scheduled');
+    if (tourStage === 'in_progress') {
+      return res.status(400).json({ status: 'fail', message: 'Tour đang diễn ra, không thể hủy' });
+    }
+    if (tourStage === 'completed') {
+      return res.status(400).json({ status: 'fail', message: 'Tour đã hoàn thành, không thể hủy' });
+    }
+    const startDateCheck = booking.startDate ? new Date(booking.startDate) : null;
+    if (startDateCheck && Date.now() >= startDateCheck.getTime()) {
+      return res.status(400).json({ status: 'fail', message: 'Đã đến/ngày khởi hành, không thể hủy' });
+    }
+
     const paymentStatus = String(booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid');
     const total = Number(booking.total_price || 0);
     const depositAmount = Number(booking.deposit_amount || Math.round(total * 0.3));
@@ -1564,6 +1577,23 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     const total = Number(booking.total_price || 0);
     const method = String(booking.paymentMethod || '').trim() || 'full';
     const currentPaymentStatus = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+
+    // Không cho thanh toán nếu đã tới/qua ngày khởi hành
+    const startDate = booking.startDate ? new Date(booking.startDate) : null;
+    if (startDate && Date.now() >= startDate.getTime()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đã tới hoặc qua ngày khởi hành, không thể thanh toán.',
+      });
+    }
+
+    // Không cho thanh toán nếu booking đã hủy
+    if (String(booking.status || '') === 'cancelled') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đơn đã bị hủy, không thể thanh toán.',
+      });
+    }
 
     // Không cho thanh toán lại nếu đã paid
     if (currentPaymentStatus === 'paid') {

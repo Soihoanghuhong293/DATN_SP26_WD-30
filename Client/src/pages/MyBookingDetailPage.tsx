@@ -50,6 +50,13 @@ const toVietnameseLogValue = (raw: unknown) => {
     pending: "Chờ xử lý",
     confirmed: "Đã xác nhận",
     cancelled: "Đã hủy",
+
+    // cancel_request status
+    approved: "Đã duyệt",
+    rejected: "Từ chối",
+
+    // misc
+    done: "Hoàn tất",
   };
 
   // nếu log lưu dạng "scheduled" hoặc "unpaid"...
@@ -138,8 +145,14 @@ const MyBookingDetailPage: React.FC = () => {
   const tourStage = String(booking?.tour_stage || "scheduled");
   const paymentStatusRaw = String(booking?.payment_status || "unpaid");
   const hasPendingCancel = Boolean(booking?.cancel_request?.status === "pending");
-  const canCancel = String(booking?.status || "") !== "cancelled" && !hasPendingCancel;
   const startDate = booking?.startDate ? new Date(booking.startDate) : null;
+  const isPastOrOnStart = startDate ? Date.now() >= startDate.getTime() : false;
+  const canCancel =
+    String(booking?.status || "") !== "cancelled" &&
+    !hasPendingCancel &&
+    tourStage !== "in_progress" &&
+    tourStage !== "completed" &&
+    !isPastOrOnStart;
   const daysBeforeStart = startDate ? Math.floor((startDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
   const timeRefundPercent = daysBeforeStart > 7 ? 100 : daysBeforeStart >= 3 ? 50 : 0;
   const paidAmount = paymentStatusRaw === "paid" ? total : paymentStatusRaw === "deposit" ? Math.max(0, deposit) : 0;
@@ -204,6 +217,7 @@ const MyBookingDetailPage: React.FC = () => {
             </Button>
             <Button
               type="primary"
+              disabled={String(booking?.status || "") === "cancelled" || (pay.label !== "Đã thanh toán đủ" && isPastOrOnStart)}
               onClick={() => {
                 const ps = String(booking?.payment_status || "");
                 if (ps === "deposit" || ps === "unpaid") {
