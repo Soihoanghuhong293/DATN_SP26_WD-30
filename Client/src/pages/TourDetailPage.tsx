@@ -72,12 +72,9 @@ const TourDetailPage = () => {
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
 
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [eligibleBookingId, setEligibleBookingId] = useState<string | null>(null);
-  const [loadingEligibility, setLoadingEligibility] = useState(false);
-  const [tourStars, setTourStars] = useState<number>(5);
-  const [submittingTourReview, setSubmittingTourReview] = useState(false);
-  const [guestName, setGuestName] = useState<string>("");
+  // Trang tour chỉ cho xem đánh giá (không cho đánh giá tại đây)
+  const [_submittingTourReview, _setSubmittingTourReview] = useState(false);
+  const [_guestName, _setGuestName] = useState<string>("");
 
   const [reviewSummary, setReviewSummary] = useState<any>(null);
   const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
@@ -126,53 +123,7 @@ const TourDetailPage = () => {
     fetchTourDetail();
   }, [id]);
 
-  useEffect(() => {
-    const fetchEligibility = async () => {
-      const tourId = (tour as any)?._id || (tour as any)?.id || id;
-      const token = localStorage.getItem("token");
-      if (!tourId || !token) {
-        setEligibleBookingId(null);
-        return;
-      }
-      setLoadingEligibility(true);
-      try {
-        const res = await axios.get(`${API_V1}/bookings/me`, getAuthHeader());
-        const bookings = Array.isArray(res.data?.data) ? res.data.data : [];
-        const completed = bookings.filter((b: any) => {
-          const btourId = String(b?.tour_id?._id || b?.tour_id || "");
-          const okTour = btourId === String(tourId);
-          const okStage = String(b?.tour_stage || "scheduled") === "completed";
-          const okStatus = String(b?.status || "") !== "cancelled";
-          return okTour && okStage && okStatus;
-        });
-
-        // chọn booking completed gần nhất mà chưa đánh giá tour
-        for (const b of completed) {
-          const bid = String(b?._id || b?.id || "");
-          if (!bid) continue;
-          try {
-            const check = await axios.get(`${API_V1}/tour-reviews/me`, {
-              ...getAuthHeader(),
-              params: { booking_id: bid },
-            });
-            const existing = check.data?.data;
-            if (!existing) {
-              setEligibleBookingId(bid);
-              return;
-            }
-          } catch {
-            // nếu lỗi check thì bỏ qua
-          }
-        }
-        setEligibleBookingId(null);
-      } catch {
-        setEligibleBookingId(null);
-      } finally {
-        setLoadingEligibility(false);
-      }
-    };
-    fetchEligibility();
-  }, [tour?._id, (tour as any)?.id, id]);
+  // (đã bỏ logic check eligibility vì chỉ xem)
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -677,7 +628,7 @@ const TourDetailPage = () => {
           )}
         </div>
 
-        <div style={{ position: "sticky", top: 100, height: "fit-content" }}>
+        <div style={{ position: "sticky", top: 100, height: "fit-content", fontFamily: "system-ui" }}>
           <div
             style={{
               borderRadius: 14,
@@ -685,6 +636,7 @@ const TourDetailPage = () => {
               background: "#ffffff",
               padding: 16,
               boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
+              fontFamily: "inherit",
             }}
           >
             {(() => {
@@ -798,15 +750,7 @@ const TourDetailPage = () => {
                     </Button>
                   </div>
 
-                  <Button
-                    block
-                    type="primary"
-                    style={{ marginTop: 12, fontWeight: 900 }}
-                    loading={loadingEligibility}
-                    onClick={() => setReviewModalOpen(true)}
-                  >
-                    Đánh giá tour
-                  </Button>
+                  {/* Chỉ cho xem đánh giá ở trang tour */}
                 </>
               );
             })()}
@@ -931,110 +875,7 @@ const TourDetailPage = () => {
         </div>
       </Modal>
 
-      <Modal
-        title="Đánh giá tour"
-        open={reviewModalOpen}
-        onCancel={() => setReviewModalOpen(false)}
-        footer={null}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {!localStorage.getItem("token") ? (
-            <div>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>Tên của bạn (không bắt buộc)</div>
-              <input
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="VD: Minh"
-                style={{
-                  width: "100%",
-                  height: 40,
-                  borderRadius: 10,
-                  border: "1px solid #d9d9d9",
-                  padding: "0 12px",
-                  outline: "none",
-                }}
-              />
-            </div>
-          ) : null}
-          <div>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>Bạn đánh giá tour này bao nhiêu sao?</div>
-            <Space size={10} wrap>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const active = n <= tourStars;
-                return (
-                  <Button
-                    key={n}
-                    onClick={() => setTourStars(n)}
-                    aria-label={`${n} sao`}
-                    style={{
-                      width: 54,
-                      height: 40,
-                      borderRadius: 10,
-                      border: active ? "1px solid #f59e0b" : "1px solid #d9d9d9",
-                      background: "#fff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 0,
-                    }}
-                  >
-                    <StarFilled style={{ color: active ? "#f59e0b" : "#cbd5e1", fontSize: 18 }} />
-                  </Button>
-                );
-              })}
-            </Space>
-          </div>
-
-          <Button
-            type="primary"
-            block
-            loading={submittingTourReview}
-            onClick={async () => {
-              setSubmittingTourReview(true);
-              try {
-                const tourId = (tour as any)?._id || (tour as any)?.id || id;
-                if (!tourId) throw new Error("Thiếu tour id");
-
-                if (eligibleBookingId && localStorage.getItem("token")) {
-                  await axios.post(
-                    `${API_V1}/tour-reviews`,
-                    { booking_id: eligibleBookingId, stars: tourStars },
-                    getAuthHeader()
-                  );
-                } else {
-                  await axios.post(`${API_V1}/tour-reviews/public`, {
-                    tour_id: tourId,
-                    stars: tourStars,
-                    guest_name: guestName,
-                  });
-                }
-                message.success("Đã gửi đánh giá tour");
-                setReviewModalOpen(false);
-
-                // refresh tour rating
-                if (tourId) {
-                  const data = await getTour(String(tourId));
-                  if (data.data && typeof data.data === "object") {
-                    if ("tour" in data.data) setTour((data.data as any).tour);
-                    else setTour(data.data as any);
-                  }
-                }
-                try {
-                  const sres = await axios.get(`${API_V1}/tour-reviews/summary/${tourId}`);
-                  setReviewSummary(sres.data?.data || null);
-                } catch {}
-                setEligibleBookingId(null);
-              } catch (e: any) {
-                message.error(e?.response?.data?.message || "Gửi đánh giá thất bại");
-              } finally {
-                setSubmittingTourReview(false);
-              }
-            }}
-          >
-            Gửi đánh giá
-          </Button>
-        </div>
-      </Modal>
+      {/* Trang tour chỉ cho xem đánh giá, không cho đánh giá tại đây */}
 
       <Modal
         title="Tất cả đánh giá"
@@ -1049,7 +890,7 @@ const TourDetailPage = () => {
         ) : allReviews.length === 0 ? (
           <Empty description="Chưa có nhận xét." />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, fontFamily: "system-ui" }}>
             {allReviews.map((r: any) => {
               const name = String(r?.name || "Khách");
               const initials = name
