@@ -274,6 +274,11 @@
     gap: 14px;
   }
 
+  /* Optional horizontal scroll (used on very small screens) */
+  .tour-related__grid--scroll{
+    scroll-snap-type: x mandatory;
+  }
+
   .tour-related-card{
     border:1px solid #eef1f5;
     background:#fff;
@@ -475,6 +480,10 @@
   position:relative;
   top:0;
   }
+
+  .tour-related__grid{
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   
   }
   
@@ -533,7 +542,24 @@
   }
 
   .tour-related__grid{
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .tour-related__grid::-webkit-scrollbar{
+    height: 8px;
+  }
+
+  .tour-related__grid::-webkit-scrollbar-thumb{
+    background: rgba(17,24,39,0.15);
+    border-radius: 999px;
+  }
+
+  .tour-related-card{
+    min-width: 240px;
+    scroll-snap-align: start;
   }
   
   }

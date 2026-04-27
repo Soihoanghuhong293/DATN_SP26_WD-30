@@ -651,7 +651,7 @@ const TourDetailPage = () => {
           {/* RELATED / CROSS-SELL */}
           <section className="detail-section tour-related">
             <div className="tour-related__header">
-              <h2 className="tour-related__title">Các tour khác bạn có thể thích</h2>
+              <h2 className="tour-related__title">CÁC CHƯƠNG TRÌNH KHÁC</h2>
               <Button type="link" onClick={() => navigate("/tours")}>
                 Xem tất cả
               </Button>
@@ -664,7 +664,7 @@ const TourDetailPage = () => {
             ) : relatedTours.length === 0 ? (
               <Empty description="Chưa có tour gợi ý" />
             ) : (
-              <div className="tour-related__grid">
+              <div className="tour-related__grid tour-related__grid--scroll">
                 {relatedTours.map((t) => {
                   const tid = (t as any)?.id || (t as any)?._id;
                   const img = Array.isArray((t as any)?.images) ? (t as any).images?.[0] : undefined;
