@@ -1071,15 +1071,18 @@ const TourDetailPage = () => {
             }}
           >
             <div style={{ fontWeight: 900, color: "#0f172a" }}>Bạn hài lòng thế nào?</div>
-            <Rate
-              value={rating}
-              onChange={(v) => setRating(v)}
-              allowClear={false}
-              style={{ fontSize: 28 }}
-            />
+            <div style={{ display: "flex", justifyContent: "center", lineHeight: 1 }}>
+              <Rate
+                value={rating}
+                onChange={(v) => setRating(v)}
+                allowClear={false}
+                style={{ fontSize: 34, lineHeight: 1 }}
+                character={<span style={{ display: "inline-block", transform: "translateY(-1px)" }}>★</span>}
+              />
+            </div>
           </div>
 
-          <div>
+          <div style={{ width: "100%" }}>
             <div style={{ fontWeight: 900, marginBottom: 8, color: "#0f172a" }}>Nhận xét (tuỳ chọn)</div>
             <textarea
               value={comment}
@@ -1087,6 +1090,9 @@ const TourDetailPage = () => {
               placeholder="Chia sẻ điều bạn thích nhất về chuyến đi..."
               style={{
                 width: "100%",
+                boxSizing: "border-box",
+                display: "block",
+                margin: 0,
                 minHeight: 96,
                 maxHeight: 180,
                 resize: "vertical",
@@ -1106,10 +1112,16 @@ const TourDetailPage = () => {
             ) : null}
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 2 }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 2, width: "100%" }}>
             <Button
               type="primary"
-              style={{ flex: 1, height: 48, borderRadius: 10, fontWeight: 900 }}
+              style={{
+                flex: "1 1 0",
+                minWidth: 0,
+                height: 48,
+                borderRadius: 10,
+                fontWeight: 900,
+              }}
               loading={submittingReview}
               disabled={!selectedBookingId || (comment.trim().length > 0 && comment.trim().length < 10)}
               onClick={async () => {
@@ -1155,7 +1167,12 @@ const TourDetailPage = () => {
             </Button>
             <Button
               onClick={() => setReviewModalOpen(false)}
-              style={{ width: 112, height: 48, borderRadius: 10, fontWeight: 800 }}
+              style={{
+                flex: "0 0 120px",
+                height: 48,
+                borderRadius: 10,
+                fontWeight: 800,
+              }}
             >
               Huỷ
             </Button>
