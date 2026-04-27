@@ -23,7 +23,7 @@ import {
 } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
-import { getTour } from "../services/api";
+import { getTour, getTours } from "../services/api";
 import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
@@ -58,6 +58,8 @@ const TourDetailPage = () => {
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
+  const [relatedTours, setRelatedTours] = useState<ITour[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -100,6 +102,59 @@ const TourDetailPage = () => {
 
     fetchTourDetail();
   }, [id]);
+
+  // Fetch tours liên quan/gợi ý thêm (ưu tiên cùng category)
+  useEffect(() => {
+    const fetchRelated = async () => {
+      const current = tour;
+      const currentId = current?.id || (current as any)?._id || id;
+      if (!currentId) return;
+
+      try {
+        setRelatedLoading(true);
+
+        const pickUnique = (arr: ITour[]) => {
+          const seen = new Set<string>();
+          const out: ITour[] = [];
+          for (const t of arr) {
+            const tid = (t as any)?.id || (t as any)?._id;
+            if (!tid) continue;
+            const key = String(tid);
+            if (key === String(currentId)) continue;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(t);
+          }
+          return out;
+        };
+
+        let candidates: ITour[] = [];
+
+        // 1) Cùng category (nếu có)
+        const categoryId = (current as any)?.category_id;
+        if (categoryId) {
+          const res = await getTours({ page: 1, limit: 12, status: "active", category_id: categoryId });
+          candidates = pickUnique(Array.isArray(res?.data) ? res.data : []);
+        }
+
+        // 2) Fallback: lấy tour active bất kỳ để đủ số lượng
+        if (candidates.length < 8) {
+          const res2 = await getTours({ page: 1, limit: 20, status: "active" });
+          const more = pickUnique(Array.isArray(res2?.data) ? res2.data : []);
+          const merged = pickUnique([...candidates, ...more]);
+          candidates = merged;
+        }
+
+        setRelatedTours(candidates.slice(0, 8));
+      } catch (e) {
+        setRelatedTours([]);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [tour, id]);
 
   // Fetch all tour instances cùng tên để gộp lịch khởi hành (khách hàng chỉ thấy 1 tour)
   useEffect(() => {
@@ -327,6 +382,11 @@ const TourDetailPage = () => {
 
   const handleGoBack = () => {
     navigate("/tours");
+  };
+
+  const handleGoToTour = (tourId: string) => {
+    navigate(`/tours/${tourId}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const durationDays = tour?.duration_days ?? tour?.duration_;
@@ -587,6 +647,57 @@ const TourDetailPage = () => {
               ))}
             </section>
           )}
+
+          {/* RELATED / CROSS-SELL */}
+          <section className="detail-section tour-related">
+            <div className="tour-related__header">
+              <h2 className="tour-related__title">Các tour khác bạn có thể thích</h2>
+              <Button type="link" onClick={() => navigate("/tours")}>
+                Xem tất cả
+              </Button>
+            </div>
+
+            {relatedLoading ? (
+              <div className="tour-related__loading">
+                <Spin />
+              </div>
+            ) : relatedTours.length === 0 ? (
+              <Empty description="Chưa có tour gợi ý" />
+            ) : (
+              <div className="tour-related__grid">
+                {relatedTours.map((t) => {
+                  const tid = (t as any)?.id || (t as any)?._id;
+                  const img = Array.isArray((t as any)?.images) ? (t as any).images?.[0] : undefined;
+                  const name = (t as any)?.name || "Tour";
+                  const price = Number((t as any)?.price ?? 0) || 0;
+                  const days =
+                    Number((t as any)?.duration_days ?? (t as any)?.durationDays ?? (t as any)?.duration_ ?? 0) || 0;
+
+                  return (
+                    <button
+                      key={String(tid)}
+                      className="tour-related-card"
+                      type="button"
+                      onClick={() => tid && handleGoToTour(String(tid))}
+                    >
+                      <div className="tour-related-card__img">
+                        {img ? <img src={img} alt={name} loading="lazy" /> : <div className="tour-related-card__img--empty" />}
+                      </div>
+                      <div className="tour-related-card__body">
+                        <div className="tour-related-card__name" title={name}>
+                          {name}
+                        </div>
+                        <div className="tour-related-card__meta">
+                          {days > 0 ? <span className="tour-related-card__chip">{days} ngày</span> : null}
+                          <span className="tour-related-card__price">{price.toLocaleString("vi-VN")}đ</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       </div>
 
