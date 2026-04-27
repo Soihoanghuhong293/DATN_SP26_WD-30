@@ -344,7 +344,19 @@ const MyBookingDetailPage: React.FC = () => {
                   <div>
                     <Text strong>Bạn có hài lòng với chuyến đi không?</Text>
                     <div style={{ marginTop: 8 }}>
-                      <Radio.Group value={tourSatisfaction} onChange={(e) => setTourSatisfaction(e.target.value)} style={{ width: "100%" }}>
+                      <Radio.Group
+                        value={tourSatisfaction}
+                        onChange={(e) => {
+                          const v = e.target.value as "very_satisfied" | "satisfied" | "normal" | "dissatisfied";
+                          setTourSatisfaction(v);
+                          // Auto-map satisfaction -> stars theo yêu cầu
+                          if (v === "very_satisfied") setTourStars(5);
+                          else if (v === "satisfied") setTourStars(4);
+                          else if (v === "normal") setTourStars(3);
+                          else if (v === "dissatisfied") setTourStars(1);
+                        }}
+                        style={{ width: "100%" }}
+                      >
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
                           {[
                             { value: "very_satisfied", label: "Rất hài lòng", emoji: "😄" },
