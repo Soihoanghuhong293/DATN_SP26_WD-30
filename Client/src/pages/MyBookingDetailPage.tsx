@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input } from "antd";
+import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Radio } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -73,9 +73,15 @@ const MyBookingDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [myReview, setMyReview] = useState<any>(null);
+  const [myTourReview, setMyTourReview] = useState<any>(null);
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [tourStars, setTourStars] = useState<number>(5);
+  const [tourSatisfaction, setTourSatisfaction] = useState<"very_satisfied" | "satisfied" | "normal" | "dissatisfied">(
+    "very_satisfied"
+  );
+  const [submittingTourReview, setSubmittingTourReview] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -110,6 +116,22 @@ const MyBookingDetailPage: React.FC = () => {
     fetchMyReview();
   }, [id]);
 
+  useEffect(() => {
+    const fetchMyTourReview = async () => {
+      if (!id) return;
+      try {
+        const res = await axios.get(`${API_V1}/tour-reviews/me`, {
+          ...getAuthHeader(),
+          params: { booking_id: id },
+        });
+        setMyTourReview(res.data?.data || null);
+      } catch {
+        setMyTourReview(null);
+      }
+    };
+    fetchMyTourReview();
+  }, [id]);
+
   const tourName = booking?.tour_id?.name || "Tour";
   const pay = paymentStatusInfo(booking?.payment_status || "unpaid");
   const st = bookingStatusInfo(booking?.status || "confirmed");
@@ -122,6 +144,16 @@ const MyBookingDetailPage: React.FC = () => {
     String(booking?.status || "") !== "cancelled" &&
     tourStage === "completed" &&
     Boolean(booking?.guide_id);
+
+  const canReviewTour = String(booking?.status || "") !== "cancelled" && tourStage === "completed";
+
+  const satisfactionLabel = (s: string) => {
+    if (s === "very_satisfied") return "Rất hài lòng";
+    if (s === "satisfied") return "Hài lòng";
+    if (s === "normal") return "Bình thường";
+    if (s === "dissatisfied") return "Không hài lòng";
+    return s;
+  };
 
   const logs = useMemo(() => {
     const arr = Array.isArray(booking?.logs) ? booking.logs : [];
@@ -223,6 +255,84 @@ const MyBookingDetailPage: React.FC = () => {
 
           <Divider />
 
+          <Title level={4} style={{ marginBottom: 10 }}>Đánh giá tour</Title>
+          <div style={{ marginTop: 12 }}>
+            {!canReviewTour ? (
+              <Empty
+                description={
+                  tourStage !== "completed"
+                    ? "Tour chưa kết thúc nên chưa thể đánh giá."
+                    : String(booking?.status || "") === "cancelled"
+                    ? "Booking đã hủy nên không thể đánh giá."
+                    : "Chưa thể đánh giá."
+                }
+              />
+            ) : myTourReview ? (
+              <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  <Rate disabled value={Number(myTourReview?.stars || 0)} />
+                  <Tag color="blue" style={{ width: "fit-content" }}>
+                    {satisfactionLabel(String(myTourReview?.satisfaction || ""))}
+                  </Tag>
+                </Space>
+              </Card>
+            ) : (
+              <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
+                <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                  <div>
+                    <Text strong>Bạn đánh giá tour này bao nhiêu sao?</Text>
+                    <div style={{ marginTop: 6 }}>
+                      <Rate value={tourStars} onChange={(v) => setTourStars(v)} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Text strong>Bạn có hài lòng với chuyến đi không?</Text>
+                    <div style={{ marginTop: 8 }}>
+                      <Radio.Group
+                        value={tourSatisfaction}
+                        onChange={(e) => setTourSatisfaction(e.target.value)}
+                      >
+                        <Space direction="vertical" size={6}>
+                          <Radio value="very_satisfied">Rất hài lòng</Radio>
+                          <Radio value="satisfied">Hài lòng</Radio>
+                          <Radio value="normal">Bình thường</Radio>
+                          <Radio value="dissatisfied">Không hài lòng</Radio>
+                        </Space>
+                      </Radio.Group>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="primary"
+                    loading={submittingTourReview}
+                    onClick={async () => {
+                      if (!id) return;
+                      setSubmittingTourReview(true);
+                      try {
+                        const res = await axios.post(
+                          `${API_V1}/tour-reviews`,
+                          { booking_id: id, stars: tourStars, satisfaction: tourSatisfaction },
+                          getAuthHeader()
+                        );
+                        setMyTourReview(res.data?.data || null);
+                        message.success("Đã gửi đánh giá tour");
+                      } catch (e: any) {
+                        message.error(e?.response?.data?.message || "Gửi đánh giá tour thất bại");
+                      } finally {
+                        setSubmittingTourReview(false);
+                      }
+                    }}
+                  >
+                    Gửi đánh giá
+                  </Button>
+                </Space>
+              </Card>
+            )}
+          </div>
+
+          <Divider />
+
           <Title level={4} style={{ marginBottom: 10 }}>Đánh giá hướng dẫn viên</Title>
           {booking?.guide_id ? (
             <Text type="secondary">
@@ -254,13 +364,20 @@ const MyBookingDetailPage: React.FC = () => {
               <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
                 <Space direction="vertical" size={10} style={{ width: "100%" }}>
                   <Rate value={reviewScore} onChange={(v) => setReviewScore(v)} />
-                  <Input.TextArea
+                  <textarea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                     placeholder="Viết đánh giá của bạn về hướng dẫn viên..."
-                    autoSize={{ minRows: 3, maxRows: 6 }}
+                    style={{
+                      width: "100%",
+                      minHeight: 90,
+                      resize: "vertical",
+                      borderRadius: 8,
+                      border: "1px solid #d9d9d9",
+                      padding: 10,
+                      fontFamily: "inherit",
+                    }}
                     maxLength={1000}
-                    showCount
                   />
                   <Button
                     type="primary"
