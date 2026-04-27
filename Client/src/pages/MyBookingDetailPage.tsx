@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Radio, Input } from "antd";
-import { StarFilled, StarOutlined } from "@ant-design/icons";
+import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -74,16 +73,9 @@ const MyBookingDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [myReview, setMyReview] = useState<any>(null);
-  const [myTourReview, setMyTourReview] = useState<any>(null);
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
-  const [tourStars, setTourStars] = useState<number>(5);
-  const [tourSatisfaction, setTourSatisfaction] = useState<"very_satisfied" | "satisfied" | "normal" | "dissatisfied">(
-    "very_satisfied"
-  );
-  const [tourComment, setTourComment] = useState<string>("");
-  const [submittingTourReview, setSubmittingTourReview] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -118,22 +110,6 @@ const MyBookingDetailPage: React.FC = () => {
     fetchMyReview();
   }, [id]);
 
-  useEffect(() => {
-    const fetchMyTourReview = async () => {
-      if (!id) return;
-      try {
-        const res = await axios.get(`${API_V1}/tour-reviews/me`, {
-          ...getAuthHeader(),
-          params: { booking_id: id },
-        });
-        setMyTourReview(res.data?.data || null);
-      } catch {
-        setMyTourReview(null);
-      }
-    };
-    fetchMyTourReview();
-  }, [id]);
-
   const tourName = booking?.tour_id?.name || "Tour";
   const pay = paymentStatusInfo(booking?.payment_status || "unpaid");
   const st = bookingStatusInfo(booking?.status || "confirmed");
@@ -147,15 +123,7 @@ const MyBookingDetailPage: React.FC = () => {
     tourStage === "completed" &&
     Boolean(booking?.guide_id);
 
-  const canReviewTour = String(booking?.status || "") !== "cancelled" && tourStage === "completed";
-
-  const satisfactionLabel = (s: string) => {
-    if (s === "very_satisfied") return "Rất hài lòng";
-    if (s === "satisfied") return "Hài lòng";
-    if (s === "normal") return "Bình thường";
-    if (s === "dissatisfied") return "Không hài lòng";
-    return s;
-  };
+  // Đánh giá tour được thực hiện tại trang chi tiết tour (không làm ở trang đơn)
 
   const logs = useMemo(() => {
     const arr = Array.isArray(booking?.logs) ? booking.logs : [];
@@ -254,192 +222,6 @@ const MyBookingDetailPage: React.FC = () => {
             </Descriptions.Item>
             <Descriptions.Item label="Phương thức thanh toán">{booking?.paymentMethod || "---"}</Descriptions.Item>
           </Descriptions>
-
-          <Divider />
-
-          <Title level={4} style={{ marginBottom: 10 }}>Đánh giá tour</Title>
-          <div style={{ marginTop: 12 }}>
-            {!canReviewTour ? (
-              <Empty
-                description={
-                  tourStage !== "completed"
-                    ? "Tour chưa kết thúc nên chưa thể đánh giá."
-                    : String(booking?.status || "") === "cancelled"
-                    ? "Booking đã hủy nên không thể đánh giá."
-                    : "Chưa thể đánh giá."
-                }
-              />
-            ) : myTourReview ? (
-              <Card
-                style={{
-                  borderRadius: 14,
-                  border: "1px solid #eef2f7",
-                  background: "#fbfdff",
-                }}
-                styles={{ body: { padding: 18 } }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-                  <div style={{ minWidth: 120 }}>
-                    <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#0f172a" }}>
-                      {Number(myTourReview?.stars || 0).toFixed(1)}
-                    </div>
-                    <div style={{ marginTop: 6, color: "#64748b", fontWeight: 600 }}>
-                      Điểm đánh giá
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 220 }}>
-                    <Rate disabled value={Number(myTourReview?.stars || 0)} />
-                    <Tag
-                      color="success"
-                      style={{
-                        width: "fit-content",
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {satisfactionLabel(String(myTourReview?.satisfaction || ""))}
-                    </Tag>
-                    {String(myTourReview?.comment || "").trim() ? (
-                      <Text style={{ color: "#0f172a" }}>{String(myTourReview.comment).trim()}</Text>
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
-            ) : (
-              <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
-                <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                  <div>
-                    <Text strong>Bạn đánh giá tour này bao nhiêu sao?</Text>
-                    <div style={{ marginTop: 6 }}>
-                      <Space size={10} wrap>
-                        {[1, 2, 3, 4, 5].map((n) => {
-                          const active = n <= tourStars;
-                          return (
-                            <Button
-                              key={n}
-                              onClick={() => setTourStars(n)}
-                              aria-label={`${n} sao`}
-                              style={{
-                                width: 54,
-                                height: 40,
-                                borderRadius: 10,
-                                border: active ? "1px solid #f59e0b" : "1px solid #d9d9d9",
-                                background: "#fff",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                padding: 0,
-                              }}
-                            >
-                              {active ? <StarFilled style={{ color: "#f59e0b", fontSize: 18 }} /> : <StarOutlined style={{ color: "#94a3b8", fontSize: 18 }} />}
-                            </Button>
-                          );
-                        })}
-                      </Space>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Text strong>Bạn có hài lòng với chuyến đi không?</Text>
-                    <div style={{ marginTop: 8 }}>
-                      <Radio.Group
-                        value={tourSatisfaction}
-                        onChange={(e) => {
-                          const v = e.target.value as "very_satisfied" | "satisfied" | "normal" | "dissatisfied";
-                          setTourSatisfaction(v);
-                          // Auto-map satisfaction -> stars theo yêu cầu
-                          if (v === "very_satisfied") setTourStars(5);
-                          else if (v === "satisfied") setTourStars(4);
-                          else if (v === "normal") setTourStars(3);
-                          else if (v === "dissatisfied") setTourStars(1);
-                        }}
-                        style={{ width: "100%" }}
-                      >
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-                          {[
-                            { value: "very_satisfied", label: "Rất hài lòng", emoji: "😄" },
-                            { value: "satisfied", label: "Hài lòng", emoji: "🙂" },
-                            { value: "normal", label: "Bình thường", emoji: "😐" },
-                            { value: "dissatisfied", label: "Không hài lòng", emoji: "😞" },
-                          ].map((opt) => {
-                            const selected = tourSatisfaction === (opt.value as any);
-                            return (
-                              <Radio.Button
-                                key={opt.value}
-                                value={opt.value}
-                                style={{
-                                  height: 48,
-                                  borderRadius: 10,
-                                  border: selected ? "1px solid #1677ff" : "1px solid #d9d9d9",
-                                  background: selected ? "#e6f4ff" : "#fff",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 10,
-                                  padding: "0 14px",
-                                  fontWeight: 700,
-                                  color: selected ? "#0958d9" : "#111827",
-                                }}
-                              >
-                                <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.emoji}</span>
-                                <span>{opt.label}</span>
-                              </Radio.Button>
-                            );
-                          })}
-                        </div>
-                      </Radio.Group>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Text strong>Nhận xét</Text>
-                    <div style={{ marginTop: 8 }}>
-                      <Input.TextArea
-                        value={tourComment}
-                        onChange={(e) => setTourComment(e.target.value)}
-                        placeholder="Chia sẻ trải nghiệm của bạn về tour..."
-                        autoSize={{ minRows: 3, maxRows: 6 }}
-                        maxLength={1000}
-                        showCount
-                      />
-                      {tourComment.trim().length > 0 && tourComment.trim().length < 10 ? (
-                        <div style={{ marginTop: 6, color: "#dc2626", fontWeight: 600 }}>
-                          Nhận xét nên từ 10 ký tự trở lên.
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <Button
-                    type="primary"
-                    loading={submittingTourReview}
-                    block
-                    disabled={tourComment.trim().length > 0 && tourComment.trim().length < 10}
-                    onClick={async () => {
-                      if (!id) return;
-                      setSubmittingTourReview(true);
-                      try {
-                        const res = await axios.post(
-                          `${API_V1}/tour-reviews`,
-                          { booking_id: id, stars: tourStars, satisfaction: tourSatisfaction, comment: tourComment },
-                          getAuthHeader()
-                        );
-                        setMyTourReview(res.data?.data || null);
-                        message.success("Đã gửi đánh giá tour");
-                      } catch (e: any) {
-                        message.error(e?.response?.data?.message || "Gửi đánh giá tour thất bại");
-                      } finally {
-                        setSubmittingTourReview(false);
-                      }
-                    }}
-                  >
-                    Gửi đánh giá
-                  </Button>
-                </Space>
-              </Card>
-            )}
-          </div>
 
           <Divider />
 

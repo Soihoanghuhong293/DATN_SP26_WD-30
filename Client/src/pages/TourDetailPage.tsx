@@ -10,10 +10,9 @@ import {
   message,
   Modal,
   Rate,
-  Radio,
-  Space,
   Progress,
   Avatar,
+  Select,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -72,9 +71,13 @@ const TourDetailPage = () => {
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
 
-  // Trang tour chỉ cho xem đánh giá (không cho đánh giá tại đây)
-  const [_submittingTourReview, _setSubmittingTourReview] = useState(false);
-  const [_guestName, _setGuestName] = useState<string>("");
+  // Review: chỉ user có booking đã kết thúc mới được đánh giá
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [eligibleBookings, setEligibleBookings] = useState<any[]>([]);
+  const [selectedBookingId, setSelectedBookingId] = useState<string>("");
+  const [rating, setRating] = useState<number>(5);
+  const [comment, setComment] = useState<string>("");
 
   const [reviewSummary, setReviewSummary] = useState<any>(null);
   const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
@@ -123,7 +126,64 @@ const TourDetailPage = () => {
     fetchTourDetail();
   }, [id]);
 
-  // (đã bỏ logic check eligibility vì chỉ xem)
+  useEffect(() => {
+    const fetchEligibleBookings = async () => {
+      const token = localStorage.getItem("token");
+      const tourId = (tour as any)?._id || (tour as any)?.id || id;
+      const groupKey = normalizeGroupName(tour?.name);
+      const instanceIds = new Set(
+        (Array.isArray(groupInstances) ? groupInstances : [])
+          .map((t: any) => String(t?.id || t?._id || ""))
+          .filter(Boolean)
+      );
+      if (tourId) instanceIds.add(String(tourId));
+
+      if (!token || (!tourId && !groupKey)) {
+        setEligibleBookings([]);
+        setSelectedBookingId("");
+        return;
+      }
+      try {
+        const res = await axios.get(`${API_V1}/bookings/me`, getAuthHeader());
+        const bookings = Array.isArray(res.data?.data) ? res.data.data : [];
+        const now = Date.now();
+        const mine = bookings.filter((b: any) => {
+          const btourId = String(b?.tour_id?._id || b?.tour_id || "");
+          const bTourName = normalizeGroupName(String(b?.tour_id?.name || ""));
+          const matchById = instanceIds.size ? instanceIds.has(btourId) : btourId === String(tourId);
+          const matchByName = groupKey ? bTourName === groupKey : false;
+          if (!matchById && !matchByName) return false;
+          if (String(b?.status || "") === "cancelled") return false;
+          if (String(b?.payment_status || "") !== "paid") return false;
+          const end = b?.endDate ? new Date(b.endDate).getTime() : NaN;
+          if (!Number.isFinite(end)) return false;
+          return end < now;
+        });
+
+        const notReviewed: any[] = [];
+        for (const b of mine) {
+          const bid = String(b?._id || b?.id || "");
+          if (!bid) continue;
+          try {
+            const check = await axios.get(`${API_V1}/tour-reviews/me`, {
+              ...getAuthHeader(),
+              params: { booking_id: bid },
+            });
+            if (!check.data?.data) notReviewed.push(b);
+          } catch {
+            // ignore
+          }
+        }
+
+        setEligibleBookings(notReviewed);
+        setSelectedBookingId(String(notReviewed?.[0]?._id || notReviewed?.[0]?.id || ""));
+      } catch {
+        setEligibleBookings([]);
+        setSelectedBookingId("");
+      }
+    };
+    fetchEligibleBookings();
+  }, [tour?._id, (tour as any)?.id, tour?.name, id, groupInstances]);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -650,40 +710,48 @@ const TourDetailPage = () => {
                 <>
                   <div
                     style={{
-                      borderRadius: 12,
+                      borderRadius: 14,
                       border: "1px solid #eef2f7",
-                      background: "#fbfdff",
-                      padding: 12,
+                      background: "#ffffff",
+                      padding: 14,
                     }}
                   >
-                    <div style={{ display: "flex", gap: 14, alignItems: "stretch" }}>
-                      <div style={{ flex: "0 0 132px" }}>
-                        <div style={{ fontSize: 46, fontWeight: 900, lineHeight: 1, color: "#0f172a" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                      <div style={{ minWidth: 120 }}>
+                        <div style={{ fontSize: 52, fontWeight: 950, lineHeight: 1, color: "#0f172a", letterSpacing: -0.5 }}>
                           {has ? avg.toFixed(1) : "0.0"}
                         </div>
                         <div style={{ marginTop: 8 }}>
-                          <Rate disabled allowHalf value={has ? avg : 0} />
+                          <Rate disabled allowHalf value={has ? avg : 0} style={{ fontSize: 14 }} />
                         </div>
                         <div style={{ marginTop: 6, color: "#64748b", fontWeight: 800 }}>
                           {count > 0 ? `${count} đánh giá` : "Chưa có đánh giá"}
                         </div>
                       </div>
 
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 6 }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, paddingTop: 2 }}>
                         {[5, 4, 3, 2, 1].map((s) => {
                           const row = dist.find((d: any) => Number(d?.stars) === s);
                           const percent = row ? Number(row.percent || 0) : 0;
                           return (
-                            <div key={s} style={{ display: "grid", gridTemplateColumns: "44px 1fr 44px", gap: 10, alignItems: "center" }}>
-                              <div style={{ fontWeight: 800, color: "#0f172a" }}>{s} sao</div>
+                            <div
+                              key={s}
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "42px 1fr 40px",
+                                gap: 8,
+                                alignItems: "center",
+                              }}
+                            >
+                              <div style={{ fontWeight: 800, color: "#0f172a", fontSize: 13 }}>{s} sao</div>
                               <Progress
                                 percent={percent}
                                 showInfo={false}
                                 strokeColor="#f59e0b"
-                                trailColor="#f1f5f9"
-                                size={{ height: 8 }}
+                                trailColor="#f3f4f6"
+                                size={{ height: 6 }}
                               />
-                              <div style={{ textAlign: "right", fontWeight: 800, color: "#64748b" }}>{percent}%</div>
+                              <div style={{ textAlign: "right", fontWeight: 800, color: "#64748b", fontSize: 13 }}>{percent}%</div>
                             </div>
                           );
                         })}
@@ -691,8 +759,8 @@ const TourDetailPage = () => {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 12, borderRadius: 12, border: "1px solid #eef2f7", background: "#fff", padding: 12 }}>
-                    <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>NHẬN XÉT GẦN ĐÂY</div>
+                  <div style={{ marginTop: 12, borderRadius: 14, border: "1px solid #eef2f7", background: "#fff", padding: 14 }}>
+                    <div style={{ fontWeight: 950, letterSpacing: 0.3, color: "#0f172a" }}>NHẬN XÉT GẦN ĐÂY</div>
                     <Divider style={{ margin: "10px 0" }} />
 
                     {recent.length === 0 ? (
@@ -709,12 +777,20 @@ const TourDetailPage = () => {
                             .join("") || "K";
                           const dateLabel = r?.created_at ? dayjs(r.created_at).format("D [tháng] M, YYYY") : "";
                           return (
-                            <div key={String(r?.id || name)} style={{ display: "flex", gap: 12 }}>
-                              <Avatar style={{ background: "#e6f4ff", color: "#0958d9", fontWeight: 900 }}>{initials}</Avatar>
+                            <div
+                              key={String(r?.id || name)}
+                              style={{
+                                display: "flex",
+                                gap: 12,
+                                paddingBottom: 12,
+                                borderBottom: "1px solid #f1f5f9",
+                              }}
+                            >
+                              <Avatar style={{ background: "#e6f4ff", color: "#0958d9", fontWeight: 950 }}>{initials}</Avatar>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                                  <div style={{ fontWeight: 900, color: "#0f172a" }}>{name}</div>
-                                  <Rate disabled value={Number(r?.stars || 0)} />
+                                  <div style={{ fontWeight: 950, color: "#0f172a" }}>{name}</div>
+                                  <Rate disabled value={Number(r?.stars || 0)} style={{ fontSize: 12 }} />
                                 </div>
                                 <div style={{ color: "#64748b", fontWeight: 700, fontSize: 12 }}>{dateLabel}</div>
                                 <div style={{ marginTop: 6, color: "#0f172a", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
@@ -729,7 +805,13 @@ const TourDetailPage = () => {
 
                     <Button
                       block
-                      style={{ marginTop: 12, fontWeight: 900 }}
+                      style={{
+                        marginTop: 12,
+                        fontWeight: 950,
+                        height: 42,
+                        borderRadius: 10,
+                        borderColor: "#d1d5db",
+                      }}
                       onClick={async () => {
                         const tourId = (tour as any)?._id || (tour as any)?.id || id;
                         if (!tourId) return;
@@ -750,7 +832,26 @@ const TourDetailPage = () => {
                     </Button>
                   </div>
 
-                  {/* Chỉ cho xem đánh giá ở trang tour */}
+                  {localStorage.getItem("token") ? (
+                    eligibleBookings.length ? (
+                      <Button
+                        block
+                        type="primary"
+                        style={{ marginTop: 12, fontWeight: 950 }}
+                        onClick={() => setReviewModalOpen(true)}
+                      >
+                        Viết đánh giá
+                      </Button>
+                    ) : (
+                      <div style={{ marginTop: 12, color: "#94a3b8", fontWeight: 700, fontSize: 12 }}>
+                        Bạn chỉ có thể đánh giá khi đã đặt tour, thanh toán thành công và chuyến đi đã kết thúc.
+                      </div>
+                    )
+                  ) : (
+                    <div style={{ marginTop: 12, color: "#94a3b8", fontWeight: 700, fontSize: 12 }}>
+                      Đăng nhập để đánh giá sau khi tour kết thúc.
+                    </div>
+                  )}
                 </>
               );
             })()}
@@ -918,6 +1019,148 @@ const TourDetailPage = () => {
             })}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title={null}
+        open={reviewModalOpen}
+        onCancel={() => setReviewModalOpen(false)}
+        footer={null}
+        centered
+        width={560}
+        styles={{ body: { padding: 20 } }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ paddingTop: 2 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8, color: "#64748b" }}>
+              CHIA SẺ TRẢI NGHIỆM
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 950, color: "#0f172a", marginTop: 2 }}>
+              Đánh giá tour
+            </div>
+          </div>
+
+          {eligibleBookings.length > 1 ? (
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>Chọn booking</div>
+              <Select
+                value={selectedBookingId}
+                onChange={(v) => setSelectedBookingId(v)}
+                style={{ width: "100%" }}
+                options={eligibleBookings.map((b: any) => {
+                  const bid = String(b?._id || b?.id || "");
+                  const end = b?.endDate ? dayjs(b.endDate).format("DD/MM/YYYY") : "";
+                  const start = b?.startDate ? dayjs(b.startDate).format("DD/MM/YYYY") : "";
+                  return { value: bid, label: `Booking ${bid.slice(0, 6)}… (${start} → ${end})` };
+                })}
+              />
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              background: "#f6f2e9",
+              borderRadius: 14,
+              padding: "18px 16px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 10,
+              minHeight: 120,
+              justifyContent: "center",
+            }}
+          >
+            <div style={{ fontWeight: 900, color: "#0f172a" }}>Bạn hài lòng thế nào?</div>
+            <Rate
+              value={rating}
+              onChange={(v) => setRating(v)}
+              allowClear={false}
+              style={{ fontSize: 28 }}
+            />
+          </div>
+
+          <div>
+            <div style={{ fontWeight: 900, marginBottom: 8, color: "#0f172a" }}>Nhận xét (tuỳ chọn)</div>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Chia sẻ điều bạn thích nhất về chuyến đi..."
+              style={{
+                width: "100%",
+                minHeight: 96,
+                maxHeight: 180,
+                resize: "vertical",
+                borderRadius: 12,
+                border: "1px solid #d9d9d9",
+                padding: 14,
+                fontFamily: "inherit",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+              maxLength={1000}
+            />
+            {comment.trim().length > 0 && comment.trim().length < 10 ? (
+              <div style={{ marginTop: 6, color: "#dc2626", fontWeight: 700 }}>
+                Nhận xét nên từ 10 ký tự trở lên.
+              </div>
+            ) : null}
+          </div>
+
+          <div style={{ display: "flex", gap: 12, marginTop: 2 }}>
+            <Button
+              type="primary"
+              style={{ flex: 1, height: 48, borderRadius: 10, fontWeight: 900 }}
+              loading={submittingReview}
+              disabled={!selectedBookingId || (comment.trim().length > 0 && comment.trim().length < 10)}
+              onClick={async () => {
+                const tourId = (tour as any)?._id || (tour as any)?.id || id;
+                if (!tourId || !selectedBookingId) return;
+                setSubmittingReview(true);
+                try {
+                  await axios.post(
+                    `${API_V1}/reviews`,
+                    {
+                      tourId,
+                      bookingId: selectedBookingId,
+                      rating,
+                      comment,
+                    },
+                    getAuthHeader()
+                  );
+                  message.success("Đã gửi đánh giá");
+                  setReviewModalOpen(false);
+
+                  try {
+                    const sres = await axios.get(`${API_V1}/tour-reviews/summary/${tourId}`);
+                    setReviewSummary(sres.data?.data || null);
+                  } catch {}
+
+                  setEligibleBookings((prev) =>
+                    prev.filter((b: any) => String(b?._id || b?.id || "") !== selectedBookingId)
+                  );
+                  setSelectedBookingId(() => {
+                    const next = eligibleBookings.find((b: any) => String(b?._id || b?.id || "") !== selectedBookingId);
+                    return next ? String(next?._id || next?.id || "") : "";
+                  });
+                  setRating(5);
+                  setComment("");
+                } catch (e: any) {
+                  message.error(e?.response?.data?.message || "Gửi đánh giá thất bại");
+                } finally {
+                  setSubmittingReview(false);
+                }
+              }}
+            >
+              Gửi đánh giá
+            </Button>
+            <Button
+              onClick={() => setReviewModalOpen(false)}
+              style={{ width: 112, height: 48, borderRadius: 10, fontWeight: 800 }}
+            >
+              Huỷ
+            </Button>
+          </div>
+        </div>
       </Modal>
 
     </div>

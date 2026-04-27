@@ -61,8 +61,9 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
     if (!userId) return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
     if (role !== 'user') return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới dùng được' });
 
-    const bookingId = String(req.body?.booking_id || '').trim();
-    const stars = Number(req.body?.stars);
+    const bookingId = String(req.body?.bookingId || req.body?.booking_id || '').trim();
+    const rating = Number(req.body?.rating ?? req.body?.stars);
+    const tourIdFromBody = String(req.body?.tourId || req.body?.tour_id || '').trim();
     const satisfactionRaw = String(req.body?.satisfaction || '').trim();
     const satisfaction = (satisfactionRaw || 'normal') as TourSatisfaction;
     const comment = String(req.body?.comment || '').trim();
@@ -70,7 +71,7 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
     if (!bookingId || !isValidObjectId(bookingId)) {
       return res.status(400).json({ status: 'fail', message: 'booking_id không hợp lệ' });
     }
-    if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return res.status(400).json({ status: 'fail', message: 'Số sao phải từ 1 đến 5' });
     }
     if (!['very_satisfied', 'satisfied', 'normal', 'dissatisfied'].includes(satisfaction)) {
@@ -95,21 +96,32 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'Booking đã hủy, không thể đánh giá' });
     }
 
-    const stage = String(booking.tour_stage || 'scheduled');
-    if (stage !== 'completed') {
-      return res.status(400).json({ status: 'fail', message: 'Tour chưa kết thúc, chưa thể đánh giá' });
+    // Rule: booking success + endDate < now
+    const ps = String(booking.payment_status || '');
+    if (ps !== 'paid') {
+      return res.status(400).json({ status: 'fail', message: 'Booking chưa thanh toán thành công, chưa thể đánh giá' });
+    }
+    const end = booking.endDate ? new Date(booking.endDate) : null;
+    if (!end || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ status: 'fail', message: 'Booking chưa có ngày kết thúc hợp lệ' });
+    }
+    if (end.getTime() >= Date.now()) {
+      return res.status(400).json({ status: 'fail', message: 'Chuyến đi chưa kết thúc, chưa thể đánh giá' });
     }
 
     const tourId = booking.tour_id?.toString?.();
     if (!tourId || !isValidObjectId(tourId)) {
       return res.status(400).json({ status: 'fail', message: 'Booking không có tour hợp lệ' });
     }
+    if (tourIdFromBody && isValidObjectId(tourIdFromBody) && String(tourIdFromBody) !== String(tourId)) {
+      return res.status(400).json({ status: 'fail', message: 'tourId không khớp với booking' });
+    }
 
     const created = await TourReview.create({
       booking_id: booking._id,
       tour_id: tourId,
       user_id: userId,
-      stars,
+      stars: rating,
       satisfaction,
       comment,
       status: 'approved',

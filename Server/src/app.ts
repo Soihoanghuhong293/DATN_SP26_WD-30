@@ -74,6 +74,8 @@ app.use('/api/v1/contact-messages', contactMessageRouter);
 app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
 app.use('/api/v1/guide-reviews', guideReviewRoutes);
 app.use('/api/v1/tour-reviews', tourReviewRoutes);
+// Alias theo spec mới: /reviews
+app.use('/api/v1/reviews', tourReviewRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 
 // SePay / VietQR: QR chuyển khoản (theo spec: GET /sepay/qr/:id)
