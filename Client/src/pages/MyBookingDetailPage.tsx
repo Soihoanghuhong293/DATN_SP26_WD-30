@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Radio } from "antd";
+import { StarFilled, StarOutlined } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -268,13 +269,39 @@ const MyBookingDetailPage: React.FC = () => {
                 }
               />
             ) : myTourReview ? (
-              <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
-                <Space direction="vertical" size={10} style={{ width: "100%" }}>
-                  <Rate disabled value={Number(myTourReview?.stars || 0)} />
-                  <Tag color="blue" style={{ width: "fit-content" }}>
-                    {satisfactionLabel(String(myTourReview?.satisfaction || ""))}
-                  </Tag>
-                </Space>
+              <Card
+                style={{
+                  borderRadius: 14,
+                  border: "1px solid #eef2f7",
+                  background: "#fbfdff",
+                }}
+                styles={{ body: { padding: 18 } }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+                  <div style={{ minWidth: 120 }}>
+                    <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#0f172a" }}>
+                      {Number(myTourReview?.stars || 0).toFixed(1)}
+                    </div>
+                    <div style={{ marginTop: 6, color: "#64748b", fontWeight: 600 }}>
+                      Điểm đánh giá
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 220 }}>
+                    <Rate disabled value={Number(myTourReview?.stars || 0)} />
+                    <Tag
+                      color="success"
+                      style={{
+                        width: "fit-content",
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {satisfactionLabel(String(myTourReview?.satisfaction || ""))}
+                    </Tag>
+                  </div>
+                </div>
               </Card>
             ) : (
               <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
@@ -282,23 +309,69 @@ const MyBookingDetailPage: React.FC = () => {
                   <div>
                     <Text strong>Bạn đánh giá tour này bao nhiêu sao?</Text>
                     <div style={{ marginTop: 6 }}>
-                      <Rate value={tourStars} onChange={(v) => setTourStars(v)} />
+                      <Space size={10} wrap>
+                        {[1, 2, 3, 4, 5].map((n) => {
+                          const active = n <= tourStars;
+                          return (
+                            <Button
+                              key={n}
+                              onClick={() => setTourStars(n)}
+                              aria-label={`${n} sao`}
+                              style={{
+                                width: 54,
+                                height: 40,
+                                borderRadius: 10,
+                                border: active ? "1px solid #f59e0b" : "1px solid #d9d9d9",
+                                background: "#fff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: 0,
+                              }}
+                            >
+                              {active ? <StarFilled style={{ color: "#f59e0b", fontSize: 18 }} /> : <StarOutlined style={{ color: "#94a3b8", fontSize: 18 }} />}
+                            </Button>
+                          );
+                        })}
+                      </Space>
                     </div>
                   </div>
 
                   <div>
                     <Text strong>Bạn có hài lòng với chuyến đi không?</Text>
                     <div style={{ marginTop: 8 }}>
-                      <Radio.Group
-                        value={tourSatisfaction}
-                        onChange={(e) => setTourSatisfaction(e.target.value)}
-                      >
-                        <Space direction="vertical" size={6}>
-                          <Radio value="very_satisfied">Rất hài lòng</Radio>
-                          <Radio value="satisfied">Hài lòng</Radio>
-                          <Radio value="normal">Bình thường</Radio>
-                          <Radio value="dissatisfied">Không hài lòng</Radio>
-                        </Space>
+                      <Radio.Group value={tourSatisfaction} onChange={(e) => setTourSatisfaction(e.target.value)} style={{ width: "100%" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                          {[
+                            { value: "very_satisfied", label: "Rất hài lòng", emoji: "😄" },
+                            { value: "satisfied", label: "Hài lòng", emoji: "🙂" },
+                            { value: "normal", label: "Bình thường", emoji: "😐" },
+                            { value: "dissatisfied", label: "Không hài lòng", emoji: "😞" },
+                          ].map((opt) => {
+                            const selected = tourSatisfaction === (opt.value as any);
+                            return (
+                              <Radio.Button
+                                key={opt.value}
+                                value={opt.value}
+                                style={{
+                                  height: 48,
+                                  borderRadius: 10,
+                                  border: selected ? "1px solid #1677ff" : "1px solid #d9d9d9",
+                                  background: selected ? "#e6f4ff" : "#fff",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                  padding: "0 14px",
+                                  fontWeight: 700,
+                                  color: selected ? "#0958d9" : "#111827",
+                                }}
+                              >
+                                <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.emoji}</span>
+                                <span>{opt.label}</span>
+                              </Radio.Button>
+                            );
+                          })}
+                        </div>
                       </Radio.Group>
                     </div>
                   </div>
@@ -306,6 +379,7 @@ const MyBookingDetailPage: React.FC = () => {
                   <Button
                     type="primary"
                     loading={submittingTourReview}
+                    block
                     onClick={async () => {
                       if (!id) return;
                       setSubmittingTourReview(true);
