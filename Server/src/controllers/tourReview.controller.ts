@@ -64,6 +64,7 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
     const bookingId = String(req.body?.booking_id || '').trim();
     const stars = Number(req.body?.stars);
     const satisfaction = String(req.body?.satisfaction || '').trim() as TourSatisfaction;
+    const comment = String(req.body?.comment || '').trim();
 
     if (!bookingId || !isValidObjectId(bookingId)) {
       return res.status(400).json({ status: 'fail', message: 'booking_id không hợp lệ' });
@@ -73,6 +74,9 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
     }
     if (!['very_satisfied', 'satisfied', 'normal', 'dissatisfied'].includes(satisfaction)) {
       return res.status(400).json({ status: 'fail', message: 'Mức hài lòng không hợp lệ' });
+    }
+    if (comment.length > 1000) {
+      return res.status(400).json({ status: 'fail', message: 'Nhận xét tối đa 1000 ký tự' });
     }
 
     const booking: any = await Booking.findById(bookingId);
@@ -103,6 +107,7 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
       user_id: userId,
       stars,
       satisfaction,
+      comment,
       status: 'approved',
     });
 

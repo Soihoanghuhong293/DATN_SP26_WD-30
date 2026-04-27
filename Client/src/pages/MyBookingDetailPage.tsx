@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Radio } from "antd";
+import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Radio, Input } from "antd";
 import { StarFilled, StarOutlined } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -82,6 +82,7 @@ const MyBookingDetailPage: React.FC = () => {
   const [tourSatisfaction, setTourSatisfaction] = useState<"very_satisfied" | "satisfied" | "normal" | "dissatisfied">(
     "very_satisfied"
   );
+  const [tourComment, setTourComment] = useState<string>("");
   const [submittingTourReview, setSubmittingTourReview] = useState<boolean>(false);
 
   useEffect(() => {
@@ -300,6 +301,9 @@ const MyBookingDetailPage: React.FC = () => {
                     >
                       {satisfactionLabel(String(myTourReview?.satisfaction || ""))}
                     </Tag>
+                    {String(myTourReview?.comment || "").trim() ? (
+                      <Text style={{ color: "#0f172a" }}>{String(myTourReview.comment).trim()}</Text>
+                    ) : null}
                   </div>
                 </div>
               </Card>
@@ -376,6 +380,20 @@ const MyBookingDetailPage: React.FC = () => {
                     </div>
                   </div>
 
+                  <div>
+                    <Text strong>Nhận xét</Text>
+                    <div style={{ marginTop: 8 }}>
+                      <Input.TextArea
+                        value={tourComment}
+                        onChange={(e) => setTourComment(e.target.value)}
+                        placeholder="Chia sẻ trải nghiệm của bạn về tour..."
+                        autoSize={{ minRows: 3, maxRows: 6 }}
+                        maxLength={1000}
+                        showCount
+                      />
+                    </div>
+                  </div>
+
                   <Button
                     type="primary"
                     loading={submittingTourReview}
@@ -386,7 +404,7 @@ const MyBookingDetailPage: React.FC = () => {
                       try {
                         const res = await axios.post(
                           `${API_V1}/tour-reviews`,
-                          { booking_id: id, stars: tourStars, satisfaction: tourSatisfaction },
+                          { booking_id: id, stars: tourStars, satisfaction: tourSatisfaction, comment: tourComment },
                           getAuthHeader()
                         );
                         setMyTourReview(res.data?.data || null);

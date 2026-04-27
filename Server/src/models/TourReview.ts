@@ -10,6 +10,7 @@ export interface ITourReview extends Document {
   guest_name?: string;
   stars: number;
   satisfaction?: TourSatisfaction;
+  comment?: string;
   status: TourReviewStatus;
   created_at: Date;
   updated_at: Date;
@@ -27,6 +28,7 @@ const TourReviewSchema = new Schema(
       enum: ['very_satisfied', 'satisfied', 'normal', 'dissatisfied'],
       default: 'normal',
     },
+    comment: { type: String, default: '' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
   },
   {
