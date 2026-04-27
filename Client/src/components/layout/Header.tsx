@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Button, Drawer } from 'antd';
 import { SendOutlined, MenuOutlined } from '@ant-design/icons';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [authed, setAuthed] = useState<boolean>(() => Boolean(localStorage.getItem('token')));
 
   // Hiệu ứng cuộn
   useEffect(() => {
@@ -19,12 +21,27 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleAuthChanged = () => setAuthed(Boolean(localStorage.getItem('token')));
+    window.addEventListener('auth:changed', handleAuthChanged as any);
+    return () => window.removeEventListener('auth:changed', handleAuthChanged as any);
+  }, []);
+
   const items = [
     { key: '/', label: <Link to="/">Destinations</Link> },
     { key: '/tours', label: <Link to="/tours">Tours</Link> },
+    ...(authed ? [{ key: '/my-wishlist', label: <Link to="/my-wishlist">Yêu thích</Link> }] : []),
     { key: '/guides', label: <Link to="/guides">Guides</Link> },
     { key: '/blog', label: <Link to="/blog">Blog</Link> },
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user_email');
+    window.dispatchEvent(new Event('auth:changed'));
+    navigate('/');
+  };
 
   return (
     <>
@@ -88,22 +105,36 @@ const Header = () => {
 
         
         <div className="desktop-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          <Button type="text" style={{ fontWeight: '600', color: '#595959' }}>
-            Log In
-          </Button>
-          <Button
-            type="primary"
-            size="large"
-            style={{
-              backgroundColor: '#13b6ec',
-              borderColor: '#13b6ec',
-              borderRadius: '8px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 14px rgba(19, 182, 236, 0.4)',
-            }}
-          >
-            Sign Up
-          </Button>
+          {authed ? (
+            <>
+              <Button type="text" style={{ fontWeight: '600', color: '#595959' }} onClick={() => navigate('/my-wishlist')}>
+                Yêu thích
+              </Button>
+              <Button type="text" style={{ fontWeight: '600', color: '#595959' }} onClick={handleLogout}>
+                Đăng xuất
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button type="text" style={{ fontWeight: '600', color: '#595959' }} onClick={() => navigate('/login')}>
+                Log In
+              </Button>
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => navigate('/register')}
+                style={{
+                  backgroundColor: '#13b6ec',
+                  borderColor: '#13b6ec',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 14px rgba(19, 182, 236, 0.4)',
+                }}
+              >
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="mobile-toggle">
@@ -131,8 +162,31 @@ const Header = () => {
           style={{ border: 'none', fontSize: '16px' }}
         />
         <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <Button block size="large" style={{ fontWeight: '600' }}>Log In</Button>
-          <Button block type="primary" size="large" style={{ backgroundColor: '#13b6ec', fontWeight: 'bold' }}>Sign Up</Button>
+          {authed ? (
+            <>
+              <Button block size="large" style={{ fontWeight: '600' }} onClick={() => navigate('/my-wishlist')}>
+                Tour yêu thích
+              </Button>
+              <Button block size="large" danger style={{ fontWeight: '600' }} onClick={handleLogout}>
+                Đăng xuất
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button block size="large" style={{ fontWeight: '600' }} onClick={() => navigate('/login')}>
+                Log In
+              </Button>
+              <Button
+                block
+                type="primary"
+                size="large"
+                onClick={() => navigate('/register')}
+                style={{ backgroundColor: '#13b6ec', fontWeight: 'bold' }}
+              >
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
       </Drawer>
 
