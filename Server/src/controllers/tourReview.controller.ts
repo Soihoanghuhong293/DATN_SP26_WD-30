@@ -11,7 +11,7 @@ const recomputeTourRating = async (tourId: string) => {
   if (!tourId || !isValidObjectId(tourId)) return;
 
   const agg = await TourReview.aggregate([
-    { $match: { tour_id: new mongoose.Types.ObjectId(tourId) } },
+    { $match: { tour_id: new mongoose.Types.ObjectId(tourId), status: 'approved' } },
     {
       $group: {
         _id: '$tour_id',
@@ -63,7 +63,8 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
 
     const bookingId = String(req.body?.booking_id || '').trim();
     const stars = Number(req.body?.stars);
-    const satisfaction = String(req.body?.satisfaction || '').trim() as TourSatisfaction;
+    const satisfactionRaw = String(req.body?.satisfaction || '').trim();
+    const satisfaction = (satisfactionRaw || 'normal') as TourSatisfaction;
     const comment = String(req.body?.comment || '').trim();
 
     if (!bookingId || !isValidObjectId(bookingId)) {
@@ -148,6 +149,120 @@ export const createPublicTourReview = async (req: AuthRequest, res: Response) =>
 
     await recomputeTourRating(String(tourId));
     return res.status(201).json({ status: 'success', data: created });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const getTourReviewSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const tourId = String(req.params.tourId || '').trim();
+    if (!tourId || !isValidObjectId(tourId)) {
+      return res.status(400).json({ status: 'fail', message: 'tourId không hợp lệ' });
+    }
+
+    const agg = await TourReview.aggregate([
+      { $match: { tour_id: new mongoose.Types.ObjectId(tourId), status: 'approved' } },
+      {
+        $group: {
+          _id: '$tour_id',
+          avg: { $avg: '$stars' },
+          count: { $sum: 1 },
+          c1: { $sum: { $cond: [{ $eq: ['$stars', 1] }, 1, 0] } },
+          c2: { $sum: { $cond: [{ $eq: ['$stars', 2] }, 1, 0] } },
+          c3: { $sum: { $cond: [{ $eq: ['$stars', 3] }, 1, 0] } },
+          c4: { $sum: { $cond: [{ $eq: ['$stars', 4] }, 1, 0] } },
+          c5: { $sum: { $cond: [{ $eq: ['$stars', 5] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    const avg = agg?.[0]?.avg ? Number(agg[0].avg) : 0;
+    const count = agg?.[0]?.count ? Number(agg[0].count) : 0;
+    const counts = {
+      1: Number(agg?.[0]?.c1 || 0),
+      2: Number(agg?.[0]?.c2 || 0),
+      3: Number(agg?.[0]?.c3 || 0),
+      4: Number(agg?.[0]?.c4 || 0),
+      5: Number(agg?.[0]?.c5 || 0),
+    } as Record<number, number>;
+
+    const distribution = [5, 4, 3, 2, 1].map((s) => ({
+      stars: s,
+      count: counts[s],
+      percent: count > 0 ? Math.round((counts[s] / count) * 100) : 0,
+    }));
+
+    const recent = await TourReview.find({
+      tour_id: tourId,
+      status: 'approved',
+      comment: { $exists: true, $ne: '' },
+    })
+      .populate({ path: 'user_id', select: 'name email' })
+      .sort({ created_at: -1 })
+      .limit(2)
+      .lean();
+
+    const recentReviews = recent.map((r: any) => ({
+      id: String(r?._id || ''),
+      name: String(r?.user_id?.name || r?.guest_name || 'Khách'),
+      created_at: r?.created_at,
+      stars: Number(r?.stars || 0),
+      comment: String(r?.comment || '').trim(),
+    }));
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        average: avg,
+        totalReviews: count,
+        distribution,
+        recentReviews,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const listTourReviewsByTour = async (req: AuthRequest, res: Response) => {
+  try {
+    const tourId = String(req.params.tourId || '').trim();
+    if (!tourId || !isValidObjectId(tourId)) {
+      return res.status(400).json({ status: 'fail', message: 'tourId không hợp lệ' });
+    }
+
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit || 10)));
+    const skip = (page - 1) * limit;
+
+    const filter: any = { tour_id: tourId, status: 'approved', comment: { $exists: true, $ne: '' } };
+
+    const [rows, total] = await Promise.all([
+      TourReview.find(filter)
+        .populate({ path: 'user_id', select: 'name email' })
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      TourReview.countDocuments(filter),
+    ]);
+
+    const data = rows.map((r: any) => ({
+      id: String(r?._id || ''),
+      name: String(r?.user_id?.name || r?.guest_name || 'Khách'),
+      created_at: r?.created_at,
+      stars: Number(r?.stars || 0),
+      comment: String(r?.comment || '').trim(),
+    }));
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        reviews: data,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 },
+      },
+    });
   } catch (error: any) {
     return res.status(500).json({ status: 'error', message: error.message });
   }

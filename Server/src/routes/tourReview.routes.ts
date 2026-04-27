@@ -5,6 +5,8 @@ import * as tourReviewController from '../controllers/tourReview.controller';
 const router = express.Router();
 
 router.get('/me', protect, tourReviewController.getMyTourReviewByBooking);
+router.get('/summary/:tourId', tourReviewController.getTourReviewSummary);
+router.get('/tour/:tourId', tourReviewController.listTourReviewsByTour);
 router.post('/', protect, tourReviewController.createTourReview);
 router.post('/public', tourReviewController.createPublicTourReview);
 
