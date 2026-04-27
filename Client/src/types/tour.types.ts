@@ -34,6 +34,11 @@ export interface ITour {
   // Optional / backward-compatible
   name?: string;
   slug?: string;
+
+  rating?: {
+    average: number;
+    totalReviews: number;
+  };
 }
 
 export type CategoryStatus = 'active' | 'inactive';

@@ -9,6 +9,9 @@ import {
   Divider,
   message,
   Modal,
+  Rate,
+  Radio,
+  Space,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -20,6 +23,7 @@ import {
   RightOutlined,
   ClockCircleOutlined,
   UsergroupAddOutlined,
+  StarFilled,
 } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -28,6 +32,13 @@ import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
 import "./styles/SchedulePicker.css";
+
+const API_V1 =
+  (import.meta.env?.VITE_API_URL as string | undefined) || "http://localhost:5000/api/v1";
+
+const getAuthHeader = () => ({
+  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+});
 
 /** Chuẩn hoá date từ API/schedule (trùng logic normalizedSchedule) → YYYY-MM-DD */
 function normalizeDepartureDateRaw(raw: string): string {
@@ -58,6 +69,15 @@ const TourDetailPage = () => {
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
+
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [eligibleBookingId, setEligibleBookingId] = useState<string | null>(null);
+  const [loadingEligibility, setLoadingEligibility] = useState(false);
+  const [tourStars, setTourStars] = useState<number>(5);
+  const [tourSatisfaction, setTourSatisfaction] = useState<"very_satisfied" | "satisfied" | "normal" | "dissatisfied">(
+    "very_satisfied"
+  );
+  const [submittingTourReview, setSubmittingTourReview] = useState(false);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -100,6 +120,62 @@ const TourDetailPage = () => {
 
     fetchTourDetail();
   }, [id]);
+
+  useEffect(() => {
+    const fetchEligibility = async () => {
+      const tourId = (tour as any)?._id || (tour as any)?.id || id;
+      const token = localStorage.getItem("token");
+      if (!tourId || !token) {
+        setEligibleBookingId(null);
+        return;
+      }
+      setLoadingEligibility(true);
+      try {
+        const res = await axios.get(`${API_V1}/bookings/me`, getAuthHeader());
+        const bookings = Array.isArray(res.data?.data) ? res.data.data : [];
+        const completed = bookings.filter((b: any) => {
+          const btourId = String(b?.tour_id?._id || b?.tour_id || "");
+          const okTour = btourId === String(tourId);
+          const okStage = String(b?.tour_stage || "scheduled") === "completed";
+          const okStatus = String(b?.status || "") !== "cancelled";
+          return okTour && okStage && okStatus;
+        });
+
+        // chọn booking completed gần nhất mà chưa đánh giá tour
+        for (const b of completed) {
+          const bid = String(b?._id || b?.id || "");
+          if (!bid) continue;
+          try {
+            const check = await axios.get(`${API_V1}/tour-reviews/me`, {
+              ...getAuthHeader(),
+              params: { booking_id: bid },
+            });
+            const existing = check.data?.data;
+            if (!existing) {
+              setEligibleBookingId(bid);
+              return;
+            }
+          } catch {
+            // nếu lỗi check thì bỏ qua
+          }
+        }
+        setEligibleBookingId(null);
+      } catch {
+        setEligibleBookingId(null);
+      } finally {
+        setLoadingEligibility(false);
+      }
+    };
+    fetchEligibility();
+  }, [tour?._id, (tour as any)?.id, id]);
+
+  const satisfactionLabel = (s: string) => {
+    if (s === "very_satisfied") return "Rất hài lòng";
+    if (s === "satisfied") return "Hài lòng";
+    if (s === "normal") return "Bình thường";
+    if (s === "dissatisfied") return "Không hài lòng";
+    return s;
+  };
 
   // Fetch all tour instances cùng tên để gộp lịch khởi hành (khách hàng chỉ thấy 1 tour)
   useEffect(() => {
@@ -479,6 +555,7 @@ const TourDetailPage = () => {
 
               {/* MÔ TẢ TOUR ĐƯỢC CHUYỂN LÊN ĐÂY */}
               <Divider />
+
               <div className="tour-description-sidebar">
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>MÔ TẢ</h3>
                 <p style={{ color: '#4b5563', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
@@ -530,63 +607,147 @@ const TourDetailPage = () => {
         
           <Divider />
 
-          {tour.schedule?.length > 0 && (
-            <section className="detail-section">
-              <h2>Lịch trình</h2>
+          <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 640px", minWidth: 0 }}>
+              {tour.schedule?.length > 0 && (
+                <section className="detail-section">
+                  <h2>Lịch trình</h2>
 
-              {tour.schedule.map((item, index) => (
-                <div key={index} className="schedule-item">
-                  <div className="schedule-day">Ngày {item.day}</div>
+                  {tour.schedule.map((item, index) => (
+                    <div key={index} className="schedule-item">
+                      <div className="schedule-day">Ngày {item.day}</div>
 
-                  <div className="schedule-content">
-                    <h3>{item.title}</h3>
-                    <ul>
-                      {item.activities?.map((act, i) => (
-                        <li key={i}>
-                          <CheckCircleOutlined /> {act}
-                        </li>
-                      ))}
-                    </ul>
-                    {(() => {
-                      const day = item as any;
-                      const lunch = day.lunch_restaurant_id?.name;
-                      const dinner = day.dinner_restaurant_id?.name;
-                      if (!lunch && !dinner) return null;
-                      return (
-                        <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
-                          {lunch ? (
-                            <div>
-                              <b>Buổi trưa:</b> {lunch}
+                      <div className="schedule-content">
+                        <h3>{item.title}</h3>
+                        <ul>
+                          {item.activities?.map((act, i) => (
+                            <li key={i}>
+                              <CheckCircleOutlined /> {act}
+                            </li>
+                          ))}
+                        </ul>
+                        {(() => {
+                          const day = item as any;
+                          const lunch = day.lunch_restaurant_id?.name;
+                          const dinner = day.dinner_restaurant_id?.name;
+                          if (!lunch && !dinner) return null;
+                          return (
+                            <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                              {lunch ? (
+                                <div>
+                                  <b>Buổi trưa:</b> {lunch}
+                                </div>
+                              ) : null}
+                              {dinner ? (
+                                <div>
+                                  <b>Buổi tối:</b> {dinner}
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
-                          {dinner ? (
-                            <div>
-                              <b>Buổi tối:</b> {dinner}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                    {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
-                      <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
-                        <b>Vé:</b>{' '}
-                        {(item as any).ticket_ids
-                          .map((tk: any) => {
-                            if (typeof tk === 'object' && tk?.name) {
-                              const mode =
-                                tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
-                              return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
-                            }
-                            return String(tk);
-                          })
-                          .join('; ')}
+                          );
+                        })()}
+                        {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
+                          <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                            <b>Vé:</b>{' '}
+                            {(item as any).ticket_ids
+                              .map((tk: any) => {
+                                if (typeof tk === 'object' && tk?.name) {
+                                  const mode =
+                                    tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
+                                  return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
+                                }
+                                return String(tk);
+                              })
+                              .join('; ')}
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
+                    </div>
+                  ))}
+                </section>
+              )}
+            </div>
+
+            <div style={{ flex: "0 0 360px", width: 360, maxWidth: "100%" }}>
+              <div
+                style={{
+                  position: "sticky",
+                  top: 84,
+                }}
+              >
+                <div
+                  style={{
+                    borderRadius: 14,
+                    border: "1px solid #eef2f7",
+                    background: "#ffffff",
+                    padding: 16,
+                    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>Đánh giá tour</div>
+                      <div style={{ marginTop: 2, color: "#64748b", fontSize: 13, fontWeight: 600 }}>
+                        Tổng quan từ khách đã trải nghiệm
+                      </div>
+                    </div>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "#e6f4ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <StarFilled style={{ color: "#1677ff", fontSize: 18 }} />
+                    </div>
                   </div>
+
+                  <Divider style={{ margin: "12px 0" }} />
+
+                  {(() => {
+                    const avg = Number((tour as any)?.rating?.average ?? 0);
+                    const count = Number((tour as any)?.rating?.totalReviews ?? 0);
+                    const has = count > 0 && avg > 0;
+                    return (
+                      <>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#0f172a" }}>
+                            {has ? avg.toFixed(1) : "0.0"}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <Rate disabled allowHalf value={has ? avg : 0} />
+                            <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>
+                              {count > 0 ? `${count} lượt đánh giá` : "Chưa có đánh giá"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button
+                          block
+                          type="primary"
+                          style={{ marginTop: 14, fontWeight: 900 }}
+                          loading={loadingEligibility}
+                          disabled={!eligibleBookingId}
+                          onClick={() => {
+                            if (!localStorage.getItem("token")) {
+                              message.warning("Vui lòng đăng nhập để đánh giá");
+                              return;
+                            }
+                            if (!eligibleBookingId) {
+                              message.info("Bạn cần có booking đã hoàn thành (chưa đánh giá) để đánh giá tour.");
+                              return;
+                            }
+                            setReviewModalOpen(true);
+                          }}
+                        >
+                          Đánh giá tour
+                        </Button>
+                        {!eligibleBookingId ? (
+                          <div style={{ marginTop: 8, color: "#94a3b8", fontSize: 12 }}>
+                            Chỉ mở khi bạn đã đi tour và tour đã kết thúc.
+                          </div>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </div>
-              ))}
-            </section>
-          )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -704,6 +865,120 @@ const TourDetailPage = () => {
           ) : (
             <>Vui lòng chọn một ngày có lịch khởi hành (còn chỗ).</>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        title="Đánh giá tour"
+        open={reviewModalOpen}
+        onCancel={() => setReviewModalOpen(false)}
+        footer={null}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>Bạn đánh giá tour này bao nhiêu sao?</div>
+            <Space size={10} wrap>
+              {[1, 2, 3, 4, 5].map((n) => {
+                const active = n <= tourStars;
+                return (
+                  <Button
+                    key={n}
+                    onClick={() => setTourStars(n)}
+                    aria-label={`${n} sao`}
+                    style={{
+                      width: 54,
+                      height: 40,
+                      borderRadius: 10,
+                      border: active ? "1px solid #f59e0b" : "1px solid #d9d9d9",
+                      background: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 0,
+                    }}
+                  >
+                    <StarFilled style={{ color: active ? "#f59e0b" : "#cbd5e1", fontSize: 18 }} />
+                  </Button>
+                );
+              })}
+            </Space>
+          </div>
+
+          <div>
+            <div style={{ fontWeight: 800, marginBottom: 8 }}>Bạn có hài lòng với chuyến đi không?</div>
+            <Radio.Group value={tourSatisfaction} onChange={(e) => setTourSatisfaction(e.target.value)} style={{ width: "100%" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                {[
+                  { value: "very_satisfied", label: "Rất hài lòng", emoji: "😄" },
+                  { value: "satisfied", label: "Hài lòng", emoji: "🙂" },
+                  { value: "normal", label: "Bình thường", emoji: "😐" },
+                  { value: "dissatisfied", label: "Không hài lòng", emoji: "😞" },
+                ].map((opt) => {
+                  const selected = tourSatisfaction === (opt.value as any);
+                  return (
+                    <Radio.Button
+                      key={opt.value}
+                      value={opt.value}
+                      style={{
+                        height: 48,
+                        borderRadius: 10,
+                        border: selected ? "1px solid #1677ff" : "1px solid #d9d9d9",
+                        background: selected ? "#e6f4ff" : "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "0 14px",
+                        fontWeight: 800,
+                        color: selected ? "#0958d9" : "#111827",
+                      }}
+                    >
+                      <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.emoji}</span>
+                      <span>{opt.label}</span>
+                    </Radio.Button>
+                  );
+                })}
+              </div>
+            </Radio.Group>
+          </div>
+
+          <Button
+            type="primary"
+            block
+            loading={submittingTourReview}
+            onClick={async () => {
+              if (!eligibleBookingId) {
+                message.info("Bạn chưa có booking hợp lệ để đánh giá.");
+                return;
+              }
+              setSubmittingTourReview(true);
+              try {
+                await axios.post(
+                  `${API_V1}/tour-reviews`,
+                  { booking_id: eligibleBookingId, stars: tourStars, satisfaction: tourSatisfaction },
+                  getAuthHeader()
+                );
+                message.success("Đã gửi đánh giá tour");
+                setReviewModalOpen(false);
+
+                // refresh tour rating
+                const tourId = (tour as any)?._id || (tour as any)?.id || id;
+                if (tourId) {
+                  const data = await getTour(String(tourId));
+                  if (data.data && typeof data.data === "object") {
+                    if ("tour" in data.data) setTour((data.data as any).tour);
+                    else setTour(data.data as any);
+                  }
+                }
+                setEligibleBookingId(null);
+              } catch (e: any) {
+                message.error(e?.response?.data?.message || "Gửi đánh giá thất bại");
+              } finally {
+                setSubmittingTourReview(false);
+              }
+            }}
+          >
+            Gửi đánh giá ({satisfactionLabel(tourSatisfaction)})
+          </Button>
         </div>
       </Modal>
 
