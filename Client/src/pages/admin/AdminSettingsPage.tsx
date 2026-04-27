@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { changePassword, getMe, updateMe } from "../../services/account";
 import { useAuth } from "../../auth/AuthProvider";
 import { getSystemSettings, updateSystemSettings, uploadSystemLogo } from "../../services/settings";
+import { uploadImage } from "../../services/upload";
 
 const { Title, Text } = Typography;
 
@@ -21,6 +22,7 @@ const AdminSettingsPage = () => {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const isAuthed = !!auth.token;
 
@@ -38,6 +40,7 @@ const AdminSettingsPage = () => {
         profileForm.setFieldsValue({
           email: user.email,
           displayName: user.name,
+          avatarUrl: user.avatarUrl || "",
         });
       } catch (e: any) {
         messageApi.error(e?.response?.data?.message || "Không tải được thông tin tài khoản");
@@ -88,10 +91,11 @@ const AdminSettingsPage = () => {
       const user = await updateMe({
         name: String(values.displayName || "").trim(),
         email: String(values.email || "").trim(),
+        avatarUrl: String(values.avatarUrl || "").trim(),
       });
       auth.login({ token: auth.token!, role: auth.role, email: user.email });
       messageApi.open({ type: "success", content: "Đã cập nhật thông tin", key: "profile" });
-      profileForm.setFieldsValue({ email: user.email, displayName: user.name });
+      profileForm.setFieldsValue({ email: user.email, displayName: user.name, avatarUrl: user.avatarUrl || "" });
     } catch (e: any) {
       if (e?.errorFields) return; // antd validation
       messageApi.open({
@@ -102,6 +106,28 @@ const AdminSettingsPage = () => {
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const avatarUploadProps: UploadProps = {
+    maxCount: 1,
+    showUploadList: false,
+    beforeUpload: async (file) => {
+      try {
+        setAvatarUploading(true);
+        const url = await uploadImage(file as File);
+        profileForm.setFieldsValue({ avatarUrl: url });
+        messageApi.open({ type: "success", content: "Đã upload avatar", key: "profile" });
+      } catch (e: any) {
+        messageApi.open({
+          type: "error",
+          content: e?.response?.data?.message || "Upload avatar thất bại",
+          key: "profile",
+        });
+      } finally {
+        setAvatarUploading(false);
+      }
+      return false;
+    },
   };
 
   const onChangePassword = async () => {
@@ -195,6 +221,23 @@ const AdminSettingsPage = () => {
               <Skeleton active paragraph={{ rows: 4 }} />
             ) : (
               <Form form={profileForm} layout="vertical" requiredMark={false}>
+                <Form.Item label="Avatar" name="avatarUrl">
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    <Input placeholder="URL avatar" />
+                    <Upload {...avatarUploadProps} disabled={avatarUploading}>
+                      <Button icon={<UploadOutlined />} loading={avatarUploading}>
+                        Upload avatar
+                      </Button>
+                    </Upload>
+                    {String(profileForm.getFieldValue("avatarUrl") || "").trim() ? (
+                      <img
+                        src={String(profileForm.getFieldValue("avatarUrl"))}
+                        alt="avatar preview"
+                        style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 16, border: "1px solid #f0f0f0" }}
+                      />
+                    ) : null}
+                  </Space>
+                </Form.Item>
                 <Form.Item
                   label="Email"
                   name="email"

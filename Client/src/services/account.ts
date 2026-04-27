@@ -4,6 +4,7 @@ export type AuthUser = {
   _id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
   role: string;
   status: "active" | "inactive";
 };
@@ -13,7 +14,7 @@ export async function getMe() {
   return res.data.data.user;
 }
 
-export async function updateMe(payload: { name?: string; email?: string }) {
+export async function updateMe(payload: { name?: string; email?: string; avatarUrl?: string }) {
   const res = await api.patch<{ status: string; message?: string; data: { user: AuthUser } }>(
     "/auth/me",
     payload

@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { uploadImage } from "./upload";
 
 export type SystemSettings = {
   _id: string;
@@ -22,11 +23,6 @@ export async function updateSystemSettings(payload: Partial<Omit<SystemSettings,
 }
 
 export async function uploadSystemLogo(file: File) {
-  const form = new FormData();
-  form.append("image", file);
-  const res = await api.post<{ status: string; data: { url: string } }>("/uploads/images", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data.data.url;
+  return uploadImage(file);
 }
 

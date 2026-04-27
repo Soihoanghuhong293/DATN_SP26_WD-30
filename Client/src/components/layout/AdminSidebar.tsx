@@ -16,17 +16,37 @@ import {
 } from "@ant-design/icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { useEffect, useState } from "react";
+import { getMe } from "../../services/account";
 
 const AdminSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
-  const email = auth.email || "Admin";
+  const [profile, setProfile] = useState<{ email?: string; name?: string; avatarUrl?: string } | null>(null);
+  const email = profile?.email || auth.email || "Admin";
+  const displayName = profile?.name || "Quản trị viên";
 
   const handleLogout = () => {
     auth.logout();
     navigate("/login");
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!auth.token) return;
+        const me = await getMe();
+        if (mounted) setProfile({ email: me.email, name: me.name, avatarUrl: me.avatarUrl });
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [auth.token]);
 
   const getOpenKeys = () => {
     const keys = [];
@@ -43,11 +63,15 @@ const AdminSidebar = () => {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", position: "sticky", top: 0 }}>
       <div style={{ padding: 24, display: "flex", gap: 12, alignItems: "center" }}>
-        <Avatar size={40} style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+        <Avatar
+          size={40}
+          src={profile?.avatarUrl || undefined}
+          style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+        >
           <UserOutlined />
         </Avatar>
         <div style={{ flex: 1, overflow: "hidden" }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Quản trị viên</div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{displayName}</div>
           <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis" }}>
             {email}
           </div>

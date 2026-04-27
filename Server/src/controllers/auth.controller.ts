@@ -107,11 +107,12 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ message: "Vui lòng đăng nhập" });
 
-    const { name, email } = req.body || {};
+    const { name, email, avatarUrl } = req.body || {};
 
     const update: any = {};
     if (typeof name === "string") update.name = name.trim();
     if (typeof email === "string") update.email = email.trim().toLowerCase();
+    if (typeof avatarUrl === "string") update.avatarUrl = avatarUrl.trim();
 
     if (update.email) {
       const exists = await User.findOne({ email: update.email, _id: { $ne: userId } }).select("_id");
