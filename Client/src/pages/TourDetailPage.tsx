@@ -113,6 +113,35 @@ const TourDetailPage = () => {
       try {
         setRelatedLoading(true);
 
+        const normalizeText = (v: any) => String(v ?? "").trim().toLowerCase();
+
+        const getTourLocationKey = (t: any) => {
+          // support multiple backend field names
+          const candidates = [
+            t?.location,
+            t?.destination,
+            t?.province,
+            t?.city,
+            t?.start_location,
+            t?.end_location,
+            t?.place,
+          ];
+          const found = candidates.find((x) => normalizeText(x));
+          return normalizeText(found);
+        };
+
+        const getTourServiceLevelKey = (t: any) => {
+          const candidates = [
+            t?.serviceLevel,
+            t?.service_level,
+            t?.service_level_name,
+            t?.service_level_id?.name,
+            t?.service_level_id,
+          ];
+          const found = candidates.find((x) => normalizeText(x));
+          return normalizeText(found);
+        };
+
         const pickUnique = (arr: ITour[]) => {
           const seen = new Set<string>();
           const out: ITour[] = [];
@@ -128,24 +157,48 @@ const TourDetailPage = () => {
           return out;
         };
 
-        let candidates: ITour[] = [];
+        // Fetch a pool then rank by priority:
+        // 1) same location 2) same serviceLevel 3) exclude current
+        const poolRes = await getTours({ page: 1, limit: 200, status: "active" });
+        const pool = pickUnique(Array.isArray(poolRes?.data) ? poolRes.data : []);
 
-        // 1) Cùng category (nếu có)
-        const categoryId = (current as any)?.category_id;
+        const curLoc = getTourLocationKey(current);
+        const curSvc = getTourServiceLevelKey(current);
+
+        const scored = pool
+          .map((t) => {
+            const loc = getTourLocationKey(t as any);
+            const svc = getTourServiceLevelKey(t as any);
+            const sameLoc = !!curLoc && !!loc && curLoc === loc;
+            const sameSvc = !!curSvc && !!svc && curSvc === svc;
+            const score = (sameLoc ? 100 : 0) + (sameSvc ? 10 : 0);
+            return { t, score };
+          })
+          .sort((a, b) => b.score - a.score);
+
+        const top = scored
+          .filter((x) => x.score > 0)
+          .map((x) => x.t)
+          .slice(0, 8);
+
+        // Fallback if missing location/serviceLevel on data: use category match then latest tours
+        if (top.length >= 4) {
+          setRelatedTours(top);
+          return;
+        }
+
+        const categoryId = (current as any)?.category_id?._id || (current as any)?.category_id;
+        let fallback: ITour[] = [];
         if (categoryId) {
-          const res = await getTours({ page: 1, limit: 12, status: "active", category_id: categoryId });
-          candidates = pickUnique(Array.isArray(res?.data) ? res.data : []);
+          const byCat = pool.filter((t: any) => {
+            const cat = t?.category_id?._id || t?.category_id;
+            return cat && String(cat) === String(categoryId);
+          });
+          fallback = byCat;
         }
 
-        // 2) Fallback: lấy tour active bất kỳ để đủ số lượng
-        if (candidates.length < 8) {
-          const res2 = await getTours({ page: 1, limit: 20, status: "active" });
-          const more = pickUnique(Array.isArray(res2?.data) ? res2.data : []);
-          const merged = pickUnique([...candidates, ...more]);
-          candidates = merged;
-        }
-
-        setRelatedTours(candidates.slice(0, 8));
+        const merged = pickUnique([...top, ...fallback, ...pool]).slice(0, 8);
+        setRelatedTours(merged);
       } catch (e) {
         setRelatedTours([]);
       } finally {

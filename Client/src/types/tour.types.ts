@@ -34,6 +34,14 @@ export interface ITour {
   // Optional / backward-compatible
   name?: string;
   slug?: string;
+
+  // Fields used for recommendations (may be absent depending on backend version)
+  location?: string;
+  destination?: string;
+  city?: string;
+  province?: string;
+  serviceLevel?: string;
+  service_level?: string;
 }
 
 export type CategoryStatus = 'active' | 'inactive';
