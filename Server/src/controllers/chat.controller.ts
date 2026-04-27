@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
-import { processMessage } from '../services/chatbot.service.js';
+import { processMessageWithHistory } from '../services/chatbot.service.js';
 
 /**
  * POST /api/v1/chat
- * Body: { message: string }
+ * Body: { message: string, history?: { role: 'user'|'assistant', content: string }[] }
  * Trả lời: keyword matching ưu tiên, fallback AI
  */
 export const chat = async (req: Request, res: Response) => {
   try {
-    const { message } = req.body;
+    const { message, history } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({
@@ -17,7 +17,7 @@ export const chat = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await processMessage(message);
+    const result = await processMessageWithHistory(message, history);
 
     res.json({
       success: true,

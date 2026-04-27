@@ -81,7 +81,7 @@ app.post('/sepay/webhook', handleSepayWebhook);
 // Debug: xem webhook gần nhất (chỉ dùng khi SEPAY_DEBUG=true)
 app.get('/sepay/debug/last-webhook', getLastSepayWebhookDebug);
 
-// Handle 404https://gemini.google.com/gems/view
+// Handle 404
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });

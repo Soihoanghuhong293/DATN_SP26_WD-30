@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MessageCircle, RotateCcw, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import type { ITour } from '../types/tour.types';
 import { getTours } from '../services/api';
-import { sendChatMessage, submitContactMessage } from '../services/chat';
+import { sendChatMessage, submitContactMessage, type ChatHistoryItem } from '../services/chat';
 import './ChatWidget.css';
 
 type ChatMode = 'ai' | 'contact';
@@ -121,6 +121,56 @@ function extractToursFromGetToursResponse(payload: any): ITour[] {
   return [];
 }
 
+function parseDepartureMonth(text: string, now = new Date()): { month: string; label: string } | null {
+  const n = normalizeVi(text);
+  const m = n.match(/(?:thang|th)\s*(\d{1,2})\b/) || n.match(/\bt\s*(\d{1,2})\b/);
+  if (!m) return null;
+  const mm = Math.max(1, Math.min(12, Number(m[1])));
+  if (!mm) return null;
+  const yyyy = now.getFullYear();
+  const month = `${yyyy}-${String(mm).padStart(2, '0')}`;
+  return { month, label: `tháng ${mm}` };
+}
+
+function parseBareMonthNumber(text: string, now = new Date()): { month: string; label: string } | null {
+  const raw = String(text || '').trim();
+  if (!/^\d{1,2}$/.test(raw)) return null;
+  const mm = Math.max(1, Math.min(12, Number(raw)));
+  if (!mm) return null;
+  const yyyy = now.getFullYear();
+  const month = `${yyyy}-${String(mm).padStart(2, '0')}`;
+  return { month, label: `tháng ${mm}` };
+}
+
+function extractProvinceOrCity(text: string): string | null {
+  const raw = text.trim();
+  const n = normalizeVi(raw);
+  if (!n) return null;
+
+  const alias: Array<[RegExp, string]> = [
+    [/\b(hcm|tphcm|tp hcm|ho chi minh|sai gon|saigon|sg)\b/i, 'TP. Hồ Chí Minh'],
+    [/\b(ha noi|hanoi|hn)\b/i, 'Hà Nội'],
+    [/\b(da nang|danang)\b/i, 'Đà Nẵng'],
+  ];
+  for (const [re, val] of alias) if (re.test(n)) return val;
+
+  // Quick heuristic list (normalized) to avoid scanning huge JSON on client.
+  const known = [
+    'an giang','ba ria vung tau','bac lieu','bac giang','bac kan','bac ninh','ben tre','binh dinh','binh duong','binh phuoc','binh thuan',
+    'ca mau','can tho','cao bang','dak lak','dak nong','dien bien','dong nai','dong thap','gia lai','ha giang','ha nam','ha tinh','hai duong',
+    'hai phong','hau giang','hoa binh','hung yen','khanh hoa','kien giang','kon tum','lai chau','lam dong','lang son','lao cai','long an',
+    'nam dinh','nghe an','ninh binh','ninh thuan','phu tho','phu yen','quang binh','quang nam','quang ngai','quang ninh','quang tri',
+    'soc trang','son la','tay ninh','thai binh','thai nguyen','thanh hoa','tien giang','tra vinh','tuyen quang','vinh long','vinh phuc','yen bai',
+    // popular destinations
+    'hue','phu quoc','nha trang','da lat','ha long','hoi an','sapa','quy nhon','phan thiet','mui ne','moc chau'
+  ];
+  for (const k of known) {
+    const re = new RegExp(`\\b${k.replace(/\\s+/g, '\\\\s+')}\\b`, 'i');
+    if (re.test(n)) return raw;
+  }
+  return null;
+}
+
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<ChatMode>('ai');
@@ -134,6 +184,8 @@ const ChatWidget = () => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<{ month: string; label: string } | null>(null);
 
   const hasAnyChat = messages.length > 0;
 
@@ -168,6 +220,8 @@ const ChatWidget = () => {
   const resetChat = () => {
     setMessages([]);
     setMode('ai');
+    setSelectedProvince(null);
+    setSelectedMonth(null);
   };
 
   const setFeedback = (messageId: string, feedback: 'up' | 'down') => {
@@ -176,11 +230,12 @@ const ChatWidget = () => {
     );
   };
 
-  const openToursPrefilled = (opts: { search?: string; budget?: string; date?: string }) => {
+  const openToursPrefilled = (opts: { search?: string; budget?: string; date?: string; month?: string }) => {
     const params = new URLSearchParams();
     if (opts.search) params.set('search', opts.search);
     if (opts.budget) params.set('budget', opts.budget);
     if (opts.date) params.set('date', opts.date);
+    if (opts.month) params.set('month', opts.month);
     navigate(`/tours${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
@@ -210,9 +265,63 @@ const ChatWidget = () => {
     pushMessage({ id: `u_${now}`, role: 'user', text, createdAt: now });
 
     try {
+      const historyForApi: ChatHistoryItem[] = messages
+        .slice(-10)
+        .map(
+          (m): ChatHistoryItem => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.text,
+          })
+        )
+        .filter((h) => h.content && h.content.trim().length > 0);
+
+      // Remember province/city and month to support multi-step filtering
+      const provinceFromText = extractProvinceOrCity(text);
+      if (provinceFromText) setSelectedProvince(provinceFromText);
+      let monthFromText = parseDepartureMonth(text);
+      // If user already selected a province, allow just "6" => tháng 6
+      if (!monthFromText && (provinceFromText || selectedProvince)) {
+        monthFromText = parseBareMonthNumber(text);
+      }
+      if (monthFromText) setSelectedMonth(monthFromText);
+
+      // Province-only flow: user picks destination first -> suggest tours now + ask month
+      // Only trigger when this message contains a province/city and user hasn't provided month yet.
+      if (provinceFromText && !monthFromText && !selectedMonth) {
+        const budget = parseBudget(text);
+        const durationDays = parseDurationDays(text);
+
+        const tourRes = await getTours({
+          page: 1,
+          limit: 30,
+          search: provinceFromText,
+          minPrice: budget.minPrice,
+          maxPrice: budget.maxPrice,
+        });
+
+        let instances = extractToursFromGetToursResponse(tourRes as any);
+        instances = [...instances].sort((a: any, b: any) => Number(a?.price ?? 0) - Number(b?.price ?? 0));
+        const cards = buildTourCardsFromInstances(instances, durationDays);
+
+        pushMessage({
+          id: `b_${Date.now()}`,
+          role: 'bot',
+          createdAt: Date.now(),
+          source: 'local',
+          text: cards.length
+            ? `Mình gợi ý vài tour “${provinceFromText}” bên dưới. Bạn dự kiến đi tháng mấy để mình lọc đúng lịch khởi hành cho bạn ạ?`
+            : `Hiện tại mình chưa thấy tour “${provinceFromText}” trong hệ thống. Bạn dự kiến đi tháng mấy (ví dụ “tháng 6”) hoặc muốn mình gợi ý điểm đến tương tự ạ?`,
+          tours: cards.length ? cards : undefined,
+        });
+
+        openToursPrefilled({ search: provinceFromText, budget: budget.budgetKey });
+        setSending(false);
+        return;
+      }
+
       // 0) "Đặt tour ✈️" / hướng dẫn đặt: ưu tiên trả lời hướng dẫn (không fetch tour)
       if (isHowToBookIntent(text)) {
-        const res = await sendChatMessage(text);
+        const res = await sendChatMessage(text, historyForApi);
         const responseText =
           res.data?.data?.response || res.data?.message || 'Mình chưa nhận được phản hồi. Bạn thử lại nhé.';
         pushMessage({
@@ -222,6 +331,59 @@ const ChatWidget = () => {
           source: res.data?.data?.source,
           text: responseText,
         });
+        setSending(false);
+        return;
+      }
+
+      // Province + Month flow: MUST show tours in that province/month, else explicitly tell "no tours"
+      const p = provinceFromText || selectedProvince;
+      const m = monthFromText || selectedMonth;
+      if (p && m) {
+        const budget = parseBudget(text);
+        const durationDays = parseDurationDays(text);
+
+        const tourRes = await getTours({
+          page: 1,
+          limit: 50,
+          search: p,
+          minPrice: budget.minPrice,
+          maxPrice: budget.maxPrice,
+          departureMonth: m.month,
+        });
+
+        let instances = extractToursFromGetToursResponse(tourRes as any);
+        instances = [...instances].sort((a: any, b: any) => Number(a?.price ?? 0) - Number(b?.price ?? 0));
+        const cards = buildTourCardsFromInstances(instances, durationDays);
+
+        if (!cards.length) {
+          pushMessage({
+            id: `b_${Date.now()}`,
+            role: 'bot',
+            createdAt: Date.now(),
+            source: 'local',
+            text:
+              `Hiện tại mình chưa có tour “${p}” khởi hành trong ${m.label}.\n` +
+              `Bạn muốn mình gợi ý tháng khác (ví dụ: “tháng 6”) hay gợi ý điểm đến tương tự ạ?`,
+          });
+          setSending(false);
+          return;
+        }
+
+        pushMessage({
+          id: `b_${Date.now()}`,
+          role: 'bot',
+          createdAt: Date.now(),
+          source: 'local',
+          text: `Mình gợi ý vài tour “${p}” khởi hành trong ${m.label} bên dưới. Bạn bấm vào card để xem chi tiết/đặt tour nhé.`,
+          tours: cards,
+        });
+
+        openToursPrefilled({
+          search: p,
+          month: m.month,
+          budget: budget.budgetKey,
+        });
+
         setSending(false);
         return;
       }
@@ -332,7 +494,7 @@ const ChatWidget = () => {
         return;
       }
 
-      const res = await sendChatMessage(text);
+      const res = await sendChatMessage(text, historyForApi);
       const responseText = res.data?.data?.response || res.data?.message || 'Mình chưa nhận được phản hồi. Bạn thử lại nhé.';
       const source = res.data?.data?.source;
       const isFallback = /khong thuoc pham vi|tổng đài|0364902031/i.test(responseText);
@@ -595,7 +757,10 @@ const ChatWidget = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSend();
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
                   }}
                   disabled={sending}
                 />

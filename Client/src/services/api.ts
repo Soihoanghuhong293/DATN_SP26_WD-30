@@ -33,6 +33,7 @@ export type GetToursParams = {
   minPrice?: number;
   maxPrice?: number;
   departureDate?: string;
+  departureMonth?: string; // YYYY-MM
 };
 
 export async function getTours(params: GetToursParams = {}) {

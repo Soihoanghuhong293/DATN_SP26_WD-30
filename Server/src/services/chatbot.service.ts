@@ -1,10 +1,10 @@
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import type { ChatbotIntent, KeywordMatchResult } from '../types/chatbot.types.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const DATA_DIR = path.join(process.cwd(), 'src', 'data');
+
+type ChatHistoryItem = { role: 'user' | 'assistant'; content: string };
 
 // Bảng chuyển đổi bỏ dấu tiếng Việt
 const VIETNAMESE_MAP: Record<string, string> = {
@@ -41,9 +41,52 @@ function normalizeText(text: string): string {
  * Load FAQ từ file JSON
  */
 function loadFAQ(): ChatbotIntent[] {
-  const faqPath = path.join(__dirname, '../data/chatbot-faq.json');
+  const faqPath = path.join(DATA_DIR, 'chatbot-faq.json');
   const raw = fs.readFileSync(faqPath, 'utf-8');
   return JSON.parse(raw) as ChatbotIntent[];
+}
+
+function loadContext(): string {
+  const p = path.join(DATA_DIR, 'chatbot-context.md');
+  try {
+    return fs.readFileSync(p, 'utf-8').trim();
+  } catch {
+    return '';
+  }
+}
+
+// Cache file loads (auto-refresh when file changes)
+let FAQ_CACHE: ChatbotIntent[] | null = null;
+let FAQ_MTIME_MS = 0;
+let CONTEXT_CACHE = '';
+let CONTEXT_MTIME_MS = 0;
+
+function safeStatMtimeMs(p: string): number {
+  try {
+    return fs.statSync(p).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+function getFAQCached(): ChatbotIntent[] {
+  const faqPath = path.join(DATA_DIR, 'chatbot-faq.json');
+  const m = safeStatMtimeMs(faqPath);
+  if (!FAQ_CACHE || (m && m !== FAQ_MTIME_MS)) {
+    FAQ_CACHE = loadFAQ();
+    FAQ_MTIME_MS = m;
+  }
+  return FAQ_CACHE;
+}
+
+function getContextCached(): string {
+  const ctxPath = path.join(DATA_DIR, 'chatbot-context.md');
+  const m = safeStatMtimeMs(ctxPath);
+  if (!CONTEXT_CACHE || (m && m !== CONTEXT_MTIME_MS)) {
+    CONTEXT_CACHE = loadContext();
+    CONTEXT_MTIME_MS = m;
+  }
+  return CONTEXT_CACHE;
 }
 
 /**
@@ -63,7 +106,7 @@ export function matchKeyword(userMessage: string): KeywordMatchResult {
     return { source: 'keyword', matched: false };
   }
 
-  const intents = loadFAQ();
+  const intents = getFAQCached();
   let bestMatch: ChatbotIntent | null = null;
   let bestScore = 0;
 
@@ -122,17 +165,40 @@ Nếu Quý khách cần hỗ trợ du lịch, vui lòng cho Em:
 - Nơi xuất phát
 Hoặc Quý khách có thể liên hệ tổng đài 0364902031 để được tư vấn nhanh ạ.`;
 
+function toHistoryMessages(history: unknown): ChatHistoryItem[] {
+  if (!Array.isArray(history)) return [];
+  const items: ChatHistoryItem[] = [];
+  for (const h of history) {
+    if (!h || typeof h !== 'object') continue;
+    const role = (h as any).role;
+    const content = (h as any).content;
+    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') continue;
+    const c = content.trim();
+    if (!c) continue;
+    items.push({ role, content: c.slice(0, 2000) });
+  }
+  return items.slice(-12);
+}
+
 /**
  * Gọi OpenAI API để trả lời khi không khớp keyword
  * Cần cấu hình OPENAI_API_KEY trong .env
  */
-export async function callAIFallback(userMessage: string): Promise<string> {
+export async function callAIFallback(userMessage: string, history?: unknown): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return DEFAULT_FALLBACK;
   }
 
   try {
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const controller = new AbortController();
+    const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 15000);
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+
+    const context = getContextCached();
+    const historyItems = toHistoryMessages(history);
+
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -140,15 +206,19 @@ export async function callAIFallback(userMessage: string): Promise<string> {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
+          ...(context ? [{ role: 'system', content: `CONTEXT (chỉ dùng để trả lời đúng dịch vụ):\n${context}` }] : []),
+          ...historyItems,
           { role: 'user', content: userMessage },
         ],
-        max_tokens: 200,
-        temperature: 0.6,
+        max_tokens: Number(process.env.OPENAI_MAX_TOKENS || 220),
+        temperature: Number(process.env.OPENAI_TEMPERATURE || 0.5),
       }),
+      signal: controller.signal,
     });
+    clearTimeout(t);
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -183,5 +253,26 @@ export async function processMessage(userMessage: string): Promise<{
   }
 
   const aiResponse = await callAIFallback(userMessage);
+  return { response: aiResponse, source: 'ai' };
+}
+
+export async function processMessageWithHistory(
+  userMessage: string,
+  history?: unknown
+): Promise<{
+  response: string;
+  source: 'keyword' | 'ai';
+  intentId?: string;
+}> {
+  const keywordResult = matchKeyword(userMessage);
+  if (keywordResult.matched && keywordResult.response) {
+    return {
+      response: keywordResult.response,
+      source: 'keyword',
+      intentId: keywordResult.intentId,
+    };
+  }
+
+  const aiResponse = await callAIFallback(userMessage, history);
   return { response: aiResponse, source: 'ai' };
 }

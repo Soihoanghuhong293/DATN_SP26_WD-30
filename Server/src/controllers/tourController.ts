@@ -24,6 +24,7 @@ export const getAllTours = async (req: Request, res: Response) => {
       minPrice,
       maxPrice,
       departureDate,
+      departureMonth,
     } = req.query as Record<string, string | undefined>;
 
     const pageNum = Math.max(1, Number(page) || 1);
@@ -63,6 +64,14 @@ export const getAllTours = async (req: Request, res: Response) => {
     if (departureDate && departureDate.trim() !== '') {
       // departure_schedule.date đang lưu dạng string "YYYY-MM-DD"
       filter['departure_schedule.date'] = departureDate.trim();
+    }
+
+    // Filter theo tháng khởi hành: YYYY-MM (ví dụ 2026-05)
+    if (departureMonth && departureMonth.trim() !== '') {
+      const dm = departureMonth.trim();
+      if (/^\d{4}-\d{2}$/.test(dm)) {
+        filter['departure_schedule.date'] = { $regex: `^${dm}-` };
+      }
     }
 
     if (search && search.trim() !== '') {

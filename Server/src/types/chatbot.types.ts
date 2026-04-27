@@ -6,7 +6,7 @@ export interface ChatbotIntent {
   intentId: string;
   keywords: string[];
   response: string;
-  category: 'general' | 'tour' | 'booking' | 'payment' | 'contact';
+  category: 'general' | 'tour' | 'booking' | 'payment' | 'contact' | 'account' | 'policy';
 }
 
 export interface KeywordMatchResult {

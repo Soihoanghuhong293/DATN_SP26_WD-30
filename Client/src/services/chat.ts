@@ -12,8 +12,10 @@ export interface ChatResponse {
   message?: string;
 }
 
-export const sendChatMessage = (message: string) => {
-  return axios.post<ChatResponse>(`${API_URL}/chat`, { message });
+export type ChatHistoryItem = { role: 'user' | 'assistant'; content: string };
+
+export const sendChatMessage = (message: string, history?: ChatHistoryItem[]) => {
+  return axios.post<ChatResponse>(`${API_URL}/chat`, { message, history });
 };
 
 export interface ContactMessagePayload {

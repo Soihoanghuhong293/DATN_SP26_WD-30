@@ -1,31 +1,31 @@
 [
   {
     "intentId": "greeting",
-    "keywords": ["xin chào", "chào", "hello", "hi", "alo", "chào bạn"],
+    "keywords": ["xin chào", "chào", "hello", "hi", "alo", "chào bạn", "chào shop", "chào ad", "chào em", "chào anh", "chào chị", "mình cần hỗ trợ", "tôi cần hỗ trợ"],
     "response": "Xin chào! Chúng tôi rất vui được hỗ trợ bạn. Bạn muốn biết thêm thông tin về tour nào?",
     "category": "general"
   },
   {
     "intentId": "intro-help",
-    "keywords": ["bạn làm được gì", "giúp gì", "hướng dẫn", "help", "tư vấn", "tư vấn tour", "tôi nên hỏi gì"],
+    "keywords": ["bạn làm được gì", "giúp gì", "hướng dẫn", "help", "tư vấn", "tư vấn tour", "tôi nên hỏi gì", "tư vấn giúp tôi", "bạn hỗ trợ gì", "chức năng chatbot", "hỏi gì được", "có thể hỏi gì", "hướng dẫn sử dụng", "hướng dẫn nhanh"],
     "response": "Mình có thể giúp bạn: tìm tour theo điểm đến/ngân sách/thời gian, xem lịch khởi hành, hướng dẫn đặt tour & thanh toán, chính sách đổi/huỷ, và cách kiểm tra trạng thái booking. Bạn muốn đi đâu và dự kiến đi tháng mấy ạ?",
     "category": "general"
   },
   {
     "intentId": "tour-price",
-    "keywords": ["giá tour", "bao nhiêu tiền", "chi phí", "phí tour", "giá cả", "cost", "bao nhiêu"],
+    "keywords": ["giá tour", "bao nhiêu tiền", "chi phí", "phí tour", "giá cả", "cost", "bao nhiêu", "tour bao nhiêu", "giá 1 người", "giá một người", "giá per pax", "giá trọn gói", "tour trọn gói bao nhiêu", "báo giá", "báo giá tour", "bảng giá"],
     "response": "Giá tour phụ thuộc vào từng chuyến đi và loại tour. Bạn vui lòng chọn tour cụ thể trên trang để xem giá chi tiết. Hoặc gọi hotline 0364902031 để được tư vấn báo giá nhanh nhất.",
     "category": "tour"
   },
   {
     "intentId": "tour-cheap",
-    "keywords": ["tour giá rẻ", "tour rẻ", "tour tiết kiệm", "giá rẻ", "rẻ nhất", "dưới 5 triệu", "duoi 5 trieu", "under 5m"],
+    "keywords": ["tour giá rẻ", "tour rẻ", "tour tiết kiệm", "giá rẻ", "rẻ nhất", "dưới 5 triệu", "duoi 5 trieu", "under 5m", "tour bình dân", "tour tiết kiệm nhất", "tour giảm giá", "tour sale", "tour khuyến mãi", "tour ưu đãi", "deal tour", "deal du lịch"],
     "response": "Bạn có thể xem các tour giá tốt tại trang Tour và lọc theo ngân sách (ví dụ: Dưới 5 triệu / 5-10 triệu). Nếu bạn cho mình biết điểm đến + tháng khởi hành, mình sẽ gợi ý vài tour phù hợp ngay.",
     "category": "tour"
   },
   {
     "intentId": "tour-by-budget",
-    "keywords": ["ngân sách", "budget", "tư vấn theo ngân sách", "toi co", "tôi có", "triệu", "trieu", "m", "mtr"],
+    "keywords": ["ngân sách", "budget", "tư vấn theo ngân sách", "toi co", "tôi có", "triệu", "trieu", "m", "mtr", "tầm giá", "tầm bao nhiêu", "khoảng bao nhiêu", "ngân sách bao nhiêu", "mức giá", "tư vấn chi phí", "giá tầm", "chi phí tầm"],
     "response": "Bạn cho mình ngân sách dự kiến (ví dụ: 5 triệu/10 triệu), số người đi và điểm đến (hoặc bạn muốn mình gợi ý điểm đến). Mình sẽ tư vấn tour phù hợp nhất với ngân sách nhé.",
     "category": "tour"
   },
@@ -36,56 +36,162 @@
     "category": "tour"
   },
   {
+    "intentId": "tour-2n1d",
+    "keywords": ["2n1d", "2 ngày 1 đêm", "2 ngay 1 dem", "tour 2 ngày", "tour 2 ngay", "tour 2n1d", "đi 2 ngày", "di 2 ngay"],
+    "response": "Bạn muốn tour 2N1Đ đi đâu ạ (gần/xa) và xuất phát từ đâu? Bạn cho mình điểm đến hoặc sở thích (biển/núi/nghỉ dưỡng) để mình gợi ý tour phù hợp nhé.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-4n3d",
+    "keywords": ["4n3d", "4 ngày 3 đêm", "4 ngay 3 dem", "tour 4 ngày", "tour 4 ngay", "đi 4 ngày", "di 4 ngay", "tour 4n3d"],
+    "response": "Bạn muốn tour 4N3Đ đi đâu và đi tháng mấy ạ? Gửi mình điểm đến + ngân sách để mình gợi ý vài tour đang có lịch khởi hành phù hợp.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-5n4d",
+    "keywords": ["5n4d", "5 ngày 4 đêm", "5 ngay 4 dem", "tour 5 ngày", "tour 5 ngay", "đi 5 ngày", "di 5 ngay", "tour dài ngày"],
+    "response": "Tour 5N4Đ thường phù hợp đi xa/khám phá nhiều điểm. Bạn cho mình điểm đến + tháng đi + số người để mình gợi ý lịch trình và mức giá phù hợp nhé.",
+    "category": "tour"
+  },
+  {
     "intentId": "tour-departure-date",
-    "keywords": ["tháng", "thang", "ngày", "ngay", "ngày khởi hành", "lịch khởi hành", "khi nào đi", "khoi hanh"],
+    "keywords": ["ngày khởi hành", "lịch khởi hành", "khi nào đi", "khoi hanh", "lịch đi", "lich di", "khởi hành ngày nào", "khoi hanh ngay nao", "còn suất", "con suat", "còn chỗ", "con cho", "còn slot", "con slot", "ngày nào có tour", "ngay nao co tour", "lịch khởi hành tháng", "lich khoi hanh thang"],
     "response": "Lịch khởi hành và số chỗ còn trống hiển thị trong trang chi tiết tour. Bạn mở tour muốn đi → chọn ngày khởi hành → bấm Đặt ngay để giữ chỗ.",
     "category": "tour"
   },
   {
     "intentId": "tour-list",
-    "keywords": ["tour có những gì", "danh sách tour", "các tour", "tour nào", "có tour gì"],
+    "keywords": ["tour có những gì", "danh sách tour", "các tour", "tour nào", "có tour gì", "tour đang có", "tour hiện có", "tour hot", "tour nổi bật", "tour phổ biến", "tour best seller"],
     "response": "Bạn có thể xem danh sách tour tại mục Tour trên trang chủ. Chúng tôi có nhiều tour du lịch trong nước và nước ngoài. Hãy truy cập trang Tour để khám phá nhé!",
     "category": "tour"
   },
   {
     "intentId": "tour-destinations",
-    "keywords": ["điểm đến", "diem den", "đi đâu", "đi du lịch ở đâu", "gợi ý điểm đến", "goi y diem den"],
+    "keywords": ["điểm đến", "diem den", "đi đâu", "đi du lịch ở đâu", "gợi ý điểm đến", "goi y diem den", "đi đâu chơi", "di dau choi", "nên đi đâu", "nen di dau", "đi biển", "di bien", "đi núi", "di nui", "nghỉ dưỡng", "nghi duong"],
     "response": "Bạn cho mình 3 thông tin: ngân sách, số ngày (ví dụ 3N2Đ), và tháng đi. Mình sẽ gợi ý điểm đến + tour phù hợp (Hạ Long/Đà Nẵng/Phú Quốc/Đà Lạt/Nha Trang...).",
     "category": "tour"
   },
   {
+    "intentId": "tour-by-province-city",
+    "keywords": [
+      "an giang", "an giang province", "tinh an giang", "an giang tour",
+      "ba ria vung tau", "bà rịa vũng tàu", "ba ria - vung tau", "vung tau", "vũng tàu", "tau", "brvt",
+      "bac lieu", "bạc liêu", "tinh bac lieu", "bac lieu tour",
+      "bac giang", "bắc giang", "tinh bac giang", "bac giang tour",
+      "bac kan", "bắc kạn", "bac can", "tinh bac kan", "bac kan tour",
+      "bac ninh", "bắc ninh", "tinh bac ninh", "bac ninh tour",
+      "ben tre", "bến tre", "tinh ben tre", "ben tre tour",
+      "binh dinh", "bình định", "quy nhon", "quy nhơn", "tinh binh dinh", "binh dinh tour",
+      "binh duong", "bình dương", "tinh binh duong", "binh duong tour",
+      "binh phuoc", "bình phước", "tinh binh phuoc", "binh phuoc tour",
+      "binh thuan", "bình thuận", "phan thiet", "phan thiết", "mui ne", "mũi né", "tinh binh thuan", "binh thuan tour",
+      "ca mau", "cà mau", "tinh ca mau", "ca mau tour",
+      "can tho", "cần thơ", "tp can tho", "thanh pho can tho", "tinh can tho", "can tho tour",
+      "cao bang", "cao bằng", "tinh cao bang", "cao bang tour",
+      "da nang", "đà nẵng", "tp da nang", "thanh pho da nang", "da nang tour",
+      "dak lak", "đắk lắk", "daklac", "buon ma thuot", "buôn ma thuột", "tinh dak lak", "dak lak tour",
+      "dak nong", "đắk nông", "tinh dak nong", "dak nong tour",
+      "dien bien", "điện biên", "dien bien phu", "điện biên phủ", "tinh dien bien", "dien bien tour",
+      "dong nai", "đồng nai", "bien hoa", "biên hoà", "tinh dong nai", "dong nai tour",
+      "dong thap", "đồng tháp", "tinh dong thap", "dong thap tour",
+      "gia lai", "gia lai province", "pleiku", "plây ku", "tinh gia lai", "gia lai tour",
+      "ha giang", "hà giang", "tinh ha giang", "ha giang tour",
+      "ha nam", "hà nam", "tinh ha nam", "ha nam tour",
+      "ha noi", "hà nội", "hn", "hanoi", "thủ đô", "thu do", "tp ha noi", "hanoi tour",
+      "ha tinh", "hà tĩnh", "tinh ha tinh", "ha tinh tour",
+      "hai duong", "hải dương", "tinh hai duong", "hai duong tour",
+      "hai phong", "hải phòng", "hp", "haiphong", "tp hai phong", "hai phong tour",
+      "hau giang", "hậu giang", "tinh hau giang", "hau giang tour",
+      "hoa binh", "hòa bình", "tinh hoa binh", "hoa binh tour",
+      "hung yen", "hưng yên", "tinh hung yen", "hung yen tour",
+      "khanh hoa", "khánh hòa", "nha trang", "nhatrang", "cam ranh", "cam ranh", "tinh khanh hoa", "khanh hoa tour",
+      "kien giang", "kiên giang", "phu quoc", "phú quốc", "rach gia", "rạch giá", "tinh kien giang", "kien giang tour",
+      "kon tum", "kon tum province", "tinh kon tum", "kon tum tour",
+      "lai chau", "lai châu", "tinh lai chau", "lai chau tour",
+      "lam dong", "lâm đồng", "da lat", "đà lạt", "dalat", "tinh lam dong", "lam dong tour",
+      "lang son", "lạng sơn", "tinh lang son", "lang son tour",
+      "lao cai", "lào cai", "sapa", "sa pa", "sa pa", "tinh lao cai", "lao cai tour",
+      "long an", "long an province", "tinh long an", "long an tour",
+      "nam dinh", "nam định", "tinh nam dinh", "nam dinh tour",
+      "nghe an", "nghệ an", "vinh", "tp vinh", "tinh nghe an", "nghe an tour",
+      "ninh binh", "ninh bình", "tam coc", "tràng an", "trang an", "tinh ninh binh", "ninh binh tour",
+      "ninh thuan", "ninh thuận", "phan rang", "phan rang", "tinh ninh thuan", "ninh thuan tour",
+      "phu tho", "phú thọ", "tinh phu tho", "phu tho tour",
+      "phu yen", "phú yên", "tuy hoa", "tuy hoà", "tinh phu yen", "phu yen tour",
+      "quang binh", "quảng bình", "phong nha", "phong nha ke bang", "tinh quang binh", "quang binh tour",
+      "quang nam", "quảng nam", "hoi an", "hội an", "cu lao cham", "cù lao chàm", "tinh quang nam", "quang nam tour",
+      "quang ngai", "quảng ngãi", "ly son", "lý sơn", "tinh quang ngai", "quang ngai tour",
+      "quang ninh", "quảng ninh", "ha long", "hạ long", "halong", "co to", "cô tô", "tinh quang ninh", "quang ninh tour",
+      "quang tri", "quảng trị", "tinh quang tri", "quang tri tour",
+      "soc trang", "sóc trăng", "tinh soc trang", "soc trang tour",
+      "son la", "sơn la", "moc chau", "mộc châu", "tinh son la", "son la tour",
+      "tay ninh", "tây ninh", "nui ba den", "núi bà đen", "tinh tay ninh", "tay ninh tour",
+      "thai binh", "thái bình", "tinh thai binh", "thai binh tour",
+      "thai nguyen", "thái nguyên", "tinh thai nguyen", "thai nguyen tour",
+      "thanh hoa", "thanh hoá", "sam son", "sầm sơn", "pu luong", "pù luông", "tinh thanh hoa", "thanh hoa tour",
+      "hue", "huế", "thua thien hue", "thừa thiên huế", "co do hue", "cố đô huế", "tinh hue", "hue tour",
+      "tien giang", "tiền giang", "my tho", "mỹ tho", "tinh tien giang", "tien giang tour",
+      "tp ho chi minh", "thanh pho ho chi minh", "ho chi minh", "hcm", "tphcm", "tp hcm", "sai gon", "sài gòn", "saigon", "sg",
+      "tra vinh", "trà vinh", "tinh tra vinh", "tra vinh tour",
+      "tuyen quang", "tuyên quang", "tinh tuyen quang", "tuyen quang tour",
+      "vinh long", "vĩnh long", "tinh vinh long", "vinh long tour",
+      "vinh phuc", "vĩnh phúc", "tam dao", "tam đảo", "tinh vinh phuc", "vinh phuc tour",
+      "yen bai", "yên bái", "mu cang chai", "mù cang chải", "tinh yen bai", "yen bai tour"
+    ],
+    "response": "Bạn muốn đi khu vực này mấy ngày và dự kiến đi tháng mấy ạ? Nếu bạn cho mình thêm ngân sách/khách, mình sẽ gợi ý tour phù hợp nhất nhé.",
+    "category": "tour"
+  },
+  {
     "intentId": "tour-by-days",
-    "keywords": ["theo số ngày", "theo so ngay", "tour mấy ngày", "tour may ngay", "1 ngày", "1 ngay", "2 ngày 1 đêm", "2 ngay 1 dem", "3 ngày 2 đêm", "3 ngay 2 dem", "4 ngày 3 đêm", "4 ngay 3 dem"],
+    "keywords": ["theo số ngày", "theo so ngay", "tour mấy ngày", "tour may ngay", "đi mấy ngày", "di may ngay", "tour bao nhiêu ngày", "tour bao nhieu ngay", "đi 1 ngày", "di 1 ngay", "1 ngày", "1 ngay", "đi 2 ngày", "di 2 ngay", "2 ngày", "2 ngay", "2 ngày 1 đêm", "2 ngay 1 dem", "đi 3 ngày", "di 3 ngay", "3 ngày", "3 ngay", "3 ngày 2 đêm", "3 ngay 2 dem", "đi 4 ngày", "di 4 ngay", "4 ngày", "4 ngay", "4 ngày 3 đêm", "4 ngay 3 dem", "đi 5 ngày", "di 5 ngay", "5 ngày", "5 ngay", "5 ngày 4 đêm", "5 ngay 4 dem"],
     "response": "Bạn muốn đi mấy ngày ạ (ví dụ 3N2Đ/4N3Đ) và muốn đi đâu? Bạn có thể vào trang Tour và lọc theo thời gian. Nếu bạn gửi mình “điểm đến + số ngày + tháng đi”, mình sẽ gợi ý nhanh vài tour phù hợp.",
     "category": "tour"
   },
   {
     "intentId": "tour-family",
-    "keywords": ["đi gia đình", "di gia dinh", "tour gia đình", "tour gia dinh", "có trẻ em", "co tre em", "em bé", "em be", "gia đình có bé", "gia dinh co be"],
+    "keywords": ["đi gia đình", "di gia dinh", "tour gia đình", "tour gia dinh", "có trẻ em", "co tre em", "em bé", "em be", "gia đình có bé", "gia dinh co be", "đi cùng bé", "di cung be", "đi cùng trẻ", "di cung tre", "tour cho bé", "tour cho tre em"],
     "response": "Tour đi gia đình thường ưu tiên lịch trình nhẹ, thời gian di chuyển hợp lý và dịch vụ phù hợp trẻ em. Bạn cho mình: số người lớn + số bé + độ tuổi bé + tháng đi + ngân sách, mình sẽ gợi ý tour phù hợp nhất nhé.",
     "category": "tour"
   },
   {
+    "intentId": "tour-couple",
+    "keywords": ["đi cặp đôi", "di cap doi", "đi đôi", "di doi", "couple", "trăng mật", "trang mat", "honeymoon", "kỷ niệm", "ky niem", "tour lãng mạn", "tour lang man"],
+    "response": "Bạn muốn chuyến đi lãng mạn kiểu nghỉ dưỡng hay khám phá ạ? Bạn cho mình ngân sách + số ngày + tháng đi, mình sẽ gợi ý vài điểm đến/tour hợp cặp đôi nhé.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-group",
+    "keywords": ["đi nhóm", "di nhom", "đoàn", "doan", "tour đoàn", "tour doan", "đi công ty", "di cong ty", "team building", "teambuilding", "company trip", "tour tập thể", "tour tap the"],
+    "response": "Tour đoàn/đi công ty thường cần số lượng người và yêu cầu dịch vụ (xe, khách sạn, gala). Bạn cho mình số người + điểm đến + thời gian để tư vấn viên báo phương án phù hợp nhé.",
+    "category": "tour"
+  },
+  {
+    "intentId": "tour-private",
+    "keywords": ["tour riêng", "tour rieng", "private tour", "đi riêng", "di rieng", "tour theo yêu cầu", "tour theo yeu cau", "custom tour", "tour thiết kế", "tour thiet ke"],
+    "response": "Bên mình có tour riêng theo yêu cầu. Bạn cho mình: điểm đến, số người, số ngày, tháng đi và ngân sách để tư vấn viên lên lịch trình & báo giá nhanh nhé.",
+    "category": "tour"
+  },
+  {
     "intentId": "tour-include-exclude",
-    "keywords": ["bao gồm", "bao gom", "không bao gồm", "khong bao gom", "dịch vụ", "dich vu", "đã gồm gì", "chưa gồm gì"],
+    "keywords": ["bao gồm", "bao gom", "không bao gồm", "khong bao gom", "dịch vụ", "dich vu", "đã gồm gì", "chưa gồm gì", "giá gồm gì", "gia gom gi", "chi phí gồm gì", "chi phi gom gi", "phụ thu", "phu thu"],
     "response": "Mỗi tour có mục “Dịch vụ bao gồm/không bao gồm” trong trang chi tiết. Thông thường gồm xe di chuyển, vé tham quan theo chương trình, khách sạn (nếu có), hướng dẫn viên; không gồm chi tiêu cá nhân. Bạn gửi tên tour hoặc link tour để mình giải thích chi tiết hơn nhé.",
     "category": "tour"
   },
   {
     "intentId": "tour-hotel",
-    "keywords": ["khách sạn", "khach san", "ở đâu", "o dau", "tiêu chuẩn", "tieu chuan", "mấy sao", "may sao", "phòng", "phong"],
+    "keywords": ["khách sạn", "khach san", "ở đâu", "o dau", "tiêu chuẩn", "tieu chuan", "mấy sao", "may sao", "phòng", "phong", "ở khách sạn nào", "o khach san nao", "resort", "homestay", "loại phòng", "loai phong", "check in", "checkin", "check out", "checkout"],
     "response": "Thông tin khách sạn/tiêu chuẩn phòng sẽ nằm trong mô tả tour hoặc phần lịch trình. Nếu bạn cho mình tên tour, mình sẽ hướng dẫn bạn xem đúng mục và giải thích tiêu chuẩn lưu trú.",
     "category": "tour"
   },
   {
     "intentId": "tour-transport",
-    "keywords": ["di chuyển", "di chuyen", "xe", "máy bay", "may bay", "tàu", "tau", "phương tiện", "phuong tien"],
+    "keywords": ["di chuyển", "di chuyen", "xe", "máy bay", "may bay", "tàu", "tau", "phương tiện", "phuong tien", "xe đưa đón", "xe dua don", "đi bằng gì", "di bang gi", "vé máy bay", "ve may bay", "xe giường nằm", "xe giuong nam", "tàu hoả", "tau hoa"],
     "response": "Phương tiện di chuyển của tour hiển thị trong phần mô tả/lịch trình. Nếu là tour có vé máy bay, giá có thể thay đổi theo thời điểm. Bạn gửi tên tour hoặc điểm đến + ngày đi để mình tư vấn cụ thể.",
     "category": "tour"
   },
   {
     "intentId": "tour-meeting-point",
-    "keywords": ["điểm đón", "diem don", "đón ở đâu", "don o dau", "meeting point", "tập trung", "tap trung"],
+    "keywords": ["điểm đón", "diem don", "đón ở đâu", "don o dau", "meeting point", "tập trung", "tap trung", "điểm tập trung", "diem tap trung", "đón tại", "don tai", "pickup", "pick up", "pick-up"],
     "response": "Điểm đón/tập trung thường được thông báo khi xác nhận booking. Nếu bạn cho mình tour + khu vực đón (Hà Nội/TP.HCM/Đà Nẵng...), mình sẽ hướng dẫn bạn kiểm tra thông tin hoặc liên hệ tư vấn viên để chốt điểm đón nhanh.",
     "category": "tour"
   },
@@ -97,7 +203,7 @@
   },
   {
     "intentId": "booking",
-    "keywords": ["đặt tour", "đặt vé", "đặt chỗ", "đăng ký tour", "booking", "đặt"],
+    "keywords": ["đặt tour", "đặt vé", "đặt chỗ", "đăng ký tour", "booking", "đặt", "đặt ngay", "dat ngay", "giữ chỗ", "giu cho", "giữ chỗ trước", "giu cho truoc", "đặt giúp", "dat giup"],
     "response": "Để đặt tour, bạn chọn tour yêu thích và bấm nút Đặt tour. Bạn cần đăng nhập hoặc đăng ký tài khoản. Nếu cần hỗ trợ đặt tour, vui lòng liên hệ hotline 0364902031.",
     "category": "booking"
   },
@@ -121,7 +227,7 @@
   },
   {
     "intentId": "payment",
-    "keywords": ["thanh toán", "trả tiền", "chuyển khoản", "ví điện tử", "tiền mặt", "payment"],
+    "keywords": ["thanh toán", "trả tiền", "chuyển khoản", "ví điện tử", "tiền mặt", "payment", "qr", "quét qr", "quet qr", "chuyển khoản ngân hàng", "chuyen khoan ngan hang", "momo", "zalopay", "vnpay", "thẻ", "the", "card"],
     "response": "Chúng tôi hỗ trợ nhiều hình thức thanh toán: chuyển khoản ngân hàng, ví điện tử, tiền mặt tại văn phòng. Chi tiết sẽ được gửi sau khi bạn xác nhận đặt tour.",
     "category": "payment"
   },
@@ -139,7 +245,7 @@
   },
   {
     "intentId": "invoice",
-    "keywords": ["hoá đơn", "hoa don", "xuất hoá đơn", "xuat hoa don", "vat", "hóa đơn đỏ", "hoa don do"],
+    "keywords": ["hoá đơn", "hoa don", "xuất hoá đơn", "xuat hoa don", "vat", "hóa đơn đỏ", "hoa don do", "xuất vat", "xuat vat", "cần hoá đơn", "can hoa don", "gửi hoá đơn", "gui hoa don"],
     "response": "Nếu bạn cần xuất hoá đơn VAT, vui lòng cung cấp thông tin xuất hoá đơn (tên công ty, MST, địa chỉ, email nhận). Bạn có thể để lại tin nhắn trong chat hoặc liên hệ hotline 0364902031 để được hỗ trợ.",
     "category": "payment"
   },

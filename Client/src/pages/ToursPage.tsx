@@ -31,6 +31,7 @@ const ToursPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [budgetFilter, setBudgetFilter] = useState<string>(() => initialParams.get('budget') || ''); // dưới 5tr, 5-10tr...
   const [departureDate, setDepartureDate] = useState<string>(() => initialParams.get('date') || '');
+  const [departureMonth, setDepartureMonth] = useState<string>(() => initialParams.get('month') || '');
   const [categoryTree, setCategoryTree] = useState<ICategory[]>([]);
   const [categoryTreeLoading, setCategoryTreeLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -41,9 +42,11 @@ const ToursPage = () => {
     const qSearch = p.get('search') || '';
     const qBudget = p.get('budget') || '';
     const qDate = p.get('date') || '';
+    const qMonth = p.get('month') || '';
     setSearchTerm(qSearch);
     setBudgetFilter(qBudget);
     setDepartureDate(qDate);
+    setDepartureMonth(qMonth);
     setCurrentPage(1);
   }, [location.search]);
 
@@ -90,6 +93,7 @@ const ToursPage = () => {
           search: debouncedSearch || undefined,
           ...mapBudgetToPriceRange(budgetFilter),
           departureDate: departureDate || undefined,
+          departureMonth: departureMonth || undefined,
         });
         
         const instances = Array.isArray(data.data) ? (data.data as ITour[]) : [];
@@ -157,12 +161,13 @@ const ToursPage = () => {
     };
 
     fetchTours();
-  }, [currentPage, pageSize, debouncedSearch, budgetFilter, departureDate, categoryFilter, categoryTree]);
+  }, [currentPage, pageSize, debouncedSearch, budgetFilter, departureDate, departureMonth, categoryFilter, categoryTree]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setBudgetFilter('');
     setDepartureDate('');
+    setDepartureMonth('');
     setCategoryFilter(null);
     setCurrentPage(1);
   };
