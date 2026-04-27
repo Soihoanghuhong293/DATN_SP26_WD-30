@@ -7,21 +7,24 @@ type SendMailInput = {
 };
 
 let cachedTransport: nodemailer.Transporter | null = null;
+let cachedMode: 'smtp' | 'preview' | null = null;
 
 async function getTransport() {
   if (cachedTransport) return cachedTransport;
 
+  const forcePreview = String(process.env.MAIL_MODE || '').toLowerCase() === 'preview';
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  if (host && port && user && pass) {
+  if (!forcePreview && host && port && user && pass) {
     cachedTransport = nodemailer.createTransport({
       host,
       port,
       auth: { user, pass },
     });
+    cachedMode = 'smtp';
     return cachedTransport;
   }
 
@@ -35,6 +38,7 @@ async function getTransport() {
       pass: testAccount.pass,
     },
   });
+  cachedMode = 'preview';
   return cachedTransport;
 }
 
@@ -47,6 +51,11 @@ export async function sendMail({ to, subject, html }: SendMailInput) {
   if (preview) {
     // eslint-disable-next-line no-console
     console.log(`[mail] preview: ${preview}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[mail] sent: to=${to} subject=${JSON.stringify(subject)} mode=${cachedMode || 'smtp'} id=${info.messageId}`
+    );
   }
   return info;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Button, Form, Input, Steps, message } from "antd";
-import { MailOutlined, LockOutlined, SafetyOutlined } from "@ant-design/icons";
+import { MailOutlined, LockOutlined, SafetyOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
   forgotPasswordAPI,
   resetPasswordAPI,
@@ -22,6 +22,13 @@ const ForgotPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState<string>("");
   const [token, setToken] = useState<string>("");
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = window.setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => window.clearInterval(t);
+  }, [cooldown]);
 
   useEffect(() => {
     const qEmail = query.get("email") || "";
@@ -39,10 +46,25 @@ const ForgotPasswordPage = () => {
       const normalized = values.email.trim();
       setEmail(normalized);
       await forgotPasswordAPI({ email: normalized });
-      message.success("Nếu email tồn tại, hệ thống đã gửi OTP/link reset.");
+      message.success("Nếu email tồn tại, hệ thống đã gửi OTP.");
       setStep(1);
     } catch (err: any) {
       message.error(err.response?.data?.message || "Không thể gửi yêu cầu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetOtp = async () => {
+    if (!email) return;
+    setLoading(true);
+    try {
+      await forgotPasswordAPI({ email });
+      setToken("");
+      setCooldown(30);
+      message.success("OTP mới đã được gửi. Vui lòng kiểm tra email.");
+    } catch (err: any) {
+      message.error(err.response?.data?.message || "Không thể gửi lại OTP");
     } finally {
       setLoading(false);
     }
@@ -91,7 +113,7 @@ const ForgotPasswordPage = () => {
         <div className="login-card">
           <div className="login-header">
             <h1 className="login-title">Quên mật khẩu</h1>
-            <p className="login-subtitle">Khôi phục mật khẩu bằng OTP hoặc link reset</p>
+            <p className="login-subtitle">Khôi phục mật khẩu bằng OTP</p>
           </div>
 
           <Steps
@@ -102,7 +124,7 @@ const ForgotPasswordPage = () => {
               { title: "Xác thực OTP" },
               { title: "Mật khẩu mới" },
             ]}
-            style={{ marginBottom: 20 }}
+            style={{ marginBottom: 24 }}
           />
 
           {step === 0 && (
@@ -121,7 +143,11 @@ const ForgotPasswordPage = () => {
                 />
               </Form.Item>
 
-              <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
+              <div style={{ marginTop: 8, marginBottom: 16, color: "#6b7280", fontSize: 13 }}>
+                Bạn sẽ nhận được mã OTP 6 chữ số qua email (hết hạn sau 10 phút).
+              </div>
+
+              <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
                 <Button
                   type="primary"
                   htmlType="submit"
@@ -129,23 +155,50 @@ const ForgotPasswordPage = () => {
                   className="login-btn"
                   size="large"
                 >
-                  Gửi OTP / Link reset
+                  Gửi OTP
                 </Button>
               </Form.Item>
             </Form>
           )}
 
           {step === 1 && (
-            <Form layout="vertical" onFinish={submitOtp} className="login-form" autoComplete="off">
-              <div style={{ marginBottom: 12, color: "#6b7280", fontSize: 14 }}>
-                Nhập OTP đã gửi về email: <b>{email}</b>
+            <Form
+              layout="vertical"
+              onFinish={submitOtp}
+              onFinishFailed={() => message.error("Vui lòng nhập OTP hợp lệ (6 chữ số).")}
+              className="login-form"
+              autoComplete="off"
+            >
+              <div
+                style={{
+                  marginBottom: 14,
+                  color: "#6b7280",
+                  fontSize: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div style={{ lineHeight: 1.4 }}>
+                  Nhập OTP đã gửi về: <b style={{ color: "#374151" }}>{email}</b>
+                </div>
+                <Button
+                  onClick={resetOtp}
+                  disabled={loading || cooldown > 0}
+                  icon={<ReloadOutlined />}
+                  aria-label="Gửi lại OTP"
+                  title={cooldown > 0 ? `Gửi lại sau ${cooldown}s` : "Gửi lại OTP"}
+                >
+                  {cooldown > 0 ? `${cooldown}s` : "Gửi lại"}
+                </Button>
               </div>
 
               <Form.Item
                 name="otp"
                 rules={[
                   { required: true, message: "Vui lòng nhập OTP" },
-                  { len: 6, message: "OTP gồm 6 chữ số" },
+                  { pattern: /^\d{6}$/, message: "OTP gồm 6 chữ số" },
                 ]}
               >
                 <Input
@@ -153,14 +206,22 @@ const ForgotPasswordPage = () => {
                   placeholder="OTP (6 chữ số)"
                   size="large"
                   inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
                 />
               </Form.Item>
 
-              <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                  marginTop: 4,
+                }}
+              >
                 <Button
                   onClick={() => setStep(0)}
                   size="large"
-                  style={{ flex: 1 }}
                   disabled={loading}
                 >
                   Quay lại
@@ -171,7 +232,6 @@ const ForgotPasswordPage = () => {
                   loading={loading}
                   className="login-btn"
                   size="large"
-                  style={{ flex: 1 }}
                 >
                   Xác thực
                 </Button>
@@ -181,8 +241,8 @@ const ForgotPasswordPage = () => {
 
           {step === 2 && (
             <Form layout="vertical" onFinish={submitNewPassword} className="login-form" autoComplete="off">
-              <div style={{ marginBottom: 12, color: "#6b7280", fontSize: 14 }}>
-                Đặt lại mật khẩu cho: <b>{email}</b>
+              <div style={{ marginBottom: 14, color: "#6b7280", fontSize: 13, lineHeight: 1.4 }}>
+                Đặt lại mật khẩu cho: <b style={{ color: "#374151" }}>{email}</b>
               </div>
 
               <Form.Item
@@ -208,7 +268,7 @@ const ForgotPasswordPage = () => {
                 />
               </Form.Item>
 
-              <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
+              <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
                 <Button
                   type="primary"
                   htmlType="submit"

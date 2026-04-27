@@ -11,6 +11,14 @@
         "tokenHash": "f2d5a2aa65fc200e217bb5a2b3b803308248089409b0bb79818b53bbb1c85f6f",
         "expiresAt": 1777272721332
       }
+    },
+    {
+      "id": "3e315331b8dee383d5c3d566",
+      "name": "Hung",
+      "email": "hungtvph50920@gmail.com",
+      "passwordHash": "$2b$10$hZHhkr./zCd9YC1YQ8rtwekucCRlZCLihK6H2F/FnqiudVjlGlUei",
+      "role": "user",
+      "reset": null
     }
   ]
 }

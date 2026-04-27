@@ -79,21 +79,18 @@ export const forgotPassword: RequestHandler = async (req, res) => {
   }
 
   const otp = generateOtp6();
-  const token = randomToken(32);
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
   await updateUserByEmail(email, {
     reset: {
       otpHash: sha256(otp),
-      tokenHash: sha256(token),
+      tokenHash: sha256(randomToken(32)),
       expiresAt,
     },
   });
 
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const resetLink = `${clientUrl}/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(
-    token
-  )}`;
+  // eslint-disable-next-line no-console
+  console.log(`[mail] sending OTP to ${email}`);
 
   await sendMail({
     to: email,
@@ -103,8 +100,6 @@ export const forgotPassword: RequestHandler = async (req, res) => {
         <h2>Yêu cầu đặt lại mật khẩu</h2>
         <p>Mã OTP của bạn (hết hạn sau 10 phút):</p>
         <div style="font-size: 24px; font-weight: 700; letter-spacing: 4px">${otp}</div>
-        <p>Hoặc bấm vào liên kết sau để đặt lại mật khẩu:</p>
-        <p><a href="${resetLink}">${resetLink}</a></p>
         <p>Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email.</p>
       </div>
     `,
