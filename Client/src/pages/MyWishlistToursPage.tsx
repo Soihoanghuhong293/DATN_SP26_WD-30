@@ -44,13 +44,28 @@ const MyWishlistToursPage = () => {
   }, [navigate]);
 
   const handleRemove = async (tourId: string) => {
+    if (removingId) return;
+
+    // Optimistic UI: remove first, rollback on error.
+    const prevItems = items;
+    setRemovingId(tourId);
+    setItems((cur) =>
+      cur.filter((x) => String((x as any)?.tour_id?._id || (x as any)?.tour_id) !== String(tourId))
+    );
+
     try {
-      setRemovingId(tourId);
       await removeWishlistTour(tourId);
-      setItems((prev) => prev.filter((x) => String((x as any)?.tour_id?._id || (x as any)?.tour_id) !== String(tourId)));
       message.success('Đã xoá khỏi danh sách yêu thích');
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Không thể xoá yêu thích');
+      // Rollback if failed
+      setItems(prevItems);
+      const status = err?.response?.status;
+      if (status === 401) {
+        message.warning('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        navigate('/login');
+        return;
+      }
+      message.error(err?.response?.data?.message || 'Không thể xoá yêu thích. Vui lòng thử lại.');
     } finally {
       setRemovingId(null);
     }
@@ -154,6 +169,8 @@ const MyWishlistToursPage = () => {
                     okText="Bỏ"
                     cancelText="Huỷ"
                     onConfirm={() => handleRemove(tourId)}
+                    okButtonProps={{ loading: removingId === tourId }}
+                    cancelButtonProps={{ disabled: removingId === tourId }}
                   >
                     <Button
                       type="text"
