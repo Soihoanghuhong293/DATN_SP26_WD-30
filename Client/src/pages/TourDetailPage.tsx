@@ -702,55 +702,65 @@ const TourDetailPage = () => {
           )}
 
           {/* RELATED / CROSS-SELL */}
-          <section className="detail-section tour-related">
-            <div className="tour-related__header">
-              <h2 className="tour-related__title">CÁC CHƯƠNG TRÌNH KHÁC</h2>
-              <Button type="link" onClick={() => navigate("/tours")}>
-                Xem tất cả
-              </Button>
-            </div>
-
-            {relatedLoading ? (
-              <div className="tour-related__loading">
-                <Spin />
+          {relatedLoading || relatedTours.length > 0 ? (
+            <section className="detail-section tour-related">
+              <div className="tour-related__header">
+                <h2 className="tour-related__title">CÁC CHƯƠNG TRÌNH KHÁC</h2>
+                <Button type="link" onClick={() => navigate("/tours")}>
+                  Xem tất cả
+                </Button>
               </div>
-            ) : relatedTours.length === 0 ? (
-              <Empty description="Chưa có tour gợi ý" />
-            ) : (
-              <div className="tour-related__grid tour-related__grid--scroll">
-                {relatedTours.map((t) => {
-                  const tid = (t as any)?.id || (t as any)?._id;
-                  const img = Array.isArray((t as any)?.images) ? (t as any).images?.[0] : undefined;
-                  const name = (t as any)?.name || "Tour";
-                  const price = Number((t as any)?.price ?? 0) || 0;
-                  const days =
-                    Number((t as any)?.duration_days ?? (t as any)?.durationDays ?? (t as any)?.duration_ ?? 0) || 0;
 
-                  return (
-                    <button
-                      key={String(tid)}
-                      className="tour-related-card"
-                      type="button"
-                      onClick={() => tid && handleGoToTour(String(tid))}
-                    >
-                      <div className="tour-related-card__img">
-                        {img ? <img src={img} alt={name} loading="lazy" /> : <div className="tour-related-card__img--empty" />}
-                      </div>
-                      <div className="tour-related-card__body">
-                        <div className="tour-related-card__name" title={name}>
-                          {name}
+              {relatedLoading ? (
+                <div className="tour-related__loading">
+                  <Spin />
+                </div>
+              ) : (
+                <div className="tour-related__grid tour-related__grid--scroll">
+                  {relatedTours.map((t) => {
+                    const tid = (t as any)?.id || (t as any)?._id;
+                    const img = Array.isArray((t as any)?.images) ? (t as any).images?.[0] : undefined;
+                    const name = (t as any)?.name || "Tour";
+                    const rawPrice = (t as any)?.price;
+                    const priceNum = rawPrice === null || rawPrice === undefined ? NaN : Number(rawPrice);
+                    const hasPrice = Number.isFinite(priceNum) && priceNum > 0;
+                    const days =
+                      Number(
+                        (t as any)?.duration_days ?? (t as any)?.durationDays ?? (t as any)?.duration_ ?? 0
+                      ) || 0;
+
+                    return (
+                      <button
+                        key={String(tid)}
+                        className="tour-related-card"
+                        type="button"
+                        onClick={() => tid && handleGoToTour(String(tid))}
+                      >
+                        <div className="tour-related-card__img">
+                          {img ? (
+                            <img src={img} alt={name} loading="lazy" />
+                          ) : (
+                            <div className="tour-related-card__img--empty" />
+                          )}
                         </div>
-                        <div className="tour-related-card__meta">
-                          {days > 0 ? <span className="tour-related-card__chip">{days} ngày</span> : null}
-                          <span className="tour-related-card__price">{price.toLocaleString("vi-VN")}đ</span>
+                        <div className="tour-related-card__body">
+                          <div className="tour-related-card__name" title={name}>
+                            {name}
+                          </div>
+                          <div className="tour-related-card__meta">
+                            {days > 0 ? <span className="tour-related-card__chip">{days} ngày</span> : null}
+                            <span className="tour-related-card__price">
+                              {hasPrice ? `${priceNum.toLocaleString("vi-VN")}đ` : "Liên hệ"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          ) : null}
         </div>
       </div>
 
