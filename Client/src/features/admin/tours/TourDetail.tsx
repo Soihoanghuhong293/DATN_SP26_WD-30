@@ -5,9 +5,9 @@ import axios from 'axios';
 import { getProviders } from '../../../services/api';
 import { 
   Button, Card, Descriptions, Spin, Tabs, Tag, 
-  Timeline, Image, Table, Typography, Space, Popconfirm, message, 
+  Image, Table, Typography, Space, Popconfirm, message, 
   Breadcrumb, Row, Col, ConfigProvider, Divider, Modal, Select,
-  Form, DatePicker, InputNumber, Empty
+  Form, DatePicker, InputNumber, Empty, List
 } from 'antd';
 import { 
   EditOutlined, 
@@ -493,53 +493,138 @@ const TourDetail = () => {
         </Card>
       );
     }
+    const [activeIndex, setActiveIndex] = useState(0);
+    const active = days[Math.min(Math.max(activeIndex, 0), days.length - 1)] || days[0];
+
+    const DayTitle = ({ d }: { d: any }) => (
+      <Space size={6} wrap>
+        <Tag color="geekblue" style={{ marginInlineEnd: 0 }}>
+          Ngày {d?.day ?? '—'}
+        </Tag>
+        <Text strong style={{ color: '#111827' }}>
+          {d?.title?.trim?.() ? d.title : 'Chưa đặt tiêu đề'}
+        </Text>
+      </Space>
+    );
+
     return (
-      <Card bordered className="saas-card">
-        <Timeline
-          mode="left"
-          items={days.map((item: any) => ({
-            label: <span style={{ fontWeight: 600, color: '#6b7280' }}>Ngày {item.day}</span>,
-            children: (
-              <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #f3f4f6' }}>
-                <Text strong style={{ fontSize: 16, color: '#111827' }}>
-                  {item.title || '—'}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={8}>
+          <Card
+            bordered
+            className="saas-card"
+            title={
+              <Space>
+                <FileTextOutlined />
+                <span>Danh sách ngày</span>
+                <Tag color="default" style={{ marginInlineStart: 6 }}>
+                  {days.length} ngày
+                </Tag>
+              </Space>
+            }
+            bodyStyle={{ padding: 0 }}
+          >
+            <List
+              dataSource={days}
+              split
+              renderItem={(d: any, idx: number) => (
+                <List.Item
+                  onClick={() => setActiveIndex(idx)}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '12px 16px',
+                    background: idx === activeIndex ? '#eff6ff' : '#fff',
+                    borderLeft: idx === activeIndex ? '3px solid #2563eb' : '3px solid transparent',
+                  }}
+                >
+                  <div style={{ width: '100%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <Text strong style={{ color: '#111827' }}>
+                        Ngày {d?.day ?? idx + 1}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {(Array.isArray(d?.activities) ? d.activities.length : 0)} hoạt động
+                      </Text>
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      <Text type="secondary" ellipsis style={{ maxWidth: '100%', display: 'block' }}>
+                        {d?.title?.trim?.() ? d.title : 'Chưa đặt tiêu đề'}
+                      </Text>
+                    </div>
+                  </div>
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={16}>
+          <Card
+            bordered
+            className="saas-card"
+            title={<DayTitle d={active} />}
+            extra={
+              <Space size="small">
+                <Text type="secondary">
+                  {Array.isArray(active?.activities) ? active.activities.length : 0} hoạt động
                 </Text>
-                <ul style={{ paddingLeft: 20, marginTop: 8, color: '#4b5563' }}>
-                  {item.activities?.map((act: string, i: number) => (
-                    <li key={i} style={{ marginBottom: 4 }}>
-                      {act}
-                    </li>
-                  ))}
-                </ul>
+              </Space>
+            }
+          >
+            <Divider orientation="left" plain style={{ margin: '4px 0 12px' }}>
+              <Space>
+                <ClockCircleOutlined />
+                Hoạt động trong ngày
+              </Space>
+            </Divider>
 
-                <Divider orientation="left" plain style={{ margin: '12px 0 8px' }}>
-                  <Space>
-                    <CoffeeOutlined />
-                    Nhà hàng
-                  </Space>
-                </Divider>
-                <RestaurantLine label="Trưa" r={item.lunch_restaurant_id} />
-                <RestaurantLine label="Tối" r={item.dinner_restaurant_id} />
+            {Array.isArray(active?.activities) && active.activities.length > 0 ? (
+              <ul style={{ paddingLeft: 20, margin: 0, color: '#4b5563', lineHeight: 1.7 }}>
+                {active.activities.map((act: string, i: number) => (
+                  <li key={i} style={{ marginBottom: 6 }}>
+                    {act}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty
+                description="Chưa có hoạt động cho ngày này"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            )}
 
-                <Divider orientation="left" plain style={{ margin: '12px 0 8px' }}>
-                  <Space>
-                    <TagsOutlined />
-                    Vé
-                  </Space>
-                </Divider>
-                {Array.isArray(item.ticket_ids) && item.ticket_ids.length > 0 ? (
-                  item.ticket_ids.map((tk: any, idx: number) => (
-                    <TicketRow key={tk?._id || tk?.id || idx} t={typeof tk === 'object' ? tk : null} />
-                  ))
-                ) : (
-                  <Text type="secondary">Chưa gán vé cho ngày này.</Text>
-                )}
-              </div>
-            ),
-            color: 'gray',
-          }))}
-        />
-      </Card>
+            <Divider orientation="left" plain style={{ margin: '16px 0 8px' }}>
+              <Space>
+                <CoffeeOutlined />
+                Nhà hàng
+              </Space>
+            </Divider>
+            <Row gutter={[12, 12]}>
+              <Col xs={24} md={12}>
+                <RestaurantLine label="Trưa" r={active?.lunch_restaurant_id} />
+              </Col>
+              <Col xs={24} md={12}>
+                <RestaurantLine label="Tối" r={active?.dinner_restaurant_id} />
+              </Col>
+            </Row>
+
+            <Divider orientation="left" plain style={{ margin: '16px 0 8px' }}>
+              <Space>
+                <TagsOutlined />
+                Vé
+              </Space>
+            </Divider>
+            {Array.isArray(active?.ticket_ids) && active.ticket_ids.length > 0 ? (
+              active.ticket_ids.map((tk: any, idx: number) => (
+                <TicketRow key={tk?._id || tk?.id || idx} t={typeof tk === 'object' ? tk : null} />
+              ))
+            ) : (
+              <Text type="secondary">Chưa gán vé cho ngày này.</Text>
+            )}
+
+          </Card>
+        </Col>
+      </Row>
     );
   };
 
