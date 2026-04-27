@@ -117,3 +117,34 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const createPublicTourReview = async (req: AuthRequest, res: Response) => {
+  try {
+    const tourId = String(req.body?.tour_id || '').trim();
+    const stars = Number(req.body?.stars);
+    const guestName = String(req.body?.guest_name || '').trim();
+
+    if (!tourId || !isValidObjectId(tourId)) {
+      return res.status(400).json({ status: 'fail', message: 'tour_id không hợp lệ' });
+    }
+    if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
+      return res.status(400).json({ status: 'fail', message: 'Số sao phải từ 1 đến 5' });
+    }
+
+    const tour = await Tour.findById(tourId).select('_id');
+    if (!tour) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy tour' });
+
+    const created = await TourReview.create({
+      tour_id: tourId,
+      user_id: req.user?._id,
+      guest_name: guestName,
+      stars,
+      status: 'approved',
+    });
+
+    await recomputeTourRating(String(tourId));
+    return res.status(201).json({ status: 'success', data: created });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+

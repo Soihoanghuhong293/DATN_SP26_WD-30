@@ -78,6 +78,7 @@ const TourDetailPage = () => {
     "very_satisfied"
   );
   const [submittingTourReview, setSubmittingTourReview] = useState(false);
+  const [guestName, setGuestName] = useState<string>("");
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -713,24 +714,18 @@ const TourDetailPage = () => {
                     type="primary"
                     style={{ marginTop: 14, fontWeight: 900 }}
                     loading={loadingEligibility}
-                    disabled={!eligibleBookingId}
                     onClick={() => {
-                      if (!localStorage.getItem("token")) {
-                        message.warning("Vui lòng đăng nhập để đánh giá");
-                        return;
-                      }
                       if (!eligibleBookingId) {
-                        message.info("Bạn cần có booking đã hoàn thành (chưa đánh giá) để đánh giá tour.");
-                        return;
+                        // khách vãng lai vẫn đánh giá được
                       }
                       setReviewModalOpen(true);
                     }}
                   >
                     Đánh giá tour
                   </Button>
-                  {!eligibleBookingId ? (
+                  {!localStorage.getItem("token") ? (
                     <div style={{ marginTop: 8, color: "#94a3b8", fontSize: 12 }}>
-                      Chỉ mở khi bạn đã đi tour và tour đã kết thúc.
+                      Bạn có thể đánh giá nhanh (khách vãng lai) hoặc đăng nhập để liên kết với booking.
                     </div>
                   ) : null}
                 </>
@@ -864,6 +859,24 @@ const TourDetailPage = () => {
         footer={null}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {!localStorage.getItem("token") ? (
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>Tên của bạn (không bắt buộc)</div>
+              <input
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder="VD: Minh"
+                style={{
+                  width: "100%",
+                  height: 40,
+                  borderRadius: 10,
+                  border: "1px solid #d9d9d9",
+                  padding: "0 12px",
+                  outline: "none",
+                }}
+              />
+            </div>
+          ) : null}
           <div>
             <div style={{ fontWeight: 800, marginBottom: 6 }}>Bạn đánh giá tour này bao nhiêu sao?</div>
             <Space size={10} wrap>
@@ -893,64 +906,72 @@ const TourDetailPage = () => {
             </Space>
           </div>
 
-          <div>
-            <div style={{ fontWeight: 800, marginBottom: 8 }}>Bạn có hài lòng với chuyến đi không?</div>
-            <Radio.Group value={tourSatisfaction} onChange={(e) => setTourSatisfaction(e.target.value)} style={{ width: "100%" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-                {[
-                  { value: "very_satisfied", label: "Rất hài lòng", emoji: "😄" },
-                  { value: "satisfied", label: "Hài lòng", emoji: "🙂" },
-                  { value: "normal", label: "Bình thường", emoji: "😐" },
-                  { value: "dissatisfied", label: "Không hài lòng", emoji: "😞" },
-                ].map((opt) => {
-                  const selected = tourSatisfaction === (opt.value as any);
-                  return (
-                    <Radio.Button
-                      key={opt.value}
-                      value={opt.value}
-                      style={{
-                        height: 48,
-                        borderRadius: 10,
-                        border: selected ? "1px solid #1677ff" : "1px solid #d9d9d9",
-                        background: selected ? "#e6f4ff" : "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "0 14px",
-                        fontWeight: 800,
-                        color: selected ? "#0958d9" : "#111827",
-                      }}
-                    >
-                      <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.emoji}</span>
-                      <span>{opt.label}</span>
-                    </Radio.Button>
-                  );
-                })}
-              </div>
-            </Radio.Group>
-          </div>
+          {eligibleBookingId && localStorage.getItem("token") ? (
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 8 }}>Bạn có hài lòng với chuyến đi không?</div>
+              <Radio.Group value={tourSatisfaction} onChange={(e) => setTourSatisfaction(e.target.value)} style={{ width: "100%" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+                  {[
+                    { value: "very_satisfied", label: "Rất hài lòng", emoji: "😄" },
+                    { value: "satisfied", label: "Hài lòng", emoji: "🙂" },
+                    { value: "normal", label: "Bình thường", emoji: "😐" },
+                    { value: "dissatisfied", label: "Không hài lòng", emoji: "😞" },
+                  ].map((opt) => {
+                    const selected = tourSatisfaction === (opt.value as any);
+                    return (
+                      <Radio.Button
+                        key={opt.value}
+                        value={opt.value}
+                        style={{
+                          height: 48,
+                          borderRadius: 10,
+                          border: selected ? "1px solid #1677ff" : "1px solid #d9d9d9",
+                          background: selected ? "#e6f4ff" : "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "0 14px",
+                          fontWeight: 800,
+                          color: selected ? "#0958d9" : "#111827",
+                        }}
+                      >
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.emoji}</span>
+                        <span>{opt.label}</span>
+                      </Radio.Button>
+                    );
+                  })}
+                </div>
+              </Radio.Group>
+            </div>
+          ) : null}
 
           <Button
             type="primary"
             block
             loading={submittingTourReview}
             onClick={async () => {
-              if (!eligibleBookingId) {
-                message.info("Bạn chưa có booking hợp lệ để đánh giá.");
-                return;
-              }
               setSubmittingTourReview(true);
               try {
-                await axios.post(
-                  `${API_V1}/tour-reviews`,
-                  { booking_id: eligibleBookingId, stars: tourStars, satisfaction: tourSatisfaction },
-                  getAuthHeader()
-                );
+                const tourId = (tour as any)?._id || (tour as any)?.id || id;
+                if (!tourId) throw new Error("Thiếu tour id");
+
+                if (eligibleBookingId && localStorage.getItem("token")) {
+                  await axios.post(
+                    `${API_V1}/tour-reviews`,
+                    { booking_id: eligibleBookingId, stars: tourStars, satisfaction: tourSatisfaction },
+                    getAuthHeader()
+                  );
+                } else {
+                  await axios.post(`${API_V1}/tour-reviews/public`, {
+                    tour_id: tourId,
+                    stars: tourStars,
+                    guest_name: guestName,
+                  });
+                }
                 message.success("Đã gửi đánh giá tour");
                 setReviewModalOpen(false);
 
                 // refresh tour rating
-                const tourId = (tour as any)?._id || (tour as any)?.id || id;
                 if (tourId) {
                   const data = await getTour(String(tourId));
                   if (data.data && typeof data.data === "object") {
@@ -966,7 +987,7 @@ const TourDetailPage = () => {
               }
             }}
           >
-            Gửi đánh giá ({satisfactionLabel(tourSatisfaction)})
+            Gửi đánh giá
           </Button>
         </div>
       </Modal>
