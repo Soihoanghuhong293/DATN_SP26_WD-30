@@ -50,6 +50,8 @@ import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
 import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
 import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
 import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/ResetPasswordPage';
 
 const AppRoutes = () => {
   return (
@@ -61,6 +63,8 @@ const AppRoutes = () => {
         {/* 👉 THÊM */}
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
         <Route path="order/booking/:id" element={<BookingPage />} />

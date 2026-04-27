@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": "6f9cbeb47f092fd96e93c18f",
+      "name": "Demo",
+      "email": "demo@example.com",
+      "passwordHash": "$2b$10$jeMFgsBPgab8khJ9Ufl7Bu4Oq6Fy0NyuI8P2pYLGIg/vZnUIP5cwu",
+      "role": "user",
+      "reset": {
+        "otpHash": "512b808426dafeb406e2d4832f007567f36fa1f59ba46cfd5ee9efdb137a3815",
+        "tokenHash": "f2d5a2aa65fc200e217bb5a2b3b803308248089409b0bb79818b53bbb1c85f6f",
+        "expiresAt": 1777272721332
+      }
+    }
+  ]
+}

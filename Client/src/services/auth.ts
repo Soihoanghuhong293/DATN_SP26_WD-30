@@ -16,3 +16,15 @@ export const loginAPI = (data: {
 }) => {
   return axios.post(`${API_URL}/login`, data);
 };
+
+export const forgotPasswordAPI = (data: { email: string }) => {
+  return axios.post(`${API_URL}/forgot-password`, data);
+};
+
+export const verifyForgotPasswordOtpAPI = (data: { email: string; otp: string }) => {
+  return axios.post(`${API_URL}/forgot-password/verify-otp`, data);
+};
+
+export const resetPasswordAPI = (data: { email: string; token: string; newPassword: string }) => {
+  return axios.post(`${API_URL}/reset-password`, data);
+};

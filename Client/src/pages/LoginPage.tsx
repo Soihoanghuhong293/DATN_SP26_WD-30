@@ -83,6 +83,12 @@ const LoginPage = () => {
               />
             </Form.Item>
 
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 12 }}>
+              <Link to="/forgot-password" className="login-register-link" style={{ fontSize: 14 }}>
+                Quên mật khẩu?
+              </Link>
+            </div>
+
             <Form.Item style={{ marginBottom: 0, marginTop: 32 }}>
               <Button
                 type="primary"
