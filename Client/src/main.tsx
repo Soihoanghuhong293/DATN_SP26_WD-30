@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 import { App as AntdApp, ConfigProvider } from "antd";
 import { AuthProvider } from "./auth/AuthProvider";
 import "./services/http";
+import { SettingsProvider } from "./settings/SettingsProvider";
 
 const queryClient = new QueryClient();
 
@@ -14,9 +15,11 @@ createRoot(document.getElementById("root")!).render(
     <ConfigProvider>
       <AntdApp>
         <AuthProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+            <SettingsProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </SettingsProvider>
         </AuthProvider>
       </AntdApp>
     </ConfigProvider>

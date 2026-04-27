@@ -53,6 +53,7 @@ import HolidayPricingEdit from '../components/layout/HolidayPricingEdit';
 import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
 import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
 import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
+import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { PublicOnlyRoute } from '../auth/PublicOnlyRoute';
 
@@ -127,6 +128,7 @@ const AppRoutes = () => {
         <Route path="holiday-pricing" element={<HolidayPricingList />} />
         <Route path="holiday-pricing/create" element={<HolidayPricingCreate />} />
         <Route path="holiday-pricing/edit/:id" element={<HolidayPricingEdit />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
 
       </Route>
 

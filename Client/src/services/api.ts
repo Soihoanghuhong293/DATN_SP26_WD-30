@@ -12,6 +12,7 @@ import type {
   TicketApplicationMode,
 } from '../types/provider.types';
 import { ENDPOINTS } from './endpoints';
+import { authStorage } from '../auth/authStorage';
 
 const baseURL =
   (import.meta as any)?.env?.VITE_API_URL ||
@@ -22,6 +23,19 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Attach auth token for this axios instance too
+api.interceptors.request.use((config) => {
+  const token = authStorage.getToken();
+  if (token) {
+    const headers = (config.headers ?? {}) as any;
+    if (!headers.Authorization && !headers.authorization) {
+      headers.Authorization = `Bearer ${token}`;
+      config.headers = headers;
+    }
+  }
+  return config;
 });
 
 export type GetToursParams = {

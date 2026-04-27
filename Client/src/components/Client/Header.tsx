@@ -3,12 +3,14 @@ import { Layout, Menu, Button, Drawer } from 'antd';
 import { SendOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
 import { useAuth } from '../../auth/AuthProvider';
+import { useSettings } from '../../settings/SettingsProvider';
 const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate(); 
   const auth = useAuth();
+  const { settings } = useSettings();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -79,20 +81,32 @@ const Header = () => {
               justifyContent: 'center',
             }}
           >
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="12" fill="url(#logo_gradient)"/>
-              <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-              <defs>
-                <linearGradient id="logo_gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#13B6EC"/>
-                  <stop offset="1" stopColor="#096dd9"/>
-                </linearGradient>
-              </defs>
-            </svg>
+            {settings?.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt="logo"
+                style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover' }}
+              />
+            ) : (
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="12" fill="url(#logo_gradient)"/>
+                <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                <defs>
+                  <linearGradient id="logo_gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#13B6EC"/>
+                    <stop offset="1" stopColor="#096dd9"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            )}
           </div>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-            <span style={{ color: '#13b6ec' }}>Vi</span>Go
+            {settings?.siteName || (
+              <>
+                <span style={{ color: '#13b6ec' }}>Vi</span>Go
+              </>
+            )}
           </span>
         </Link>
 
