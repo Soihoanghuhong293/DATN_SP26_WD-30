@@ -403,6 +403,11 @@ const MyBookingDetailPage: React.FC = () => {
                         maxLength={1000}
                         showCount
                       />
+                      {tourComment.trim().length > 0 && tourComment.trim().length < 10 ? (
+                        <div style={{ marginTop: 6, color: "#dc2626", fontWeight: 600 }}>
+                          Nhận xét nên từ 10 ký tự trở lên.
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -410,6 +415,7 @@ const MyBookingDetailPage: React.FC = () => {
                     type="primary"
                     loading={submittingTourReview}
                     block
+                    disabled={tourComment.trim().length > 0 && tourComment.trim().length < 10}
                     onClick={async () => {
                       if (!id) return;
                       setSubmittingTourReview(true);

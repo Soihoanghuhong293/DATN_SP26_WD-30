@@ -76,6 +76,9 @@ export const createTourReview = async (req: AuthRequest, res: Response) => {
     if (!['very_satisfied', 'satisfied', 'normal', 'dissatisfied'].includes(satisfaction)) {
       return res.status(400).json({ status: 'fail', message: 'Mức hài lòng không hợp lệ' });
     }
+    if (comment.length > 0 && comment.length < 10) {
+      return res.status(400).json({ status: 'fail', message: 'Nhận xét nên từ 10 ký tự trở lên' });
+    }
     if (comment.length > 1000) {
       return res.status(400).json({ status: 'fail', message: 'Nhận xét tối đa 1000 ký tự' });
     }
