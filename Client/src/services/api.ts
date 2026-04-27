@@ -24,6 +24,15 @@ export const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers = config.headers || {};
+    (config.headers as any).Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export type GetToursParams = {
   page?: number;
   limit?: number;
@@ -372,3 +381,28 @@ export async function deleteProviderTicket(id: string) {
 }
 
 
+// ===== WISHLIST TOUR =====
+
+export type WishlistStatusResponse = ApiResponse<{ isWishlisted: boolean }> & {
+  data?: { isWishlisted: boolean };
+};
+
+export async function getWishlistTourStatus(tourId: string) {
+  const res = await api.get(ENDPOINTS.wishlistTourStatus(tourId));
+  return res.data as WishlistStatusResponse;
+}
+
+export async function addWishlistTour(tourId: string) {
+  const res = await api.post(ENDPOINTS.wishlistTourById(tourId));
+  return res.data;
+}
+
+export async function removeWishlistTour(tourId: string) {
+  const res = await api.delete(ENDPOINTS.wishlistTourById(tourId));
+  return res.data;
+}
+
+export async function getMyWishlistTours() {
+  const res = await api.get(ENDPOINTS.wishlistTours);
+  return res.data;
+}

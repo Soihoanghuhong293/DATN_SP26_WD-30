@@ -20,10 +20,12 @@ import {
   RightOutlined,
   ClockCircleOutlined,
   UsergroupAddOutlined,
+  HeartOutlined,
+  HeartFilled,
 } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
-import { getTour } from "../services/api";
+import { addWishlistTour, getTour, getWishlistTourStatus, removeWishlistTour } from "../services/api";
 import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
@@ -58,6 +60,8 @@ const TourDetailPage = () => {
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
+  const [wishlisted, setWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -100,6 +104,30 @@ const TourDetailPage = () => {
 
     fetchTourDetail();
   }, [id]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const tourId = (tour as any)?._id || (tour as any)?.id || id;
+    if (!token || !tourId) {
+      setWishlisted(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getWishlistTourStatus(String(tourId));
+        const isWishlisted = Boolean((res as any)?.data?.isWishlisted);
+        if (!cancelled) setWishlisted(isWishlisted);
+      } catch {
+        if (!cancelled) setWishlisted(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, (tour as any)?._id]);
 
   // Fetch all tour instances cùng tên để gộp lịch khởi hành (khách hàng chỉ thấy 1 tour)
   useEffect(() => {
@@ -329,6 +357,34 @@ const TourDetailPage = () => {
     navigate("/tours");
   };
 
+  const handleToggleWishlist = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      message.info("Vui lòng đăng nhập để dùng danh sách yêu thích");
+      navigate("/login");
+      return;
+    }
+    const tourId = (tour as any)?._id || (tour as any)?.id || id;
+    if (!tourId) return;
+
+    try {
+      setWishlistLoading(true);
+      if (wishlisted) {
+        await removeWishlistTour(String(tourId));
+        setWishlisted(false);
+        message.success("Đã xoá khỏi danh sách yêu thích");
+      } else {
+        await addWishlistTour(String(tourId));
+        setWishlisted(true);
+        message.success("Đã thêm vào danh sách yêu thích");
+      }
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || "Không thể cập nhật yêu thích");
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
   const durationDays = tour?.duration_days ?? tour?.duration_;
 
   if (loading) {
@@ -368,6 +424,14 @@ const TourDetailPage = () => {
         <Tag color={tour.status === "active" ? "green" : "orange"}>
           {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
         </Tag>
+
+        <Button
+          onClick={handleToggleWishlist}
+          loading={wishlistLoading}
+          icon={wishlisted ? <HeartFilled style={{ color: "#ef4444" }} /> : <HeartOutlined />}
+        >
+          {wishlisted ? "Đã yêu thích" : "Yêu thích"}
+        </Button>
       </div>
 
       {/* HERO + SIDEBAR */}
