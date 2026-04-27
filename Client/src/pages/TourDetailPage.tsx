@@ -607,146 +607,135 @@ const TourDetailPage = () => {
         
           <Divider />
 
-          <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 640px", minWidth: 0 }}>
-              {tour.schedule?.length > 0 && (
-                <section className="detail-section">
-                  <h2>Lịch trình</h2>
+          {tour.schedule?.length > 0 && (
+            <section className="detail-section">
+              <h2>Lịch trình</h2>
 
-                  {tour.schedule.map((item, index) => (
-                    <div key={index} className="schedule-item">
-                      <div className="schedule-day">Ngày {item.day}</div>
+              {tour.schedule.map((item, index) => (
+                <div key={index} className="schedule-item">
+                  <div className="schedule-day">Ngày {item.day}</div>
 
-                      <div className="schedule-content">
-                        <h3>{item.title}</h3>
-                        <ul>
-                          {item.activities?.map((act, i) => (
-                            <li key={i}>
-                              <CheckCircleOutlined /> {act}
-                            </li>
-                          ))}
-                        </ul>
-                        {(() => {
-                          const day = item as any;
-                          const lunch = day.lunch_restaurant_id?.name;
-                          const dinner = day.dinner_restaurant_id?.name;
-                          if (!lunch && !dinner) return null;
-                          return (
-                            <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
-                              {lunch ? (
-                                <div>
-                                  <b>Buổi trưa:</b> {lunch}
-                                </div>
-                              ) : null}
-                              {dinner ? (
-                                <div>
-                                  <b>Buổi tối:</b> {dinner}
-                                </div>
-                              ) : null}
+                  <div className="schedule-content">
+                    <h3>{item.title}</h3>
+                    <ul>
+                      {item.activities?.map((act, i) => (
+                        <li key={i}>
+                          <CheckCircleOutlined /> {act}
+                        </li>
+                      ))}
+                    </ul>
+                    {(() => {
+                      const day = item as any;
+                      const lunch = day.lunch_restaurant_id?.name;
+                      const dinner = day.dinner_restaurant_id?.name;
+                      if (!lunch && !dinner) return null;
+                      return (
+                        <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                          {lunch ? (
+                            <div>
+                              <b>Buổi trưa:</b> {lunch}
                             </div>
-                          );
-                        })()}
-                        {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
-                          <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
-                            <b>Vé:</b>{' '}
-                            {(item as any).ticket_ids
-                              .map((tk: any) => {
-                                if (typeof tk === 'object' && tk?.name) {
-                                  const mode =
-                                    tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
-                                  return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
-                                }
-                                return String(tk);
-                              })
-                              .join('; ')}
-                          </div>
-                        ) : null}
+                          ) : null}
+                          {dinner ? (
+                            <div>
+                              <b>Buổi tối:</b> {dinner}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                    {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
+                      <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                        <b>Vé:</b>{' '}
+                        {(item as any).ticket_ids
+                          .map((tk: any) => {
+                            if (typeof tk === 'object' && tk?.name) {
+                              const mode =
+                                tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
+                              return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
+                            }
+                            return String(tk);
+                          })
+                          .join('; ')}
                       </div>
-                    </div>
-                  ))}
-                </section>
-              )}
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
+
+        <div style={{ position: "sticky", top: 100, height: "fit-content" }}>
+          <div
+            style={{
+              borderRadius: 14,
+              border: "1px solid #eef2f7",
+              background: "#ffffff",
+              padding: 16,
+              boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>Đánh giá tour</div>
+                <div style={{ marginTop: 2, color: "#64748b", fontSize: 13, fontWeight: 600 }}>
+                  Tổng quan từ khách đã trải nghiệm
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#e6f4ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <StarFilled style={{ color: "#1677ff", fontSize: 18 }} />
+              </div>
             </div>
 
-            <div style={{ flex: "0 0 360px", width: 360, maxWidth: "100%" }}>
-              <div
-                style={{
-                  position: "sticky",
-                  top: 84,
-                }}
-              >
-                <div
-                  style={{
-                    borderRadius: 14,
-                    border: "1px solid #eef2f7",
-                    background: "#ffffff",
-                    padding: 16,
-                    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 900, color: "#0f172a" }}>Đánh giá tour</div>
-                      <div style={{ marginTop: 2, color: "#64748b", fontSize: 13, fontWeight: 600 }}>
-                        Tổng quan từ khách đã trải nghiệm
-                      </div>
+            <Divider style={{ margin: "12px 0" }} />
+
+            {(() => {
+              const avg = Number((tour as any)?.rating?.average ?? 0);
+              const count = Number((tour as any)?.rating?.totalReviews ?? 0);
+              const has = count > 0 && avg > 0;
+              return (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#0f172a" }}>
+                      {has ? avg.toFixed(1) : "0.0"}
                     </div>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "#e6f4ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <StarFilled style={{ color: "#1677ff", fontSize: 18 }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <Rate disabled allowHalf value={has ? avg : 0} />
+                      <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>
+                        {count > 0 ? `${count} lượt đánh giá` : "Chưa có đánh giá"}
+                      </div>
                     </div>
                   </div>
 
-                  <Divider style={{ margin: "12px 0" }} />
-
-                  {(() => {
-                    const avg = Number((tour as any)?.rating?.average ?? 0);
-                    const count = Number((tour as any)?.rating?.totalReviews ?? 0);
-                    const has = count > 0 && avg > 0;
-                    return (
-                      <>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#0f172a" }}>
-                            {has ? avg.toFixed(1) : "0.0"}
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            <Rate disabled allowHalf value={has ? avg : 0} />
-                            <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>
-                              {count > 0 ? `${count} lượt đánh giá` : "Chưa có đánh giá"}
-                            </div>
-                          </div>
-                        </div>
-
-                        <Button
-                          block
-                          type="primary"
-                          style={{ marginTop: 14, fontWeight: 900 }}
-                          loading={loadingEligibility}
-                          disabled={!eligibleBookingId}
-                          onClick={() => {
-                            if (!localStorage.getItem("token")) {
-                              message.warning("Vui lòng đăng nhập để đánh giá");
-                              return;
-                            }
-                            if (!eligibleBookingId) {
-                              message.info("Bạn cần có booking đã hoàn thành (chưa đánh giá) để đánh giá tour.");
-                              return;
-                            }
-                            setReviewModalOpen(true);
-                          }}
-                        >
-                          Đánh giá tour
-                        </Button>
-                        {!eligibleBookingId ? (
-                          <div style={{ marginTop: 8, color: "#94a3b8", fontSize: 12 }}>
-                            Chỉ mở khi bạn đã đi tour và tour đã kết thúc.
-                          </div>
-                        ) : null}
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
+                  <Button
+                    block
+                    type="primary"
+                    style={{ marginTop: 14, fontWeight: 900 }}
+                    loading={loadingEligibility}
+                    disabled={!eligibleBookingId}
+                    onClick={() => {
+                      if (!localStorage.getItem("token")) {
+                        message.warning("Vui lòng đăng nhập để đánh giá");
+                        return;
+                      }
+                      if (!eligibleBookingId) {
+                        message.info("Bạn cần có booking đã hoàn thành (chưa đánh giá) để đánh giá tour.");
+                        return;
+                      }
+                      setReviewModalOpen(true);
+                    }}
+                  >
+                    Đánh giá tour
+                  </Button>
+                  {!eligibleBookingId ? (
+                    <div style={{ marginTop: 8, color: "#94a3b8", fontSize: 12 }}>
+                      Chỉ mở khi bạn đã đi tour và tour đã kết thúc.
+                    </div>
+                  ) : null}
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
