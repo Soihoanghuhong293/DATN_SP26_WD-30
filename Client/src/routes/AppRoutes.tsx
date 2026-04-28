@@ -38,7 +38,7 @@ import BookingSuccessPage from '../pages/BookingSuccessPage';
 import BookingPaymentPage from '../pages/BookingPaymentPage';
 import MyBookingsPage from '../pages/MyBookingsPage';
 import MyBookingDetailPage from '../pages/MyBookingDetailPage';
-import AdminLoginPage from '../pages/AdminLoginPage';
+import MyWishlistToursPage from '../pages/MyWishlistToursPage';
 
 import BookingList from '../features/bookings/BookingList';
 import BookingEdit from '../features/bookings/BookingEdit';
@@ -74,6 +74,7 @@ const AppRoutes = () => {
         <Route path="booking/success/:id" element={<BookingSuccessPage />} />
         <Route path="my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
         <Route path="my-bookings/:id" element={<ProtectedRoute><MyBookingDetailPage /></ProtectedRoute>} />
+        <Route path="my-wishlist" element={<ProtectedRoute><MyWishlistToursPage /></ProtectedRoute>} />
       </Route>
 
       {/* ===== HDV (Hướng dẫn viên) ===== */}

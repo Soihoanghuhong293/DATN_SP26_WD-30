@@ -42,19 +42,24 @@ const Header = () => {
       { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
       { key: '/blog', label: <Link to="/blog">Blog</Link> },
     ];
-    const isCustomer = auth.isAuthenticated && (!auth.role || auth.role === 'user');
+    if (!auth.isAuthenticated) return base;
+
+    // Wishlist: ai đăng nhập cũng xem được (không phụ thuộc role)
+    const extras = [{ key: '/my-wishlist', label: <Link to="/my-wishlist">Yêu thích</Link> }];
+
+    // Booking chỉ dành cho khách hàng (role user hoặc chưa set role).
+    const isCustomer = !auth.role || auth.role === 'user';
     if (isCustomer) {
-      return [
-        ...base,
-        { key: '/my-bookings', label: <Link to="/my-bookings">Đơn của tôi</Link> },
-      ];
+      extras.unshift({ key: '/my-bookings', label: <Link to="/my-bookings">Đơn của tôi</Link> });
     }
-    return base;
+
+    return [...base, ...extras];
   }, [auth.isAuthenticated, auth.role]);
 
   const menuSelectedKeys = useMemo(() => {
     const p = location.pathname;
     if (p.startsWith('/my-bookings')) return ['/my-bookings'];
+    if (p.startsWith('/my-wishlist')) return ['/my-wishlist'];
     return [p];
   }, [location.pathname]);
 

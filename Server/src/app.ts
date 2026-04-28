@@ -31,6 +31,7 @@ import guideReviewRoutes from './routes/guideReview.routes';
 import settingsRoutes from './routes/settings.routes';
 import path from 'path';
 import { generateSepayQR, handleSepayWebhook, getLastSepayWebhookDebug } from './controllers/payment.controller';
+import wishlistTourRoutes from './routes/wishlistTour.routes.js';
 
 dotenv.config();
 
@@ -75,6 +76,9 @@ app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
 app.use('/api/v1/guide-reviews', guideReviewRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
 app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/wishlist-tours', wishlistTourRoutes);
+app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/wishlist-tours', wishlistTourRoutes);
 
 // SePay / VietQR: QR chuyển khoản (theo spec: GET /sepay/qr/:id)
 app.get('/sepay/qr/:id', generateSepayQR);

@@ -386,3 +386,28 @@ export async function deleteProviderTicket(id: string) {
 }
 
 
+// ===== WISHLIST TOUR =====
+
+export type WishlistStatusResponse = ApiResponse<{ isWishlisted: boolean }> & {
+  data?: { isWishlisted: boolean };
+};
+
+export async function getWishlistTourStatus(tourId: string) {
+  const res = await api.get(ENDPOINTS.wishlistTourStatus(tourId));
+  return res.data as WishlistStatusResponse;
+}
+
+export async function addWishlistTour(tourId: string) {
+  const res = await api.post(ENDPOINTS.wishlistTourById(tourId));
+  return res.data;
+}
+
+export async function removeWishlistTour(tourId: string) {
+  const res = await api.delete(ENDPOINTS.wishlistTourById(tourId));
+  return res.data;
+}
+
+export async function getMyWishlistTours() {
+  const res = await api.get(ENDPOINTS.wishlistTours);
+  return res.data;
+}
