@@ -13,6 +13,12 @@ import { useSettings } from '../../settings/SettingsProvider';
 const { Footer: AntFooter } = Layout;
 const { Title, Text } = Typography;
 
+const BrandName = () => (
+  <>
+    <span style={{ color: '#13b6ec' }}>Vi</span>Go
+  </>
+);
+
 const Footer = () => {
   const { settings } = useSettings();
   return (
@@ -51,11 +57,7 @@ const Footer = () => {
                 )}
               </div>
               <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-                {settings?.siteName || (
-                  <>
-                    <span style={{ color: '#13b6ec' }}>Vi</span>Go
-                  </>
-                )}
+                <BrandName />
               </span>
             </div>
             <Text type="secondary" style={{ fontSize: '15px', lineHeight: '1.8', display: 'block', marginBottom: '24px' }}>

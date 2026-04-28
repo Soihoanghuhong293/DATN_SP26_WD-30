@@ -6,6 +6,12 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useSettings } from '../../settings/SettingsProvider';
 const { Header: AntHeader } = Layout;
 
+const BrandName = () => (
+  <>
+    <span style={{ color: '#13b6ec' }}>Vi</span>Go
+  </>
+);
+
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate(); 
@@ -102,11 +108,7 @@ const Header = () => {
             )}
           </div>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-            {settings?.siteName || (
-              <>
-                <span style={{ color: '#13b6ec' }}>Vi</span>Go
-              </>
-            )}
+            <BrandName />
           </span>
         </Link>
 

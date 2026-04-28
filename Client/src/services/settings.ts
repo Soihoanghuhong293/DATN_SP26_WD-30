@@ -22,6 +22,11 @@ export async function updateSystemSettings(payload: Partial<Omit<SystemSettings,
   return res.data.data.settings;
 }
 
+export async function resetSystemSettings() {
+  const res = await api.post<{ status: string; message?: string; data: { settings: SystemSettings } }>("/settings/reset");
+  return res.data.data.settings;
+}
+
 export async function uploadSystemLogo(file: File) {
   return uploadImage(file);
 }

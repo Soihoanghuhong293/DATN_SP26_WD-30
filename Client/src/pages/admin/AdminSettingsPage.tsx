@@ -4,14 +4,16 @@ import { UploadOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { changePassword, getMe, updateMe } from "../../services/account";
 import { useAuth } from "../../auth/AuthProvider";
-import { getSystemSettings, updateSystemSettings, uploadSystemLogo } from "../../services/settings";
+import { getSystemSettings, resetSystemSettings, updateSystemSettings, uploadSystemLogo } from "../../services/settings";
 import { uploadImage } from "../../services/upload";
+import { useSettings } from "../../settings/SettingsProvider";
 
 const { Title, Text } = Typography;
 
 const AdminSettingsPage = () => {
   const { message: messageApi } = App.useApp();
   const auth = useAuth();
+  const { refresh: refreshSystemSettings } = useSettings();
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
 
@@ -61,7 +63,6 @@ const AdminSettingsPage = () => {
         const settings = await getSystemSettings();
         if (!mounted) return;
         settingsForm.setFieldsValue({
-          siteName: settings.siteName,
           logoUrl: settings.logoUrl || "",
           contactEmail: settings.contactEmail || "",
           contactPhone: settings.contactPhone || "",
@@ -187,17 +188,59 @@ const AdminSettingsPage = () => {
       const values = await settingsForm.validateFields();
       setSavingSettings(true);
       await updateSystemSettings({
-        siteName: String(values.siteName || "").trim(),
         logoUrl: String(values.logoUrl || "").trim(),
         contactEmail: String(values.contactEmail || "").trim(),
         contactPhone: String(values.contactPhone || "").trim(),
       });
+      await refreshSystemSettings();
       messageApi.open({ type: "success", content: "Đã cập nhật cài đặt chung", key: "settings" });
     } catch (e: any) {
       if (e?.errorFields) return;
       messageApi.open({
         type: "error",
         content: e?.response?.data?.message || "Cập nhật cài đặt chung thất bại",
+        key: "settings",
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const onResetSystemSettings = async () => {
+    if (savingSettings) return;
+    try {
+      setSavingSettings(true);
+      const s = await resetSystemSettings();
+      settingsForm.setFieldsValue({
+        logoUrl: s.logoUrl || "",
+        contactEmail: s.contactEmail || "",
+        contactPhone: s.contactPhone || "",
+      });
+      await refreshSystemSettings();
+      messageApi.open({ type: "success", content: "Đã khôi phục cài đặt mặc định", key: "settings" });
+    } catch (e: any) {
+      messageApi.open({
+        type: "error",
+        content: e?.response?.data?.message || "Khôi phục mặc định thất bại",
+        key: "settings",
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const onResetLogoOnly = async () => {
+    if (savingSettings) return;
+    try {
+      setSavingSettings(true);
+      const s = await updateSystemSettings({ logoUrl: "" });
+      settingsForm.setFieldsValue({ logoUrl: s.logoUrl || "" });
+      await refreshSystemSettings();
+      messageApi.open({ type: "success", content: "Đã khôi phục logo mặc định", key: "settings" });
+    } catch (e: any) {
+      messageApi.open({
+        type: "error",
+        content: e?.response?.data?.message || "Khôi phục logo thất bại",
         key: "settings",
       });
     } finally {
@@ -320,23 +363,19 @@ const AdminSettingsPage = () => {
           <Form form={settingsForm} layout="vertical" requiredMark={false}>
             <Row gutter={[16, 16]}>
               <Col xs={24} md={12}>
-                <Form.Item
-                  label="Tên website"
-                  name="siteName"
-                  rules={[{ required: true, message: "Vui lòng nhập tên website" }]}
-                >
-                  <Input placeholder="Tên website" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
                 <Form.Item label="Logo" name="logoUrl">
                   <Space direction="vertical" style={{ width: "100%" }}>
                     <Input placeholder="URL logo" />
-                    <Upload {...uploadProps} disabled={logoUploading}>
-                      <Button icon={<UploadOutlined />} loading={logoUploading}>
-                        Upload logo
+                    <Space wrap>
+                      <Upload {...uploadProps} disabled={logoUploading}>
+                        <Button icon={<UploadOutlined />} loading={logoUploading}>
+                          Upload logo
+                        </Button>
+                      </Upload>
+                      <Button onClick={onResetLogoOnly} disabled={savingSettings || logoUploading}>
+                        Khôi phục logo mặc định
                       </Button>
-                    </Upload>
+                    </Space>
                     {String(settingsForm.getFieldValue("logoUrl") || "").trim() ? (
                       <img
                         src={String(settingsForm.getFieldValue("logoUrl"))}
@@ -366,6 +405,9 @@ const AdminSettingsPage = () => {
 
             <Button type="primary" onClick={onSaveSettings} loading={savingSettings} disabled={savingSettings}>
               Lưu cài đặt chung
+            </Button>
+            <Button style={{ marginLeft: 8 }} onClick={onResetSystemSettings} disabled={savingSettings || logoUploading}>
+              Khôi phục mặc định
             </Button>
             <div style={{ marginTop: 8 }}>
               <Text type="secondary">Thông tin này sẽ dùng để hiển thị toàn hệ thống (Header/Footer).</Text>

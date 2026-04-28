@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getSettings, updateSettings } from "../controllers/settings.controller";
+import { getSettings, resetSettings, updateSettings } from "../controllers/settings.controller";
 import { protect, restrictToAdmin } from "../middlewares/auth.middleware";
 
 const router = Router();
@@ -9,6 +9,7 @@ router.get("/", getSettings);
 
 // Admin only
 router.patch("/", protect, restrictToAdmin, updateSettings);
+router.post("/reset", protect, restrictToAdmin, resetSettings);
 
 export default router;
 
