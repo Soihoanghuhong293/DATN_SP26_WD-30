@@ -82,7 +82,9 @@ const Header = () => {
                 </li>
               ))}
             </ul>
-            <span className="destination-mega-viewall destination-mega-viewall--static">Xem tất cả →</span>
+            <Link to="/tours" className="destination-mega-viewall destination-mega-viewall--static">
+              Xem tất cả →
+            </Link>
           </div>
         ))}
       </div>
@@ -287,8 +289,16 @@ const Header = () => {
           gap: 6px;
           color: inherit;
           font: inherit;
-          font-weight: 500;
+          font-weight: 600;
           text-decoration: none;
+          border-radius: 8px;
+          padding: 10px 10px;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .destination-mega-trigger:hover {
+          background: rgba(19, 182, 236, 0.10);
+          color: #096dd9;
         }
 
         .destination-mega-chevron {
@@ -298,14 +308,21 @@ const Header = () => {
 
         .destination-mega-popover .ant-popover-inner {
           padding: 0;
-          border-radius: 12px;
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-          border: 1px solid rgba(0, 0, 0, 0.06);
+          border-radius: 14px;
+          overflow: hidden;
+          box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
+          border: 1px solid rgba(17, 24, 39, 0.10);
           max-width: min(1080px, calc(100vw - 24px));
         }
 
+        /* Center the dropdown horizontally on screen */
+        .destination-mega-popover.ant-popover {
+          left: 50vw !important;
+          transform: translateX(-50%) !important;
+        }
+
         .destination-mega {
-          width: min(900px, calc(100vw - 32px));
+          width: min(980px, calc(100vw - 32px));
           max-height: min(70vh, 520px);
           display: flex;
           flex-direction: column;
@@ -316,21 +333,24 @@ const Header = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 14px 16px 10px 20px;
-          border-bottom: 1px solid #f3f4f6;
+          padding: 14px 18px;
+          border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+          background: linear-gradient(135deg, rgba(19, 182, 236, 0.10), rgba(9, 109, 217, 0.06));
         }
 
         .destination-mega-title {
-          font-size: 15px;
-          font-weight: 700;
+          font-size: 13px;
+          font-weight: 800;
           color: #111827;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
         }
 
         .destination-mega-grid {
-          padding: 16px 18px 20px;
+          padding: 18px 0 20px;
           display: grid;
-          grid-template-columns: repeat(3, minmax(180px, 1fr));
-          gap: 20px 24px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0;
           align-content: start;
         }
 
@@ -339,6 +359,12 @@ const Header = () => {
           flex-direction: column;
           gap: 8px;
           min-width: 0;
+          padding: 0 18px;
+          min-height: 260px;
+        }
+
+        .destination-mega-col:not(:first-child) {
+          border-left: 1px solid rgba(17, 24, 39, 0.08);
         }
 
         .destination-mega-col-head {
@@ -347,28 +373,32 @@ const Header = () => {
           text-transform: uppercase;
           letter-spacing: 0.06em;
           color: #111827;
-          padding-bottom: 4px;
-          border-bottom: 1px solid #e5e7eb;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(17, 24, 39, 0.10);
         }
 
         .destination-mega-list {
           list-style: none;
           margin: 0;
-          padding: 0;
+          padding: 4px 0 0;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
+          flex: 1;
         }
 
         .destination-mega-link {
           border: none;
           background: transparent;
-          padding: 2px 0;
+          padding: 8px 10px;
           font-size: 14px;
           color: #374151;
           cursor: pointer;
           text-align: left;
           line-height: 1.4;
+          border-radius: 10px;
+          display: block;
+          transition: background 0.15s ease, color 0.15s ease;
         }
 
         .destination-mega-link--static {
@@ -377,32 +407,38 @@ const Header = () => {
           display: inline-block;
         }
 
-        .destination-mega-link:hover,
-        .destination-mega-viewall:hover {
-          color: #007bff;
+        .destination-mega-link--static {
+          display: block;
+        }
+
+        .destination-mega-link--static:hover {
+          background: rgba(9, 109, 217, 0.06);
+          color: #096dd9;
         }
 
         .destination-mega-viewall {
           margin-top: auto;
-          padding-top: 8px;
+          padding-top: 10px;
           border: none;
           background: transparent;
-          font-size: 12px;
-          font-weight: 600;
-          color: #007bff;
+          font-size: 13px;
+          font-weight: 700;
+          color: #096dd9;
           cursor: pointer;
           text-align: left;
+          letter-spacing: 0.01em;
         }
 
         .destination-mega-viewall--static {
           cursor: default;
           user-select: none;
           display: inline-block;
+          text-decoration: none;
         }
 
-        .destination-mega-link--static:hover,
         .destination-mega-viewall--static:hover {
-          color: inherit;
+          text-decoration: underline;
+          text-underline-offset: 3px;
         }
 
         @media (max-width: 768px) {
@@ -410,6 +446,15 @@ const Header = () => {
             grid-template-columns: repeat(2, minmax(160px, 1fr));
             gap: 16px;
             padding: 12px 12px 16px;
+          }
+
+          .destination-mega-col {
+            padding: 0;
+            min-height: unset;
+          }
+
+          .destination-mega-col:not(:first-child) {
+            border-left: none;
           }
         }
 
