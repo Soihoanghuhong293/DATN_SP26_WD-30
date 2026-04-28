@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Button, Card, Col, Form, Input, InputNumber, message, Row, Select, Space, Typography, Upload } from 'antd';
+import { Button, Card, Col, Collapse, Form, Input, InputNumber, message, Row, Select, Space, Typography, Upload } from 'antd';
 import { getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
 import type { IProvider, IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { ArrowLeftOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
@@ -288,74 +288,125 @@ export default function TourTemplateCreate() {
 
               <Card className="rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-2">Lịch trình mẫu</div>
+                <div className="text-sm text-gray-500 mb-4">
+                  Mỗi ngày được thu gọn để dễ nhìn. Bấm vào “Ngày …” để mở/chỉnh sửa.
+                </div>
 
                 <Form.List name="schedule">
                   {(fields) => (
-                    <div className="space-y-4">
-                      {fields.map(({ key, name, ...restField }, index) => (
-                        <div key={key} className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                          <div className="font-semibold text-purple-600 mb-3">Ngày {index + 1}</div>
-                          <Form.Item {...restField} name={[name, 'day']} hidden>
-                            <InputNumber />
-                          </Form.Item>
-                          <Row gutter={[16, 12]}>
-                            <Col xs={24} md={8}>
-                              <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true, message: 'Nhập tiêu đề' }]} style={{ marginBottom: 0 }}>
-                                <Input className="rounded-lg" placeholder="Tiêu đề" />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={16}>
-                              <Form.Item {...restField} name={[name, 'activities']} rules={[{ required: true, message: 'Nhập hoạt động' }]} style={{ marginBottom: 0 }}>
-                                <Select mode="tags" open={false} className="rounded-lg" placeholder="Nhập hoạt động & Enter" />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                              <Form.Item {...restField} name={[name, 'lunch_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi trưa">
-                                <Select
-                                  allowClear
-                                  showSearch
-                                  className="rounded-lg w-full"
-                                  optionFilterProp="label"
-                                  placeholder="Chọn nhà hàng trưa"
-                                  loading={isRestaurantsLoading}
-                                  options={restaurantOptions}
-                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
-                                />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                              <Form.Item {...restField} name={[name, 'dinner_restaurant_id']} style={{ marginBottom: 0 }} label="Nhà hàng buổi tối">
-                                <Select
-                                  allowClear
-                                  showSearch
-                                  className="rounded-lg w-full"
-                                  optionFilterProp="label"
-                                  placeholder="Chọn nhà hàng tối"
-                                  loading={isRestaurantsLoading}
-                                  options={restaurantOptions}
-                                  notFoundContent="Chưa có nhà hàng — thêm tại NCC"
-                                />
-                              </Form.Item>
-                            </Col>
-                            <Col span={24}>
-                              <Form.Item {...restField} name={[name, 'ticket_ids']} style={{ marginBottom: 0 }} label="Vé trong ngày">
-                                <Select
-                                  mode="multiple"
-                                  allowClear
-                                  showSearch
-                                  className="rounded-lg w-full"
-                                  optionFilterProp="label"
-                                  placeholder="Chọn vé (có thể nhiều vé) — ví dụ Bà Nà, show…"
-                                  loading={isTicketsLoading}
-                                  options={ticketOptions}
-                                  notFoundContent="Chưa có vé — thêm trong chi tiết NCC"
-                                />
-                              </Form.Item>
-                            </Col>
-                          </Row>
-                        </div>
-                      ))}
-                    </div>
+                    <Collapse
+                      accordion
+                      defaultActiveKey={fields.length ? ['0'] : []}
+                      items={fields.map(({ key, name, ...restField }, index) => ({
+                        key: String(index),
+                        label: (
+                          <Space size={10} wrap>
+                            <span className="font-semibold text-purple-700">Ngày {index + 1}</span>
+                            <span className="text-gray-500 text-sm">
+                              {(() => {
+                                const title = form.getFieldValue(['schedule', index, 'title']);
+                                return title ? `— ${title}` : '— (chưa có tiêu đề)';
+                              })()}
+                            </span>
+                          </Space>
+                        ),
+                        children: (
+                          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+                            <Form.Item {...restField} name={[name, 'day']} hidden>
+                              <InputNumber />
+                            </Form.Item>
+                            <Row gutter={[16, 12]}>
+                              <Col xs={24} md={8}>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'title']}
+                                  label="Tiêu đề"
+                                  rules={[{ required: true, message: 'Nhập tiêu đề' }]}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Input size="middle" className="rounded-lg" placeholder="VD: Đà Nẵng - Bán đảo Sơn Trà" />
+                                </Form.Item>
+                              </Col>
+                              <Col xs={24} md={16}>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'activities']}
+                                  label="Hoạt động"
+                                  rules={[{ required: true, message: 'Nhập hoạt động' }]}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Select
+                                    mode="tags"
+                                    open={false}
+                                    size="middle"
+                                    className="rounded-lg"
+                                    placeholder="Nhập hoạt động & Enter"
+                                    maxTagCount="responsive"
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col xs={24} md={12}>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'lunch_restaurant_id']}
+                                  label="Nhà hàng trưa"
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Select
+                                    allowClear
+                                    showSearch
+                                    size="middle"
+                                    className="rounded-lg w-full"
+                                    optionFilterProp="label"
+                                    placeholder="Chọn nhà hàng trưa"
+                                    loading={isRestaurantsLoading}
+                                    options={restaurantOptions}
+                                    notFoundContent="Chưa có nhà hàng — thêm tại NCC"
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col xs={24} md={12}>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'dinner_restaurant_id']}
+                                  label="Nhà hàng tối"
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Select
+                                    allowClear
+                                    showSearch
+                                    size="middle"
+                                    className="rounded-lg w-full"
+                                    optionFilterProp="label"
+                                    placeholder="Chọn nhà hàng tối"
+                                    loading={isRestaurantsLoading}
+                                    options={restaurantOptions}
+                                    notFoundContent="Chưa có nhà hàng — thêm tại NCC"
+                                  />
+                                </Form.Item>
+                              </Col>
+                              <Col span={24}>
+                                <Form.Item {...restField} name={[name, 'ticket_ids']} label="Vé trong ngày" style={{ marginBottom: 0 }}>
+                                  <Select
+                                    mode="multiple"
+                                    allowClear
+                                    showSearch
+                                    size="middle"
+                                    className="rounded-lg w-full"
+                                    optionFilterProp="label"
+                                    placeholder="Chọn vé (có thể nhiều vé)"
+                                    loading={isTicketsLoading}
+                                    options={ticketOptions}
+                                    notFoundContent="Chưa có vé — thêm trong chi tiết NCC"
+                                    maxTagCount="responsive"
+                                  />
+                                </Form.Item>
+                              </Col>
+                            </Row>
+                          </div>
+                        ),
+                      }))}
+                    />
                   )}
                 </Form.List>
               </Card>
