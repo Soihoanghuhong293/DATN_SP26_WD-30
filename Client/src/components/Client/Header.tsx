@@ -78,7 +78,9 @@ const Header = () => {
             <ul className="destination-mega-list">
               {col.items.map((name) => (
                 <li key={name}>
-                  <span className="destination-mega-link destination-mega-link--static">{name}</span>
+                  <Link to={`/tours?search=${encodeURIComponent(name)}`} className="destination-mega-link">
+                    {name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -278,10 +280,54 @@ const Header = () => {
         /* Mặc định ẩn nút mobile */
         .mobile-toggle { display: none !important; }
 
+        /* ===== Header nav (Antd Menu) align & typography ===== */
+        .desktop-menu .ant-menu-horizontal {
+          gap: 8px;
+          align-items: center;
+        }
+
+        .desktop-menu .ant-menu-horizontal > .ant-menu-item {
+          padding: 0 14px !important;
+          margin: 0 !important;
+          height: 48px !important;
+          line-height: 48px !important;
+          border-radius: 10px;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .desktop-menu .ant-menu-title-content {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .desktop-menu .ant-menu-title-content a {
+          color: #111827;
+          font-weight: 600;
+          text-decoration: none;
+        }
+
+        .desktop-menu .ant-menu-item:hover {
+          background: rgba(9, 109, 217, 0.06);
+        }
+
+        .desktop-menu .ant-menu-item:hover .ant-menu-title-content a {
+          color: #096dd9;
+        }
+
+        .desktop-menu .ant-menu-item-selected {
+          background: rgba(19, 182, 236, 0.10) !important;
+        }
+
+        .desktop-menu .ant-menu-item-selected .ant-menu-title-content a {
+          color: #096dd9 !important;
+        }
+
         .destination-mega-trigger {
           border: none;
           background: transparent;
-          padding: 0;
+          padding: 0 14px;
           margin: 0;
           cursor: pointer;
           display: inline-flex;
@@ -292,7 +338,8 @@ const Header = () => {
           font-weight: 600;
           text-decoration: none;
           border-radius: 8px;
-          padding: 10px 10px;
+          height: 48px;
+          line-height: 48px;
           transition: background 0.15s ease, color 0.15s ease;
         }
 
@@ -304,6 +351,7 @@ const Header = () => {
         .destination-mega-chevron {
           font-size: 11px;
           opacity: 0.75;
+          transform: translateY(1px);
         }
 
         .destination-mega-popover .ant-popover-inner {
@@ -399,19 +447,10 @@ const Header = () => {
           border-radius: 10px;
           display: block;
           transition: background 0.15s ease, color 0.15s ease;
+          text-decoration: none;
         }
 
-        .destination-mega-link--static {
-          cursor: default;
-          user-select: none;
-          display: inline-block;
-        }
-
-        .destination-mega-link--static {
-          display: block;
-        }
-
-        .destination-mega-link--static:hover {
+        .destination-mega-link:hover {
           background: rgba(9, 109, 217, 0.06);
           color: #096dd9;
         }
