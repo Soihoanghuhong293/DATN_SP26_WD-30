@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Popover, Button, Spin } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import type { ICategory } from '../../types/tour.types';
@@ -14,32 +14,95 @@ type Props = {
 
 const CategoryMegaFilter: React.FC<Props> = ({ tree, loading, value, onChange }) => {
   const [open, setOpen] = useState(false);
-  const [primaryId, setPrimaryId] = useState<string | null>(null);
 
   const roots = useMemo(() => (Array.isArray(tree) ? tree : []).filter((n) => getCategoryId(n)), [tree]);
 
   const index = useMemo(() => buildCategoryIndex(roots), [roots]);
 
-  useEffect(() => {
-    if (!roots.length) {
-      setPrimaryId(null);
-      return;
-    }
-    setPrimaryId((prev) => {
-      if (prev && roots.some((r) => getCategoryId(r) === prev)) return prev;
-      return getCategoryId(roots[0]);
-    });
+  const normalize = (s: string) =>
+    s
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+  const domesticRoot = useMemo(() => {
+    const byName = roots.find((r) => normalize(r.name).includes('trong nuoc'));
+    return byName || roots[0];
   }, [roots]);
 
-  const selectedPrimary = useMemo(
-    () => roots.find((r) => getCategoryId(r) === primaryId) || roots[0],
-    [roots, primaryId]
-  );
+  const findChildByName = (parent: ICategory | undefined, name: string) => {
+    const children = Array.isArray(parent?.children) ? (parent!.children as ICategory[]) : [];
+    const target = normalize(name);
+    return children.find((c) => normalize(c.name) === target) || null;
+  };
 
-  const columns = useMemo(() => {
-    const children = selectedPrimary?.children;
-    return Array.isArray(children) ? children.filter((c) => getCategoryId(c)) : [];
-  }, [selectedPrimary]);
+  const findDescendantByName = (root: ICategory | undefined, name: string) => {
+    const target = normalize(name);
+    const stack: ICategory[] = Array.isArray(root?.children) ? [...(root!.children as ICategory[])] : [];
+    while (stack.length) {
+      const cur = stack.shift()!;
+      if (normalize(cur.name) === target) {
+        return cur;
+      }
+      const children = Array.isArray(cur.children) ? (cur.children as ICategory[]) : [];
+      if (children.length) stack.push(...children);
+    }
+    return null;
+  };
+
+  const regionColumns = useMemo(() => {
+    const primary = domesticRoot;
+    const mienBac = findChildByName(primary, 'Miền Bắc') ?? findDescendantByName(primary, 'Miền Bắc');
+    const mienTrung = findChildByName(primary, 'Miền Trung') ?? findDescendantByName(primary, 'Miền Trung');
+    const mienNam = findChildByName(primary, 'Miền Nam') ?? findDescendantByName(primary, 'Miền Nam');
+
+    const fallbackRoot = primary;
+    const mkPlace = (region: ICategory | null, placeName: string) => {
+      const inRegion = region ? findDescendantByName(region, placeName) : null;
+      const inDomestic = findDescendantByName(fallbackRoot, placeName);
+      const picked = inRegion || inDomestic;
+      const id = picked ? getCategoryId(picked) : null;
+      return { name: placeName, id };
+    };
+
+    return [
+      {
+        title: 'MIỀN BẮC',
+        regionId: mienBac ? getCategoryId(mienBac) : null,
+        places: [
+          mkPlace(mienBac, 'Hà Nội'),
+          mkPlace(mienBac, 'Hạ Long'),
+          mkPlace(mienBac, 'Sapa'),
+          mkPlace(mienBac, 'Ninh Bình'),
+          mkPlace(mienBac, 'Hà Giang'),
+        ],
+      },
+      {
+        title: 'MIỀN TRUNG',
+        regionId: mienTrung ? getCategoryId(mienTrung) : null,
+        places: [
+          mkPlace(mienTrung, 'Đà Nẵng'),
+          mkPlace(mienTrung, 'Hội An'),
+          mkPlace(mienTrung, 'Huế'),
+          mkPlace(mienTrung, 'Quy Nhơn'),
+          mkPlace(mienTrung, 'Nha Trang'),
+        ],
+      },
+      {
+        title: 'MIỀN NAM',
+        regionId: mienNam ? getCategoryId(mienNam) : null,
+        places: [
+          mkPlace(mienNam, 'TP. Hồ Chí Minh'),
+          mkPlace(mienNam, 'Phú Quốc'),
+          mkPlace(mienNam, 'Vũng Tàu'),
+          mkPlace(mienNam, 'Cần Thơ'),
+          mkPlace(mienNam, 'Côn Đảo'),
+        ],
+      },
+    ];
+  }, [domesticRoot]);
 
   const selectAndClose = (id: string) => {
     onChange(id);
@@ -75,65 +138,42 @@ const CategoryMegaFilter: React.FC<Props> = ({ tree, loading, value, onChange })
   const content = (
     <div className="category-mega">
       <div className="category-mega-head">
-        <span className="category-mega-title">Chọn điểm đến</span>
+        <span className="category-mega-title">Trong nước</span>
         <button type="button" className="category-mega-close" aria-label="Đóng" onClick={() => setOpen(false)}>
           ×
         </button>
       </div>
       <div className="category-mega-body">
-        <aside className="category-mega-sidebar">
-          {roots.map((r) => {
-            const id = getCategoryId(r);
-            const active = id === getCategoryId(selectedPrimary);
-            return (
+        <div className="category-mega-grid category-mega-grid--fixed-3">
+          {regionColumns.map((col) => (
+            <div key={col.title} className="category-mega-col">
+              <div className="category-mega-col-head">{col.title}</div>
+              <ul className="category-mega-list">
+                {col.places.map((p) => (
+                  <li key={p.name}>
+                    <button
+                      type="button"
+                      className="category-mega-link"
+                      disabled={!p.id}
+                      onClick={() => (p.id ? selectAndClose(p.id) : undefined)}
+                      title={!p.id ? 'Chưa có danh mục tương ứng' : p.name}
+                    >
+                      {p.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
               <button
-                key={id}
                 type="button"
-                className={`category-mega-sidebar-item ${active ? 'active' : ''}`}
-                onClick={() => setPrimaryId(id)}
+                className="category-mega-viewall"
+                disabled={!col.regionId}
+                onClick={() => (col.regionId ? selectAndClose(col.regionId) : undefined)}
+                title={!col.regionId ? 'Chưa có danh mục tương ứng' : 'Xem tất cả'}
               >
-                {r.name}
+                Xem tất cả →
               </button>
-            );
-          })}
-        </aside>
-        <div className="category-mega-grid">
-          {columns.length === 0 ? (
-            <p className="category-mega-empty">Chưa có danh mục con cho nhóm này.</p>
-          ) : (
-            columns.map((col) => {
-              const colId = getCategoryId(col);
-              const tertiary = Array.isArray(col.children) ? col.children.filter((c) => getCategoryId(c)) : [];
-              return (
-                <div key={colId} className="category-mega-col">
-                  <div className="category-mega-col-head">{col.name}</div>
-                  <ul className="category-mega-list">
-                    {tertiary.length === 0 ? (
-                      <li>
-                        <button type="button" className="category-mega-link" onClick={() => selectAndClose(colId)}>
-                          {col.name}
-                        </button>
-                      </li>
-                    ) : (
-                      tertiary.map((item) => {
-                        const tid = getCategoryId(item);
-                        return (
-                          <li key={tid}>
-                            <button type="button" className="category-mega-link" onClick={() => selectAndClose(tid)}>
-                              {item.name}
-                            </button>
-                          </li>
-                        );
-                      })
-                    )}
-                  </ul>
-                  <button type="button" className="category-mega-viewall" onClick={() => selectAndClose(colId)}>
-                    Xem tất cả →
-                  </button>
-                </div>
-              );
-            })
-          )}
+            </div>
+          ))}
         </div>
       </div>
     </div>
