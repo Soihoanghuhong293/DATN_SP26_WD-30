@@ -6,6 +6,7 @@ import axios from "axios";
 const { Title, Text } = Typography;
 
 
+
 const RAW_BASE = ((import.meta.env?.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
 const API_V1 = RAW_BASE
   ? RAW_BASE.endsWith("/api/v1")
@@ -115,6 +116,7 @@ const BookingPaymentPage: React.FC = () => {
     message.success("Thanh toán đã được xác nhận!");
     navigate(`/booking/success/${id}`, { replace: true });
   }, [booking, loading, id, navigate, useMomoMock]);
+
 
 
   const totalPrice = booking?.total_price || booking?.totalPrice || 0;

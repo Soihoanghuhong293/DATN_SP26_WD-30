@@ -241,6 +241,337 @@ export const getMyBookingDetailForUser = async (req: AuthRequest, res: Response)
   }
 };
 
+/** Khách hàng: tạo yêu cầu hủy (không tự động hủy ngay) */
+export const requestCancelForUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+    const role = String((req.user as any)?.role || 'user');
+    if (role !== 'user') {
+      return res.status(403).json({ status: 'fail', message: 'Chỉ tài khoản khách hàng mới tạo yêu cầu hủy' });
+    }
+
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const booking: any = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const uid = booking.user_id?._id?.toString?.() ?? booking.user_id?.toString?.();
+    const emailRaw = String((req.user as any)?.email || '').trim();
+    const emailRegex = emailRaw ? new RegExp(`^${escapeRegex(emailRaw)}$`, 'i') : null;
+    const bookingEmail = String(booking.customer_email || '').trim();
+
+    const ownsByUser = uid && uid === userId.toString();
+    const ownsByEmail = Boolean(emailRegex && bookingEmail && emailRegex.test(bookingEmail));
+    if (!ownsByUser && !ownsByEmail) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thực hiện' });
+    }
+
+    if (String(booking.status || '') === 'cancelled') {
+      return res.status(400).json({ status: 'fail', message: 'Đơn này đã bị hủy' });
+    }
+
+    if (booking.cancel_request && booking.cancel_request?.status === 'pending') {
+      return res.status(400).json({ status: 'fail', message: 'Yêu cầu hủy đang chờ xử lý' });
+    }
+
+    // Không cho hủy khi tour đã diễn ra/đã hoàn thành/đã qua ngày khởi hành
+    const tourStage = String(booking.tour_stage || 'scheduled');
+    if (tourStage === 'in_progress') {
+      return res.status(400).json({ status: 'fail', message: 'Tour đang diễn ra, không thể hủy' });
+    }
+    if (tourStage === 'completed') {
+      return res.status(400).json({ status: 'fail', message: 'Tour đã hoàn thành, không thể hủy' });
+    }
+    const startDateCheck = booking.startDate ? new Date(booking.startDate) : null;
+    if (startDateCheck && Date.now() >= startDateCheck.getTime()) {
+      return res.status(400).json({ status: 'fail', message: 'Đã đến/ngày khởi hành, không thể hủy' });
+    }
+
+    const paymentStatus = String(booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid');
+    const total = Number(booking.total_price || 0);
+    const depositAmount = Number(booking.deposit_amount || Math.round(total * 0.3));
+
+    // ===== Logic hoàn tiền theo thời gian trước ngày đi =====
+    // > 7 ngày: 100%
+    // 3 - 7 ngày: 50%
+    // < 3 ngày: 0%
+    const startDate = booking.startDate ? new Date(booking.startDate) : null;
+    const now = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysBeforeStart = startDate ? Math.floor((startDate.getTime() - now.getTime()) / msPerDay) : 0;
+
+    let timeRefundPercent = 0;
+    if (daysBeforeStart > 7) timeRefundPercent = 100;
+    else if (daysBeforeStart >= 3) timeRefundPercent = 50;
+    else timeRefundPercent = 0;
+
+    // Số tiền đã thanh toán thực tế để hoàn
+    // unpaid: 0, deposit: deposit_amount, paid: total
+    const paidAmount =
+      paymentStatus === 'paid'
+        ? total
+        : paymentStatus === 'deposit'
+          ? Math.max(0, depositAmount)
+          : 0;
+
+    const refundPercent = timeRefundPercent;
+    const refundAmount = Math.max(0, Math.round((paidAmount * refundPercent) / 100));
+
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 500) : '';
+    if (!reason) {
+      return res.status(400).json({ status: 'fail', message: 'Vui lòng nhập lý do hủy' });
+    }
+    const bankName = typeof req.body?.bank_name === 'string' ? req.body.bank_name.trim().slice(0, 120) : '';
+    const bankAccountNumber =
+      typeof req.body?.bank_account_number === 'string' ? req.body.bank_account_number.trim().slice(0, 50) : '';
+    const bankAccountName =
+      typeof req.body?.bank_account_name === 'string' ? req.body.bank_account_name.trim().slice(0, 120) : '';
+    const qrImageDataUrl =
+      typeof req.body?.qr_image_data_url === 'string' ? req.body.qr_image_data_url.trim().slice(0, 2_000_000) : '';
+
+    const allowedBanks = new Set(['Vietcombank', 'Techcombank', 'BIDV', 'Agribank', 'ACB', 'MB Bank']);
+    if (!bankName) {
+      return res.status(400).json({ status: 'fail', message: 'Vui lòng chọn ngân hàng' });
+    }
+    if (!allowedBanks.has(bankName)) {
+      return res.status(400).json({ status: 'fail', message: 'Ngân hàng không hợp lệ' });
+    }
+    if (!bankAccountNumber) {
+      return res.status(400).json({ status: 'fail', message: 'Vui lòng nhập số tài khoản' });
+    }
+    if (!bankAccountName) {
+      return res.status(400).json({ status: 'fail', message: 'Vui lòng nhập chủ tài khoản' });
+    }
+    if (!qrImageDataUrl) {
+      return res.status(400).json({ status: 'fail', message: 'Vui lòng upload QR ngân hàng' });
+    }
+
+    booking.set('cancel_request', {
+      status: 'pending',
+      payment_status: paymentStatus,
+      refund_percent: refundPercent,
+      refund_amount: refundAmount,
+      days_before_start: daysBeforeStart,
+      reason,
+      bank: {
+        name: bankName,
+        account_number: bankAccountNumber,
+        account_name: bankAccountName,
+      },
+      qr_image_data_url: qrImageDataUrl,
+      created_at: new Date(),
+    });
+    booking.markModified('cancel_request');
+    if (!Array.isArray(booking.logs)) booking.logs = [];
+    booking.logs.push({
+      time: new Date(),
+      user: (req.user as any)?.name || 'Khách hàng',
+      old: 'Yêu cầu hủy',
+      new: 'pending',
+      note: `Khách tạo yêu cầu hủy. Hoàn: ${refundAmount.toLocaleString('vi-VN')}đ (${refundPercent}%)${reason ? `; Lý do: ${reason}` : ''}`,
+    });
+
+    await booking.save();
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        booking_id: bookingId,
+        cancel_request: booking.cancel_request,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi tạo yêu cầu hủy' });
+  }
+};
+
+// ===== ADMIN: xử lý yêu cầu hủy tour =====
+const normalizeCancelRequestStatus = (v: any) => {
+  const s = String(v || '').trim();
+  if (s === 'approved' || s === 'rejected' || s === 'refunded') return s;
+  return 'pending';
+};
+
+const computePaidAmountForRefund = (booking: any) => {
+  const paymentStatus = String(booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid');
+  const total = Number(booking.total_price || 0);
+  const depositAmount = Number(booking.deposit_amount || Math.round(total * 0.3));
+  if (paymentStatus === 'paid') return { paymentStatus, total, paidAmount: total };
+  if (paymentStatus === 'deposit') return { paymentStatus, total, paidAmount: Math.max(0, depositAmount) };
+  return { paymentStatus, total, paidAmount: 0 };
+};
+
+export const getCancelRequestsForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const statusParam = typeof req.query.status === 'string' ? req.query.status : '';
+    const status = statusParam ? normalizeCancelRequestStatus(statusParam) : '';
+
+    const query: any = { cancel_request: { $exists: true } };
+    if (status) query['cancel_request.status'] = status;
+
+    const rows = await Booking.find(query)
+      .populate({ path: 'tour_id', select: 'name images duration_days price slug' })
+      .populate({ path: 'user_id', select: 'name email phone' })
+      .sort({ 'cancel_request.created_at': -1 })
+      .lean();
+
+    const data = rows.map((b: any) => {
+      const { paymentStatus, total, paidAmount } = computePaidAmountForRefund(b);
+      return {
+        ...b,
+        _computed: { payment_status: paymentStatus, total, paid_amount: paidAmount },
+      };
+    });
+
+    return res.status(200).json({ status: 'success', results: data.length, data });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const getCancelRequestDetailForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const booking: any = await Booking.findById(bookingId)
+      .populate({ path: 'tour_id', select: 'name images duration_days price schedule slug' })
+      .populate({ path: 'user_id', select: 'name email phone' })
+      .populate({ path: 'guide_id', select: 'name email phone avatar' })
+      .lean();
+
+    if (!booking) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    if (!booking.cancel_request) return res.status(404).json({ status: 'fail', message: 'Đơn này không có yêu cầu hủy' });
+
+    const { paymentStatus, total, paidAmount } = computePaidAmountForRefund(booking);
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        ...booking,
+        _computed: { payment_status: paymentStatus, total, paid_amount: paidAmount },
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const approveCancelRequestForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const actor = req.user?.name || 'Admin';
+    const booking: any = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    if (!booking.cancel_request) return res.status(400).json({ status: 'fail', message: 'Đơn này không có yêu cầu hủy' });
+
+    const current = String(booking.cancel_request?.status || 'pending');
+    if (current !== 'pending') {
+      return res.status(400).json({ status: 'fail', message: 'Yêu cầu hủy không ở trạng thái chờ xử lý' });
+    }
+
+    booking.cancel_request.status = 'approved';
+    booking.cancel_request.approved_at = new Date();
+    booking.cancel_request.approved_by = actor;
+    booking.markModified('cancel_request');
+
+    if (!Array.isArray(booking.logs)) booking.logs = [];
+    booking.logs.push({
+      time: new Date(),
+      user: actor,
+      old: 'Yêu cầu hủy',
+      new: 'approved',
+      note: 'Admin duyệt yêu cầu hủy. Vui lòng thực hiện hoàn tiền thủ công.',
+    });
+
+    await booking.save();
+    return res.status(200).json({ status: 'success', data: { booking_id: bookingId, cancel_request: booking.cancel_request } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const rejectCancelRequestForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const actor = req.user?.name || 'Admin';
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 500) : '';
+    if (!reason) return res.status(400).json({ status: 'fail', message: 'Vui lòng nhập lý do từ chối' });
+
+    const booking: any = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    if (!booking.cancel_request) return res.status(400).json({ status: 'fail', message: 'Đơn này không có yêu cầu hủy' });
+
+    const current = String(booking.cancel_request?.status || 'pending');
+    if (current !== 'pending') {
+      return res.status(400).json({ status: 'fail', message: 'Yêu cầu hủy không ở trạng thái chờ xử lý' });
+    }
+
+    booking.cancel_request.status = 'rejected';
+    booking.cancel_request.rejected_at = new Date();
+    booking.cancel_request.rejected_by = actor;
+    booking.cancel_request.reject_reason = reason;
+    booking.markModified('cancel_request');
+
+    if (!Array.isArray(booking.logs)) booking.logs = [];
+    booking.logs.push({
+      time: new Date(),
+      user: actor,
+      old: 'Yêu cầu hủy',
+      new: 'rejected',
+      note: `Admin từ chối yêu cầu hủy. Lý do: ${reason}`,
+    });
+
+    await booking.save();
+    return res.status(200).json({ status: 'success', data: { booking_id: bookingId, cancel_request: booking.cancel_request } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+export const markCancelRequestRefundedForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const actor = req.user?.name || 'Admin';
+
+    const booking: any = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    if (!booking.cancel_request) return res.status(400).json({ status: 'fail', message: 'Đơn này không có yêu cầu hủy' });
+
+    const current = String(booking.cancel_request?.status || 'pending');
+    if (current !== 'approved') {
+      return res.status(400).json({ status: 'fail', message: 'Chỉ có thể xác nhận hoàn tiền sau khi đã duyệt' });
+    }
+
+    // cập nhật hoàn tất
+    booking.cancel_request.status = 'refunded';
+    booking.cancel_request.refunded_at = new Date();
+    booking.cancel_request.refunded_by = actor;
+    booking.markModified('cancel_request');
+
+    // cập nhật trạng thái booking
+    booking.status = 'cancelled';
+    booking.payment_status = 'refunded';
+
+    if (!Array.isArray(booking.logs)) booking.logs = [];
+    booking.logs.push({
+      time: new Date(),
+      user: actor,
+      old: 'Hoàn tiền',
+      new: 'done',
+      note: 'Admin xác nhận đã hoàn tiền. Booking chuyển sang đã hủy.',
+    });
+
+    await booking.save();
+    return res.status(200).json({
+      status: 'success',
+      data: { booking_id: bookingId, status: booking.status, payment_status: booking.payment_status, cancel_request: booking.cancel_request },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 // HDV: Check-in khách (trưởng đoàn hoặc passenger)
 export const checkInPassenger = async (req: AuthRequest, res: Response) => {
   try {
@@ -1246,6 +1577,23 @@ export const initMomoPaymentMock = async (req: Request, res: Response) => {
     const total = Number(booking.total_price || 0);
     const method = String(booking.paymentMethod || '').trim() || 'full';
     const currentPaymentStatus = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+
+    // Không cho thanh toán nếu đã tới/qua ngày khởi hành
+    const startDate = booking.startDate ? new Date(booking.startDate) : null;
+    if (startDate && Date.now() >= startDate.getTime()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đã tới hoặc qua ngày khởi hành, không thể thanh toán.',
+      });
+    }
+
+    // Không cho thanh toán nếu booking đã hủy
+    if (String(booking.status || '') === 'cancelled') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Đơn đã bị hủy, không thể thanh toán.',
+      });
+    }
 
     // Không cho thanh toán lại nếu đã paid
     if (currentPaymentStatus === 'paid') {

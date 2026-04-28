@@ -1,37 +1,65 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Form, Input, Button, message } from "antd";
+import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { loginAPI } from "../services/auth";
+import { useAuth } from "../auth/AuthProvider";
+import { roleHome } from "../auth/roleHome";
 
 const AdminLoginPage = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
 
-  const submit = async (e: any) => {
-    e.preventDefault();
-    const res = await axios.post("http://localhost:5000/api/auth/login", {
-      email,
-      password,
-    });
+  const onFinish = async (values: { email: string; password: string }) => {
+    setLoading(true);
+    try {
+      const res = await loginAPI(values);
+      const { token, role } = res.data;
 
-    const { user, token } = res.data;
+      if (role !== "admin") {
+        message.error("Không phải tài khoản admin");
+        return;
+      }
 
-    if (user.role !== "admin") {
-      alert("Không phải tài khoản admin");
-      return;
+      auth.login({ token, role, email: values.email });
+      message.success("Đăng nhập admin thành công");
+
+      const from = (location.state as any)?.from;
+      navigate(typeof from === "string" && from ? from : roleHome(role), { replace: true });
+    } catch (err: any) {
+      message.error(err.response?.data?.message || "Đăng nhập thất bại");
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("admin_token", token);
-    navigate("/admin");
   };
 
   return (
-    <form onSubmit={submit}>
-      <h2>Admin Login</h2>
-      <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
-      <button>Login</button>
-    </form>
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
+      <div style={{ width: "min(420px, 100%)" }}>
+        <h2 style={{ textAlign: "center", marginBottom: 16 }}>Đăng nhập Admin</h2>
+        <Form name="admin-login" onFinish={onFinish} autoComplete="off" layout="vertical">
+          <Form.Item
+            name="email"
+            rules={[
+              { required: true, message: "Vui lòng nhập email" },
+              { type: "email", message: "Email không hợp lệ" },
+            ]}
+          >
+            <Input prefix={<UserOutlined />} placeholder="Email" size="large" />
+          </Form.Item>
+
+          <Form.Item name="password" rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}>
+            <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" size="large" />
+          </Form.Item>
+
+          <Button type="primary" htmlType="submit" loading={loading} block size="large">
+            Đăng nhập
+          </Button>
+        </Form>
+      </div>
+    </div>
   );
 };
 

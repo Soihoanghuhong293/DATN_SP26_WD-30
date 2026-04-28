@@ -2,16 +2,24 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Layout, Menu, Button, Drawer } from 'antd';
 import { SendOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
+import { useAuth } from '../../auth/AuthProvider';
+import { useSettings } from '../../settings/SettingsProvider';
 const { Header: AntHeader } = Layout;
+
+const BrandName = () => (
+  <>
+    <span style={{ color: '#13b6ec' }}>Vi</span>Go
+  </>
+);
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate(); 
+  const auth = useAuth();
+  const { settings } = useSettings();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isLogin, setIsLogin] = useState<boolean>(() => !!localStorage.getItem("token"));
-  const [role, setRole] = useState<string | null>(() => localStorage.getItem("role"));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,30 +29,9 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  
-  useEffect(() => {
-    // Sync trạng thái login khi đổi route (sau login thường navigate("/"))
-    setIsLogin(!!localStorage.getItem("token"));
-    setRole(localStorage.getItem("role"));
-  }, [location.pathname]);
-
-  useEffect(() => {
-    // Sync ngay sau login/logout (cùng tab) qua custom event
-    const onAuthChanged = () => {
-      setIsLogin(!!localStorage.getItem("token"));
-      setRole(localStorage.getItem("role"));
-    };
-    window.addEventListener("auth:changed", onAuthChanged);
-    return () => window.removeEventListener("auth:changed", onAuthChanged);
-  }, []);
-
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    setIsLogin(false);
-    setRole(null);
+    auth.logout();
     setMobileMenuOpen(false);
-    window.dispatchEvent(new Event("auth:changed"));
     navigate("/login");
   };
 
@@ -55,7 +42,7 @@ const Header = () => {
       { key: '/guides', label: <Link to="/guides">Hướng dẫn viên</Link> },
       { key: '/blog', label: <Link to="/blog">Blog</Link> },
     ];
-    const isCustomer = isLogin && (!role || role === 'user');
+    const isCustomer = auth.isAuthenticated && (!auth.role || auth.role === 'user');
     if (isCustomer) {
       return [
         ...base,
@@ -63,7 +50,7 @@ const Header = () => {
       ];
     }
     return base;
-  }, [isLogin, role]);
+  }, [auth.isAuthenticated, auth.role]);
 
   const menuSelectedKeys = useMemo(() => {
     const p = location.pathname;
@@ -100,20 +87,28 @@ const Header = () => {
               justifyContent: 'center',
             }}
           >
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="12" fill="url(#logo_gradient)"/>
-              <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-              <defs>
-                <linearGradient id="logo_gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#13B6EC"/>
-                  <stop offset="1" stopColor="#096dd9"/>
-                </linearGradient>
-              </defs>
-            </svg>
+            {settings?.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt="logo"
+                style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover' }}
+              />
+            ) : (
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="12" fill="url(#logo_gradient)"/>
+                <path d="M10 18.5L30 9L21.5 29L19 21.5L10 18.5Z" fill="white" stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M19 21.5L25 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                <defs>
+                  <linearGradient id="logo_gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#13B6EC"/>
+                    <stop offset="1" stopColor="#096dd9"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            )}
           </div>
           <span style={{ fontSize: '22px', fontWeight: '800', color: '#262626', fontFamily: 'sans-serif' }}>
-            <span style={{ color: '#13b6ec' }}>Vi</span>Go
+            <BrandName />
           </span>
         </Link>
 
@@ -136,7 +131,7 @@ const Header = () => {
         </div>
 
         <div className="desktop-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          {!isLogin ? (
+          {!auth.isAuthenticated ? (
             <>
               <Link to="/login">
                 <Button type="text" style={{ fontWeight: '600', color: '#595959' }}>
@@ -196,7 +191,7 @@ const Header = () => {
         />
         
         <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {!isLogin ? (
+          {!auth.isAuthenticated ? (
             <>
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button block size="large" style={{ fontWeight: '600' }}>Đăng nhập</Button>

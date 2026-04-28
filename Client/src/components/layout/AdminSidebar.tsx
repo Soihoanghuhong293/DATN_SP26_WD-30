@@ -20,6 +20,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./AdminSidebar.css";
+import { useAuth } from "../../auth/AuthProvider";
+import { getMe } from "../../services/account";
 
 type Props = {
   collapsed: boolean;
@@ -29,7 +31,6 @@ type Props = {
 const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const email = localStorage.getItem("user_email") || "Admin";
   const [openKeys, setOpenKeys] = useState<string[]>([]);
 
   const rootSubmenuKeys = useMemo(
@@ -40,16 +41,35 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       "provider-management",
       "booking-management",
       "holiday-pricing-management",
+      "guide-review-management",
     ],
     []
   );
+  const auth = useAuth();
+  const [profile, setProfile] = useState<{ email?: string; name?: string; avatarUrl?: string } | null>(null);
+  const email = profile?.email || auth.email || "Admin";
+  const displayName = profile?.name || "Quản trị viên";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("user_email");
+    auth.logout();
     navigate("/login");
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!auth.token) return;
+        const me = await getMe();
+        if (mounted) setProfile({ email: me.email, name: me.name, avatarUrl: me.avatarUrl });
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [auth.token]);
 
   const getOpenKeys = () => {
     const keys = [];
@@ -182,6 +202,12 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
             icon: <PlusCircleOutlined />,
             label: "Tạo đơn mới",
           },
+          // Lấy theo nhánh lastn: quản lý đơn hủy/hoàn tiền
+          {
+            key: "/admin/bookings/cancelled",
+            icon: <UnorderedListOutlined />,
+            label: "Quản lý tour hủy",
+          },
         ],
       },
       {
@@ -227,12 +253,14 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
   return (
     <div className="admin-sider">
       <div className="admin-sider__brand">
-        <Avatar size={40} className="admin-sider__avatar">
+        <Avatar size={40} className="admin-sider__avatar" src={profile?.avatarUrl || undefined}>
           <UserOutlined />
         </Avatar>
         <div className="admin-sider__brandText">
-          <div className="admin-sider__brandTitle">Quản trị viên</div>
-          <div className="admin-sider__brandSub" title={email}>{email}</div>
+          <div className="admin-sider__brandTitle">{displayName}</div>
+          <div className="admin-sider__brandSub" title={email}>
+            {email}
+          </div>
         </div>
       </div>
 

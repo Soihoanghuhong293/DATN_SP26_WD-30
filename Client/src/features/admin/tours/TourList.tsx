@@ -1,6 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, DatePicker, Empty, Input, InputNumber, Popconfirm, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
+import {
+  App as AntdApp,
+  Button,
+  DatePicker,
+  Empty,
+  Input,
+  InputNumber,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, TagsOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -56,6 +70,7 @@ const emptyFilters = (): FilterState => ({
 });
 
 const TourList = () => {
+  const { message } = AntdApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<FilterState>(() => emptyFilters());

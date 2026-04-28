@@ -38,6 +38,7 @@ import BookingSuccessPage from '../pages/BookingSuccessPage';
 import BookingPaymentPage from '../pages/BookingPaymentPage';
 import MyBookingsPage from '../pages/MyBookingsPage';
 import MyBookingDetailPage from '../pages/MyBookingDetailPage';
+import AdminLoginPage from '../pages/AdminLoginPage';
 
 import BookingList from '../features/bookings/BookingList';
 import BookingEdit from '../features/bookings/BookingEdit';
@@ -45,11 +46,16 @@ import UserList from '../features/admin/users/UserList';
 import UserCreate from '../features/admin/users/UserCreate';
 import BookingDetail from '../features/bookings/BookingDetail';
 import BookingHistory from '../features/bookings/BookingHistory';
+import BookingCancelledList from '../features/bookings/BookingCancelledList';
 import HolidayPricingList from '../components/layout/HolidayPricingList';
 import HolidayPricingCreate from '../components/layout/HolidayPricingCreate';
+import HolidayPricingEdit from '../components/layout/HolidayPricingEdit';
 import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
 import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
 import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
+import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
+import { ProtectedRoute } from '../auth/ProtectedRoute';
+import { PublicOnlyRoute } from '../auth/PublicOnlyRoute';
 
 const AppRoutes = () => {
   return (
@@ -59,19 +65,19 @@ const AppRoutes = () => {
         <Route index element={<HomePage />} />
 
         {/* 👉 THÊM */}
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
+        <Route path="login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+        <Route path="register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
         <Route path="tours" element={<ToursPage />} />
         <Route path="tours/:id" element={<TourDetailPage />} />
         <Route path="order/booking/:id" element={<BookingPage />} />
         <Route path="booking/payment/:id" element={<BookingPaymentPage />} />
         <Route path="booking/success/:id" element={<BookingSuccessPage />} />
-        <Route path="my-bookings" element={<MyBookingsPage />} />
-        <Route path="my-bookings/:id" element={<MyBookingDetailPage />} />
+        <Route path="my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
+        <Route path="my-bookings/:id" element={<ProtectedRoute><MyBookingDetailPage /></ProtectedRoute>} />
       </Route>
 
       {/* ===== HDV (Hướng dẫn viên) ===== */}
-      <Route path="/hdv" element={<HdvLayout />}>
+      <Route path="/hdv" element={<ProtectedRoute allowRoles={['hdv','guide']}><HdvLayout /></ProtectedRoute>}>
         <Route index element={<HdvDashboard />} />
         <Route path="tours" element={<HdvTours />} />
         <Route path="tours/:id" element={<HdvBookingDetail />} />
@@ -79,7 +85,9 @@ const AppRoutes = () => {
       </Route>
 
       {/* ===== ADMIN ===== */}
-      <Route path="/admin" element={<AdminLayout />}>
+      <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
+
+      <Route path="/admin" element={<ProtectedRoute allowRoles={['admin']} redirectTo="/admin/login"><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
@@ -108,6 +116,7 @@ const AppRoutes = () => {
 
 
         <Route path="bookings" element={<BookingList />} />
+        <Route path="bookings/cancelled" element={<BookingCancelledList />} />
         <Route path="bookings/create" element={<BookingCreate />} />
         <Route path="bookings/edit/:id" element={<BookingEdit />} />
         <Route path="bookings/:id/history" element={<BookingHistory />} />
@@ -116,8 +125,10 @@ const AppRoutes = () => {
           <Route path="users/create" element={<UserCreate />} />
 
         <Route path="contact-messages" element={<ContactMessageList />} />
-        <Route path="/admin/holiday-pricing" element={<HolidayPricingList />} />
+        <Route path="holiday-pricing" element={<HolidayPricingList />} />
         <Route path="holiday-pricing/create" element={<HolidayPricingCreate />} />
+        <Route path="holiday-pricing/edit/:id" element={<HolidayPricingEdit />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
 
       </Route>
 

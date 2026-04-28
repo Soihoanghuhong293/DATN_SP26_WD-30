@@ -6,16 +6,16 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthProvider";
 
 const HdvSidebar = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const email = localStorage.getItem("user_email") || "HDV";
+  const auth = useAuth();
+  const email = auth.email || "HDV";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("user_email");
+    auth.logout();
     navigate("/login");
   };
 

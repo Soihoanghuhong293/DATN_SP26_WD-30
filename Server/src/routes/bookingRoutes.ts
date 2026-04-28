@@ -1,6 +1,6 @@
 import express from 'express';
 import * as bookingController from '../controllers/bookingController';
-import { protect, restrictToGuide, optionalProtect } from '../middlewares/auth.middleware';
+import { protect, restrictToGuide, restrictToAdmin, optionalProtect } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
@@ -16,6 +16,14 @@ router.post('/:id/auto-allocate-services', protect, bookingController.autoAlloca
 
 router.get('/me', protect, bookingController.getMyBookingsForUser);
 router.get('/me/:id', protect, bookingController.getMyBookingDetailForUser);
+router.post('/me/:id/cancel-request', protect, bookingController.requestCancelForUser);
+
+// ===== ADMIN: xử lý yêu cầu hủy =====
+router.get('/cancel-requests', protect, restrictToAdmin, bookingController.getCancelRequestsForAdmin);
+router.get('/cancel-requests/:id', protect, restrictToAdmin, bookingController.getCancelRequestDetailForAdmin);
+router.patch('/cancel-requests/:id/approve', protect, restrictToAdmin, bookingController.approveCancelRequestForAdmin);
+router.patch('/cancel-requests/:id/reject', protect, restrictToAdmin, bookingController.rejectCancelRequestForAdmin);
+router.patch('/cancel-requests/:id/refunded', protect, restrictToAdmin, bookingController.markCancelRequestRefundedForAdmin);
 
 router
   .route('/')

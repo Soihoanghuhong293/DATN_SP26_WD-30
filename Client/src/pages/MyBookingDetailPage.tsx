@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input } from "antd";
+import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input, Modal, Select, Upload } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
+import type { UploadFile } from "antd";
+import type { RcFile } from "antd/es/upload";
 
 const { Title, Text } = Typography;
 
@@ -48,6 +50,13 @@ const toVietnameseLogValue = (raw: unknown) => {
     pending: "Chờ xử lý",
     confirmed: "Đã xác nhận",
     cancelled: "Đã hủy",
+
+    // cancel_request status
+    approved: "Đã duyệt",
+    rejected: "Từ chối",
+
+    // misc
+    done: "Hoàn tất",
   };
 
   // nếu log lưu dạng "scheduled" hoặc "unpaid"...
@@ -76,6 +85,22 @@ const MyBookingDetailPage: React.FC = () => {
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [cancelBankName, setCancelBankName] = useState<string>("Vietcombank");
+  const [cancelBankAccountNumber, setCancelBankAccountNumber] = useState<string>("");
+  const [cancelBankAccountName, setCancelBankAccountName] = useState<string>("");
+  const [cancelQrFileList, setCancelQrFileList] = useState<UploadFile[]>([]);
+  const [cancelQrDataUrl, setCancelQrDataUrl] = useState<string>("");
+  const cancelFormError = useMemo(() => {
+    if (!cancelReason.trim()) return "Vui lòng nhập lý do hủy";
+    if (!cancelBankName.trim()) return "Vui lòng chọn ngân hàng";
+    if (!cancelBankAccountNumber.trim()) return "Vui lòng nhập số tài khoản";
+    if (!cancelBankAccountName.trim()) return "Vui lòng nhập chủ tài khoản";
+    if (!cancelQrDataUrl) return "Vui lòng upload QR ngân hàng";
+    return "";
+  }, [cancelBankAccountName, cancelBankAccountNumber, cancelBankName, cancelQrDataUrl, cancelReason]);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -118,6 +143,21 @@ const MyBookingDetailPage: React.FC = () => {
   const deposit = Number(booking?.deposit_amount || Math.round(total * 0.3));
   const remaining = Math.max(0, total - deposit);
   const tourStage = String(booking?.tour_stage || "scheduled");
+  const paymentStatusRaw = String(booking?.payment_status || "unpaid");
+  const hasPendingCancel = Boolean(booking?.cancel_request?.status === "pending");
+  const startDate = booking?.startDate ? new Date(booking.startDate) : null;
+  const isPastOrOnStart = startDate ? Date.now() >= startDate.getTime() : false;
+  const canCancel =
+    String(booking?.status || "") !== "cancelled" &&
+    !hasPendingCancel &&
+    tourStage !== "in_progress" &&
+    tourStage !== "completed" &&
+    !isPastOrOnStart;
+  const daysBeforeStart = startDate ? Math.floor((startDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
+  const timeRefundPercent = daysBeforeStart > 7 ? 100 : daysBeforeStart >= 3 ? 50 : 0;
+  const paidAmount = paymentStatusRaw === "paid" ? total : paymentStatusRaw === "deposit" ? Math.max(0, deposit) : 0;
+  const refundPercent = timeRefundPercent;
+  const refundAmount = Math.max(0, Math.round((paidAmount * refundPercent) / 100));
   const canReview =
     String(booking?.status || "") !== "cancelled" &&
     tourStage === "completed" &&
@@ -169,7 +209,15 @@ const MyBookingDetailPage: React.FC = () => {
           <Space>
             <Button onClick={() => navigate("/my-bookings")}>Quay lại</Button>
             <Button
+              danger
+              disabled={!canCancel}
+              onClick={() => setCancelOpen(true)}
+            >
+              {hasPendingCancel ? "Đang chờ hủy" : "Hủy tour"}
+            </Button>
+            <Button
               type="primary"
+              disabled={String(booking?.status || "") === "cancelled" || (pay.label !== "Đã thanh toán đủ" && isPastOrOnStart)}
               onClick={() => {
                 const ps = String(booking?.payment_status || "");
                 if (ps === "deposit" || ps === "unpaid") {
@@ -317,6 +365,149 @@ const MyBookingDetailPage: React.FC = () => {
           )}
         </Card>
       </Space>
+
+      <Modal
+        open={cancelOpen}
+        title="Xác nhận hủy tour"
+        okText="Xác nhận"
+        cancelText="Đóng"
+        okButtonProps={{ danger: true, loading: cancelSubmitting, disabled: !canCancel || !!cancelFormError }}
+        onCancel={() => {
+          if (cancelSubmitting) return;
+          setCancelOpen(false);
+          setCancelReason("");
+          setCancelBankName("Vietcombank");
+          setCancelBankAccountNumber("");
+          setCancelBankAccountName("");
+          setCancelQrFileList([]);
+          setCancelQrDataUrl("");
+        }}
+        onOk={async () => {
+          if (!id) return;
+          if (cancelFormError) {
+            message.error(cancelFormError);
+            return;
+          }
+          setCancelSubmitting(true);
+          try {
+            const res = await axios.post(
+              `${API_V1}/bookings/me/${id}/cancel-request`,
+              {
+                reason: cancelReason || "",
+                bank_name: cancelBankName || "",
+                bank_account_number: cancelBankAccountNumber || "",
+                bank_account_name: cancelBankAccountName || "",
+                qr_image_data_url: cancelQrDataUrl || "",
+              },
+              getAuthHeader()
+            );
+            const cr = res.data?.data?.cancel_request;
+            setBooking((prev: any) => (prev ? { ...prev, cancel_request: cr } : prev));
+            message.success("Đã tạo yêu cầu hủy");
+            setCancelOpen(false);
+            setCancelReason("");
+            setCancelBankName("Vietcombank");
+            setCancelBankAccountNumber("");
+            setCancelBankAccountName("");
+            setCancelQrFileList([]);
+            setCancelQrDataUrl("");
+          } catch (e: any) {
+            message.error(e?.response?.data?.message || "Không thể tạo yêu cầu hủy");
+          } finally {
+            setCancelSubmitting(false);
+          }
+        }}
+      >
+        <Space direction="vertical" size={10} style={{ width: "100%" }}>
+          <div>
+            <Text strong>Số tiền được hoàn:</Text>{" "}
+            <Text strong style={{ color: "#d90429" }}>
+              {refundAmount.toLocaleString("vi-VN")}đ
+            </Text>{" "}
+            <Text type="secondary">({refundPercent}%)</Text>
+          </div>
+          <div>
+            <Text type="secondary">
+              Trạng thái thanh toán: <b>{pay.label}</b>
+            </Text>
+          </div>
+          <Input.TextArea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Lý do hủy"
+            autoSize={{ minRows: 3, maxRows: 6 }}
+            maxLength={500}
+            showCount
+          />
+
+          <Divider style={{ margin: "4px 0" }} />
+
+          <Text strong>Thông tin nhận hoàn tiền</Text>
+          <Select
+            value={cancelBankName}
+            onChange={(v) => setCancelBankName(String(v))}
+            options={[
+              { label: "Vietcombank", value: "Vietcombank" },
+              { label: "Techcombank", value: "Techcombank" },
+              { label: "BIDV", value: "BIDV" },
+              { label: "Agribank", value: "Agribank" },
+              { label: "ACB", value: "ACB" },
+              { label: "MB Bank", value: "MB Bank" },
+            ]}
+          />
+          <Input
+            value={cancelBankAccountNumber}
+            onChange={(e) => setCancelBankAccountNumber(e.target.value)}
+            placeholder="Số tài khoản"
+          />
+          <Input
+            value={cancelBankAccountName}
+            onChange={(e) => setCancelBankAccountName(e.target.value)}
+            placeholder="Chủ tài khoản"
+          />
+
+          <Upload
+            listType="picture"
+            fileList={cancelQrFileList}
+            maxCount={1}
+            accept="image/*"
+            beforeUpload={async (file: RcFile) => {
+              try {
+                const dataUrl = await new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(String(reader.result || ""));
+                  reader.onerror = () => resolve("");
+                  reader.readAsDataURL(file);
+                });
+                if (!dataUrl) {
+                  message.error("Không đọc được ảnh QR. Vui lòng thử ảnh khác.");
+                  return false;
+                }
+                setCancelQrDataUrl(dataUrl);
+                setCancelQrFileList([
+                  {
+                    uid: file.uid,
+                    name: file.name,
+                    status: "done",
+                    url: dataUrl,
+                  },
+                ]);
+              } catch {
+                message.error("Upload QR thất bại. Vui lòng thử lại.");
+              }
+              return false;
+            }}
+            onRemove={() => {
+              setCancelQrFileList([]);
+              setCancelQrDataUrl("");
+            }}
+          >
+            <Button>Upload QR</Button>
+          </Upload>
+
+          {cancelFormError ? <Text type="danger">{cancelFormError}</Text> : null}
+        </Space>
+      </Modal>
     </div>
   );
 };
