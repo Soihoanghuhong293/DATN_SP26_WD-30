@@ -85,9 +85,10 @@ const AppRoutes = () => {
       </Route>
 
       {/* ===== ADMIN ===== */}
-      <Route path="/admin/login" element={<PublicOnlyRoute><AdminLoginPage /></PublicOnlyRoute>} />
+      {/* Nếu muốn dùng chung trang login, redirect admin/login về /login */}
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
 
-      <Route path="/admin" element={<ProtectedRoute allowRoles={['admin']} redirectTo="/admin/login"><AdminLayout /></ProtectedRoute>}>
+      <Route path="/admin" element={<ProtectedRoute allowRoles={['admin']} redirectTo="/login"><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
