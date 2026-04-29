@@ -10,8 +10,6 @@ import {
   message,
   Modal,
   Rate,
-  Radio,
-  Space,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -26,7 +24,7 @@ import {
 } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
-import { getTour } from "../services/api";
+import { getTour, getTourReviewsByTour } from "../services/api";
 import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
@@ -61,10 +59,7 @@ const TourDetailPage = () => {
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<string | null>(null);
   const [holidayRules, setHolidayRules] = useState<any[]>([]);
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
-  const [overallRating, setOverallRating] = useState<number>(0);
-  const [satisfaction, setSatisfaction] = useState<
-    "very_satisfied" | "satisfied" | "normal" | "not_satisfied" | null
-  >(null);
+  const [approvedReviews, setApprovedReviews] = useState<any[]>([]);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -141,6 +136,20 @@ const TourDetailPage = () => {
     };
     fetchHolidayRules();
   }, []);
+
+  useEffect(() => {
+    const fetchApprovedReviews = async () => {
+      const tourId = String((tour as any)?._id || (tour as any)?.id || "").trim();
+      if (!tourId) return;
+      try {
+        const res = await getTourReviewsByTour(tourId);
+        setApprovedReviews(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        setApprovedReviews([]);
+      }
+    };
+    fetchApprovedReviews();
+  }, [tour?._id, tour?.id]);
 
   const tourImages = useMemo(() => {
     const imgs = (tour?.images || []).filter(Boolean);
@@ -338,22 +347,8 @@ const TourDetailPage = () => {
 
   const durationDays = tour?.duration_days ?? tour?.duration_;
 
-  const handleSubmitReviewOverview = async () => {
-    if (!overallRating || !satisfaction) {
-      message.warning("Vui lòng chọn số sao và mức độ hài lòng");
-      return;
-    }
-
-    try {
-      // Chưa có endpoint đánh giá tour trong project → tạm xử lý UI/UX trước.
-      // Khi có API, có thể POST (tourId, overallRating, satisfaction) tại đây.
-      message.success("Cảm ơn bạn đã đánh giá!");
-      setOverallRating(0);
-      setSatisfaction(null);
-    } catch (e) {
-      message.error("Gửi đánh giá thất bại, vui lòng thử lại");
-    }
-  };
+  const averageRating = Number((tour as any)?.rating?.average || 0);
+  const totalReviews = Number((tour as any)?.rating?.total_reviews || approvedReviews.length || 0);
 
   if (loading) {
     return (
@@ -613,39 +608,44 @@ const TourDetailPage = () => {
           )}
 
           <section className="detail-section tour-review-section">
-            <h2>Đánh giá tổng quan</h2>
+            <h2>Đánh giá tour</h2>
 
-            <div className="tour-review-row">
-              <div className="tour-review-question">
-                Bạn đánh giá tour này bao nhiêu sao? (1–5 <span aria-hidden="true">⭐</span>)
+            <div className="tour-review-summary">
+              <div className="tour-review-score">{averageRating.toFixed(1)}</div>
+              <div>
+                <Rate disabled allowHalf value={averageRating} />
+                <div className="tour-review-count">{totalReviews} đánh giá đã duyệt</div>
               </div>
-              <Rate value={overallRating} onChange={setOverallRating} />
             </div>
 
-            <div className="tour-review-row">
-              <div className="tour-review-question">Bạn có hài lòng với chuyến đi không?</div>
-              <Radio.Group
-                value={satisfaction}
-                onChange={(e) => setSatisfaction(e.target.value)}
-              >
-                <Space direction="vertical">
-                  <Radio value="very_satisfied">Rất hài lòng</Radio>
-                  <Radio value="satisfied">Hài lòng</Radio>
-                  <Radio value="normal">Bình thường</Radio>
-                  <Radio value="not_satisfied">Không hài lòng</Radio>
-                </Space>
-              </Radio.Group>
-            </div>
-
-            <div className="tour-review-actions">
-              <Button
-                type="primary"
-                onClick={handleSubmitReviewOverview}
-                disabled={!overallRating || !satisfaction}
-              >
-                Gửi đánh giá
-              </Button>
-            </div>
+            {approvedReviews.length > 0 ? (
+              <div className="tour-review-list">
+                {approvedReviews.map((review: any) => (
+                  <div key={review?._id} className="tour-review-item">
+                    <div className="tour-review-item-head">
+                      <strong>{review?.user_id?.name || "Khách hàng"}</strong>
+                      <span>{dayjs(review?.created_at).isValid() ? dayjs(review.created_at).format("DD/MM/YYYY") : ""}</span>
+                    </div>
+                    <Rate disabled value={Number(review?.rating || 0)} />
+                    {review?.comment ? <p className="tour-review-comment">{review.comment}</p> : null}
+                    {Number(review?.guide_rating || 0) > 0 ? (
+                      <div className="tour-review-guide-rating">
+                        HDV: <Rate disabled value={Number(review.guide_rating)} />
+                      </div>
+                    ) : null}
+                    {Array.isArray(review?.images) && review.images.length > 0 ? (
+                      <div className="tour-review-images">
+                        {review.images.slice(0, 4).map((img: string, idx: number) => (
+                          <img key={`${review?._id}-${idx}`} src={img} alt="review" />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty description="Chưa có đánh giá nào được duyệt cho tour này" />
+            )}
           </section>
         </div>
       </div>

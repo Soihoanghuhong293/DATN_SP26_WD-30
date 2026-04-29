@@ -260,6 +260,78 @@
   .tour-review-actions{
     margin-top:16px;
   }
+
+.tour-review-summary{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-top:12px;
+  margin-bottom:16px;
+}
+
+.tour-review-score{
+  font-size:36px;
+  font-weight:800;
+  color:#111827;
+  min-width:56px;
+}
+
+.tour-review-count{
+  margin-top:6px;
+  color:#6b7280;
+  font-size:13px;
+}
+
+.tour-review-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.tour-review-item{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:12px 14px;
+  background:#fff;
+}
+
+.tour-review-item-head{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:6px;
+  color:#6b7280;
+  font-size:13px;
+}
+
+.tour-review-comment{
+  margin:8px 0 0;
+  color:#334155;
+  white-space:pre-wrap;
+}
+
+.tour-review-guide-rating{
+  margin-top:8px;
+  color:#475569;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.tour-review-images{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.tour-review-images img{
+  width:88px;
+  height:88px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #e5e7eb;
+}
   
   /* ===== PRICE TABLE ===== */
   

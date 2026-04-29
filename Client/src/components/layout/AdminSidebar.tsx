@@ -37,6 +37,7 @@ const AdminSidebar = () => {
     if (pathname.includes("/admin/providers")) keys.push("provider-management");
     if (pathname.includes("/admin/holiday-pricing")) keys.push("holiday-pricing-management");
     if (pathname.includes("/admin/guide-reviews")) keys.push("guide-review-management");
+    if (pathname.includes("/admin/tour-reviews")) keys.push("guide-review-management");
     return keys;
   };
 
@@ -191,6 +192,11 @@ const AdminSidebar = () => {
                 key: "/admin/guide-reviews",
                 icon: <UnorderedListOutlined />,
                 label: <Link to="/admin/guide-reviews">Đánh giá hướng dẫn viên</Link>,
+              },
+              {
+                key: "/admin/tour-reviews",
+                icon: <UnorderedListOutlined />,
+                label: <Link to="/admin/tour-reviews">Đánh giá tour</Link>,
               },
             ],
           },

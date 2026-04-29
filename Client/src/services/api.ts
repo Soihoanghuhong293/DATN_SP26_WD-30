@@ -24,6 +24,12 @@ export const api = axios.create({
   },
 });
 
+const getAuthConfig = () => ({
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('token') || localStorage.getItem('admin_token') || ''}`,
+  },
+});
+
 export type GetToursParams = {
   page?: number;
   limit?: number;
@@ -368,6 +374,70 @@ export async function createProviderTicket(payload: UpsertProviderTicketPayload)
 
 export async function deleteProviderTicket(id: string) {
   const res = await api.delete(ENDPOINTS.providerTicketById(id));
+  return res.data;
+}
+
+// ===== TOUR REVIEW API FUNCTIONS =====
+
+export type TourReviewStatus = 'pending' | 'approved' | 'hidden';
+
+export type TourReviewPayload = {
+  booking_id: string;
+  rating: number;
+  guide_rating?: number;
+  comment?: string;
+  images?: string[];
+};
+
+export type UpdateTourReviewPayload = Partial<Omit<TourReviewPayload, 'booking_id'>>;
+
+export async function getMyTourReviewByBooking(bookingId: string) {
+  const res = await api.get(ENDPOINTS.tourReviews + '/me', {
+    ...getAuthConfig(),
+    params: { booking_id: bookingId },
+  });
+  return res.data;
+}
+
+export async function createTourReview(payload: TourReviewPayload) {
+  const res = await api.post(ENDPOINTS.tourReviews, payload, getAuthConfig());
+  return res.data;
+}
+
+export async function updateTourReview(id: string, payload: UpdateTourReviewPayload) {
+  const res = await api.put(ENDPOINTS.tourReviewMeById(id), payload, getAuthConfig());
+  return res.data;
+}
+
+export async function deleteTourReview(id: string) {
+  const res = await api.delete(ENDPOINTS.tourReviewMeById(id), getAuthConfig());
+  return res.data;
+}
+
+export async function getTourReviewsByTour(tourId: string) {
+  const res = await api.get(ENDPOINTS.tourReviewPublicList, {
+    params: { tour_id: tourId },
+  });
+  return res.data;
+}
+
+export async function adminGetTourReviews(params: {
+  status?: TourReviewStatus;
+  rating?: number;
+  tour_id?: string;
+  q?: string;
+} = {}) {
+  const res = await api.get(ENDPOINTS.tourReviews, { ...getAuthConfig(), params });
+  return res.data;
+}
+
+export async function adminUpdateTourReviewStatus(id: string, status: TourReviewStatus) {
+  const res = await api.patch(`${ENDPOINTS.tourReviewById(id)}/status`, { status }, getAuthConfig());
+  return res.data;
+}
+
+export async function adminDeleteTourReview(id: string) {
+  const res = await api.delete(ENDPOINTS.tourReviewById(id), getAuthConfig());
   return res.data;
 }
 
