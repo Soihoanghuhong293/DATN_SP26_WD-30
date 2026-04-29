@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Booking from '../models/Booking';
 import Tour from '../models/Tour';
 import TourReview from '../models/TourReview';
+import Guide from '../models/Guide';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 const isValidObjectId = (id: string) => mongoose.Types.ObjectId.isValid(id);
@@ -35,6 +36,41 @@ const recomputeTourRating = async (tourId: string) => {
       $set: {
         'rating.average': avg,
         'rating.total_reviews': count,
+      },
+    },
+    { new: false }
+  );
+};
+
+const recomputeGuideRatingFromTourReviews = async (guideUserId: string) => {
+  if (!guideUserId || !isValidObjectId(guideUserId)) return;
+
+  const agg = await TourReview.aggregate([
+    {
+      $match: {
+        guide_user_id: new mongoose.Types.ObjectId(guideUserId),
+        status: 'approved',
+        guide_rating: { $exists: true, $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: '$guide_user_id',
+        avg: { $avg: '$guide_rating' },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const avg = agg?.[0]?.avg ? Number(agg[0].avg) : 0;
+  const count = agg?.[0]?.count ? Number(agg[0].count) : 0;
+
+  await Guide.findOneAndUpdate(
+    { user_id: guideUserId },
+    {
+      $set: {
+        'rating.average': avg,
+        'rating.totalReviews': count,
       },
     },
     { new: false }
@@ -190,7 +226,16 @@ export const updateMyTourReview = async (req: AuthRequest, res: Response) => {
     // sửa nội dung thì quay về chờ duyệt lại
     updateData.status = 'pending';
 
+    const wasApproved = current.status === 'approved';
     const updated = await TourReview.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+
+    if (wasApproved) {
+      await recomputeTourRating(String(current.tour_id || ''));
+      if (current.guide_user_id) {
+        await recomputeGuideRatingFromTourReviews(String(current.guide_user_id));
+      }
+    }
+
     return res.status(200).json({ status: 'success', data: updated });
   } catch (error: any) {
     return res.status(500).json({ status: 'error', message: error.message });
@@ -214,10 +259,14 @@ export const deleteMyTourReview = async (req: AuthRequest, res: Response) => {
     }
 
     const tourId = String(current.tour_id || '');
+    const guideUserId = String(current.guide_user_id || '');
     const wasApproved = current.status === 'approved';
     await TourReview.findByIdAndDelete(id);
 
-    if (wasApproved) await recomputeTourRating(tourId);
+    if (wasApproved) {
+      await recomputeTourRating(tourId);
+      if (guideUserId) await recomputeGuideRatingFromTourReviews(guideUserId);
+    }
 
     return res.status(200).json({ status: 'success', data: null });
   } catch (error: any) {
@@ -261,7 +310,7 @@ export const adminUpdateTourReviewStatus = async (req: AuthRequest, res: Respons
       return res.status(400).json({ status: 'fail', message: 'Trạng thái không hợp lệ' });
     }
 
-    const before = await TourReview.findById(id).select('status tour_id');
+    const before = await TourReview.findById(id).select('status tour_id guide_user_id');
     if (!before) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đánh giá' });
 
     const updated = await TourReview.findByIdAndUpdate(id, { $set: { status } }, { new: true })
@@ -274,6 +323,9 @@ export const adminUpdateTourReviewStatus = async (req: AuthRequest, res: Respons
     const nextStatus = String(status);
     if ((oldStatus === 'approved' && nextStatus !== 'approved') || (oldStatus !== 'approved' && nextStatus === 'approved')) {
       await recomputeTourRating(String(before.tour_id || ''));
+      if (before.guide_user_id) {
+        await recomputeGuideRatingFromTourReviews(String(before.guide_user_id));
+      }
     }
 
     return res.status(200).json({ status: 'success', data: updated });
@@ -292,6 +344,9 @@ export const adminDeleteTourReview = async (req: AuthRequest, res: Response) => 
 
     if (deleted.status === 'approved') {
       await recomputeTourRating(String(deleted.tour_id || ''));
+      if (deleted.guide_user_id) {
+        await recomputeGuideRatingFromTourReviews(String(deleted.guide_user_id));
+      }
     }
 
     return res.status(200).json({ status: 'success', data: null });
