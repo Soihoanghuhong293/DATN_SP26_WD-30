@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Card, Typography, Button, Spin, message, Result, Alert, Divider } from "antd";
+import { Alert, Button, Card, Col, Divider, Result, Row, Spin, Steps, Tag, Typography, message } from "antd";
 import axios from "axios";
+import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
-
-
 
 const RAW_BASE = ((import.meta.env?.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
 const API_V1 = RAW_BASE
@@ -30,7 +29,6 @@ const getPaymentStatus = (booking: any): "unpaid" | "deposit" | "paid" | "refund
   return "unpaid";
 };
 
-/** xử lí nhận tiền */
 const pollPaymentReached = (baseline: string, next: string): boolean => {
   if (next === "paid") return true;
   if (baseline === "unpaid" && next === "deposit") return true;
@@ -58,6 +56,8 @@ const BookingPaymentPage: React.FC = () => {
 
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [fatalError, setFatalError] = useState<string | null>(null);
+
   const baselinePaymentRef = useRef<string | null>(null);
   const hasNavigatedToSuccessRef = useRef(false);
 
@@ -70,23 +70,37 @@ const BookingPaymentPage: React.FC = () => {
 
   const refreshBooking = async () => {
     if (!id) return null;
-    const res = await axios.get(`${API_V1}/bookings/${id}`, {
-      params: { _t: Date.now() },
-      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-    });
-    const b = res.data.data || res.data;
-    setBooking(b);
-    return b;
+    try {
+      const res = await axios.get(`${API_V1}/bookings/${id}`, {
+        params: { _t: Date.now() },
+        headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+      });
+      const b = res.data.data || res.data;
+      setBooking(b);
+      return b;
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const msg =
+        status === 400
+          ? "Link thanh toán không hợp lệ (sai mã booking)."
+          : status === 404
+            ? "Không tìm thấy booking."
+            : "Không tải được thông tin booking.";
+      setFatalError(msg);
+      throw err;
+    }
   };
 
   useEffect(() => {
     baselinePaymentRef.current = null;
+    hasNavigatedToSuccessRef.current = false;
   }, [id]);
 
   useEffect(() => {
     const fetchBooking = async () => {
       if (!id) return;
       try {
+        setFatalError(null);
         await refreshBooking();
       } catch {
         message.error("Không tìm thấy thông tin đơn hàng để thanh toán.");
@@ -95,29 +109,13 @@ const BookingPaymentPage: React.FC = () => {
       }
     };
     fetchBooking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
     if (!booking || baselinePaymentRef.current !== null) return;
     baselinePaymentRef.current = getPaymentStatus(booking);
   }, [booking]);
-
-  useEffect(() => {
-    if (useMomoMock || loading || !id || hasNavigatedToSuccessRef.current) return;
-    if (!booking || baselinePaymentRef.current === null) return;
-    const baseline = baselinePaymentRef.current;
-    const next = getPaymentStatus(booking);
-    if (!pollPaymentReached(baseline, next)) return;
-    hasNavigatedToSuccessRef.current = true;
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-    message.success("Thanh toán đã được xác nhận!");
-    navigate(`/booking/success/${id}`, { replace: true });
-  }, [booking, loading, id, navigate, useMomoMock]);
-
-
 
   const totalPrice = booking?.total_price || booking?.totalPrice || 0;
   const paymentMethod = booking?.paymentMethod || "full";
@@ -128,22 +126,16 @@ const BookingPaymentPage: React.FC = () => {
     const estimate30 = total > 0 ? Math.round(total * 0.3) : 0;
     const depField = Number(booking?.deposit_amount || 0);
     const paidSoFar = Number(booking?.paid_amount || 0);
-    /** fallback cọc 30% */
-    let credited = Math.max(
-      Number.isFinite(paidSoFar) ? paidSoFar : 0,
-      Number.isFinite(depField) ? depField : 0
-    );
-    if (paymentStatus === "deposit" && !credited && total > 0) {
-      credited = estimate30;
-    }
+
+    let credited = Math.max(Number.isFinite(paidSoFar) ? paidSoFar : 0, Number.isFinite(depField) ? depField : 0);
+    if (paymentStatus === "deposit" && !credited && total > 0) credited = estimate30;
+
     const firstDepositAmount = depField > 0 ? depField : estimate30;
     const remaining = Math.max(0, total - credited);
 
     if (paymentStatus === "paid") return { payType: "full" as const, amount: 0, label: "Đã thanh toán đủ" };
-    if (paymentStatus === "deposit")
-      return { payType: "remaining" as const, amount: remaining, label: "Thanh toán phần còn lại" };
-    if (paymentMethod === "deposit")
-      return { payType: "deposit" as const, amount: firstDepositAmount, label: "Thanh toán đặt cọc (30%)" };
+    if (paymentStatus === "deposit") return { payType: "remaining" as const, amount: remaining, label: "Thanh toán phần còn lại" };
+    if (paymentMethod === "deposit") return { payType: "deposit" as const, amount: firstDepositAmount, label: "Thanh toán đặt cọc (30%)" };
     return { payType: "full" as const, amount: total, label: "Thanh toán toàn bộ (100%)" };
   }, [booking?.deposit_amount, booking?.paid_amount, paymentMethod, paymentStatus, totalPrice]);
 
@@ -151,7 +143,7 @@ const BookingPaymentPage: React.FC = () => {
   const paymentAmount = Number.isFinite(paymentAmountRaw) ? paymentAmountRaw : 0;
   const payType = (breakdown as any)?.payType as "full" | "deposit" | "remaining";
 
-  // tải qr
+  // Load QR for bank gateway
   useEffect(() => {
     if (useMomoMock || !id || !booking || paymentStatus === "paid" || paymentAmount <= 0) {
       setQrData(null);
@@ -162,16 +154,12 @@ const BookingPaymentPage: React.FC = () => {
     (async () => {
       setQrLoading(true);
       try {
-        const res = await axios.get<{ success?: boolean; data?: SepayQrPayload }>(
-          `${SERVER_ORIGIN}/sepay/qr/${id}`,
-          { params: { pay_type: payType } }
-        );
+        const res = await axios.get<{ success?: boolean; data?: SepayQrPayload }>(`${SERVER_ORIGIN}/sepay/qr/${id}`, {
+          params: { pay_type: payType },
+        });
         const data = res.data?.data;
-        if (!cancelled && data?.qrUrl) {
-          setQrData(data);
-        } else if (!cancelled) {
-          message.error("Không nhận được mã QR từ máy chủ.");
-        }
+        if (!cancelled && data?.qrUrl) setQrData(data);
+        else if (!cancelled) message.error("Không nhận được mã QR từ máy chủ.");
       } catch {
         if (!cancelled) message.error("Không tải được mã QR thanh toán. Kiểm tra SePay/VietQR trên server.");
       } finally {
@@ -184,36 +172,36 @@ const BookingPaymentPage: React.FC = () => {
     };
   }, [id, booking, payType, paymentAmount, paymentStatus, useMomoMock]);
 
+  // Poll payment status (bank gateway)
   useEffect(() => {
     if (useMomoMock || !id || loading || !booking || paymentStatus === "paid") return;
-
-    if (baselinePaymentRef.current === null) {
-      baselinePaymentRef.current = getPaymentStatus(booking);
-    }
 
     const tick = async () => {
       try {
         const b = await refreshBooking();
         if (!b) return;
-        if (baselinePaymentRef.current === null) {
-          baselinePaymentRef.current = getPaymentStatus(b);
-        }
+        if (baselinePaymentRef.current === null) baselinePaymentRef.current = getPaymentStatus(b);
         const baseline = baselinePaymentRef.current;
         if (baseline == null) return;
         const next = getPaymentStatus(b);
         if (pollPaymentReached(baseline, next)) {
           if (hasNavigatedToSuccessRef.current) return;
           hasNavigatedToSuccessRef.current = true;
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-          }
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
           message.success("Thanh toán đã được xác nhận!");
-          navigate(`/booking/success/${id}`, { replace: true });
+          navigate(`/booking/success/${id}?payment=success&gateway=bank`, { replace: true });
           return;
         }
         setPollHint(`Chưa ghi nhận thanh toán (trạng thái: ${next}).`);
-      } catch {
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 400 || status === 404) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setPollHint(null);
+          return;
+        }
         setPollHint("Không kiểm tra được trạng thái, sẽ thử lại…");
       }
     };
@@ -222,11 +210,10 @@ const BookingPaymentPage: React.FC = () => {
     void tick();
 
     return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, navigate, paymentStatus, useMomoMock, loading, booking?._id]);
 
   const handleConfirmScanned = async () => {
@@ -239,19 +226,20 @@ const BookingPaymentPage: React.FC = () => {
         return;
       }
 
-      const res = await axios.post(`${API_V1}/bookings/${id}/payments/momo`, {
-        orderInfo: `${String((breakdown as any)?.label || "Thanh toán")} tour ${booking.tour_id?.name || ""}`.trim(),
-        pay_type: (breakdown as any)?.payType || "full",
-      });
+      const res = await axios.post(
+        `${API_V1}/bookings/${id}/payments/momo`,
+        { pay_type: (breakdown as any)?.payType || "full" },
+        { headers: { "Content-Type": "application/json" } }
+      );
 
       if (res.data?.status === "success") {
         message.success("Thanh toán giả lập thành công!");
-        navigate(`/booking/success/${id}`);
+        navigate(`/booking/success/${id}?payment=success&gateway=momo`, { replace: true });
       } else {
         message.error(res.data?.message || "Không nhận được phản hồi hợp lệ từ API thanh toán");
       }
-    } catch {
-      message.error("Lỗi khi xác nhận thanh toán. Vui lòng thử lại sau.");
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || "Lỗi khi xác nhận thanh toán. Vui lòng thử lại sau.");
     } finally {
       setProcessing(false);
     }
@@ -259,131 +247,129 @@ const BookingPaymentPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 100 }}>
-        <Spin size="large" />
+      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+        <Spin size="large" spinning tip="Đang tải thông tin thanh toán...">
+          <div style={{ minHeight: 240 }} />
+        </Spin>
+      </div>
+    );
+  }
+
+  if (fatalError) {
+    return (
+      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+        <Result
+          status="error"
+          title={fatalError}
+          subTitle="Hãy mở lại từ trang đặt tour hoặc từ 'Đơn của tôi' để đảm bảo đúng mã booking."
+          extra={[
+            <Button key="orders" type="primary" onClick={() => navigate("/my-bookings")}>
+              Đơn của tôi
+            </Button>,
+            <Button key="tours" onClick={() => navigate("/tours")}>
+              Danh sách tour
+            </Button>,
+          ]}
+        />
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div style={{ textAlign: "center", marginTop: 100 }}>
-        Không tìm thấy đơn hàng.
+      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+        <Result
+          status="error"
+          title="Không tìm thấy đơn hàng."
+          extra={[
+            <Button key="back" type="primary" onClick={() => navigate("/tours")}>
+              Quay lại
+            </Button>,
+          ]}
+        />
       </div>
     );
   }
 
-  if (paymentStatus === "paid") {
-    return (
-      <div style={{ padding: "40px 20px", backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
-        <Card style={{ maxWidth: 600, margin: "0 auto", borderRadius: 12, textAlign: "center" }}>
-          <Result
-            status="success"
-            title="Đơn hàng đã thanh toán đủ"
-            subTitle="Bạn không cần thực hiện thêm thanh toán."
-            extra={[
-              <Button key="back" type="primary" size="large" onClick={() => navigate(`/booking/success/${id}`)}>
-                Quay lại đơn hàng
-              </Button>,
-            ]}
-          />
-        </Card>
-      </div>
-    );
-  }
+  const tourInfo = booking?.tour_id && typeof booking.tour_id === "object" ? booking.tour_id : null;
+  const tourName = tourInfo?.name || booking?.tour_name || booking?.tourName || "---";
+  const tourCode = tourInfo?.code || booking?.tour_code || booking?.tourCode || tourInfo?._id || tourInfo?.id || "";
+  const tourImage = tourInfo?.images?.[0] || booking?.tour_image || booking?.tourImage || "";
 
-  if (useMomoMock) {
-    return (
-      <div style={{ padding: "40px 20px", backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
-        <Card
+  const paymentTag =
+    paymentStatus === "paid"
+      ? { color: "green", label: "Đã thanh toán đủ" }
+      : paymentStatus === "deposit"
+        ? { color: "orange", label: "Đã đặt cọc" }
+        : paymentStatus === "refunded"
+          ? { color: "default", label: "Đã hoàn tiền" }
+          : { color: "blue", label: "Chưa thanh toán" };
+
+  const leftContent =
+    paymentStatus === "paid" ? (
+      <Result
+        status="success"
+        title="Đơn hàng đã thanh toán đủ"
+        subTitle="Bạn không cần thực hiện thêm thanh toán."
+        extra={[
+          <Button key="back" type="primary" size="large" onClick={() => navigate(`/booking/success/${id}`)}>
+            Quay lại đơn hàng
+          </Button>,
+        ]}
+      />
+    ) : useMomoMock ? (
+      <div style={{ textAlign: "center" }}>
+        <Title level={3} style={{ marginBottom: 8 }}>
+          Thanh toán MoMo (giả lập)
+        </Title>
+        <Text type="secondary">
+          Vui lòng quét mã QR bên dưới bằng ứng dụng MoMo (mô phỏng), sau đó nhấn &quot;Xác nhận đã quét&quot;.
+        </Text>
+
+        <div style={{ marginTop: 12 }}>
+          <Text type="secondary">
+            Hình thức: <b>{breakdown.label}</b>
+          </Text>
+        </div>
+
+        <div
           style={{
-            maxWidth: 600,
-            margin: "0 auto",
-            borderRadius: 12,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            textAlign: "center",
+            width: 260,
+            height: 260,
+            margin: "24px auto 16px",
+            borderRadius: 16,
+            border: "1px dashed #d9d9d9",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "repeating-linear-gradient(45deg, #fafafa, #fafafa 10px, #f0f0f0 10px, #f0f0f0 20px)",
           }}
         >
-          <Title level={3} style={{ marginBottom: 8 }}>
-            Thanh toán MoMo (giả lập)
-          </Title>
-          <Text type="secondary">
-            Vui lòng quét mã QR bên dưới bằng ứng dụng MoMo (mô phỏng), sau đó nhấn &quot;Xác nhận đã quét&quot;.
+          <span style={{ fontSize: 16, color: "#999" }}>QR MoMo mô phỏng</span>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <Text>Số tiền:&nbsp;</Text>
+          <Text strong type="danger" style={{ fontSize: 20 }}>
+            {paymentAmount.toLocaleString("vi-VN")} ₫
           </Text>
+        </div>
 
-          <div style={{ marginTop: 12 }}>
-            <Text type="secondary">
-              Hình thức: <b>{breakdown.label}</b>
-            </Text>
-          </div>
-
-          <div
-            style={{
-              width: 260,
-              height: 260,
-              margin: "24px auto 16px",
-              borderRadius: 16,
-              border: "1px dashed #d9d9d9",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background:
-                "repeating-linear-gradient(45deg, #fafafa, #fafafa 10px, #f0f0f0 10px, #f0f0f0 20px)",
-            }}
-          >
-            <span style={{ fontSize: 16, color: "#999" }}>QR MoMo mô phỏng</span>
-          </div>
-
-          <div style={{ marginBottom: 24 }}>
-            <Text>Số tiền:&nbsp;</Text>
-            <Text strong type="danger" style={{ fontSize: 20 }}>
-              {paymentAmount.toLocaleString("vi-VN")} ₫
-            </Text>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-            <Button onClick={() => navigate(-1)} size="large">
-              Quay lại
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={handleConfirmScanned}
-              loading={processing}
-              disabled={paymentAmount <= 0}
-            >
-              Xác nhận đã quét
-            </Button>
-          </div>
-        </Card>
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <Button onClick={() => navigate(-1)} size="large">
+            Quay lại
+          </Button>
+          <Button type="primary" size="large" onClick={handleConfirmScanned} loading={processing} disabled={paymentAmount <= 0}>
+            Xác nhận đã quét
+          </Button>
+        </div>
       </div>
-    );
-  }
-
-  const paymentStatusLabel =
-    paymentStatus === "deposit"
-      ? "Đã nhận cọc"
-      : paymentStatus === "refunded"
-        ? "Đã hoàn tiền"
-        : "Chưa thanh toán";
-
-  return (
-    <div style={{ padding: "40px 20px", backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
-      <Card
-        style={{
-          maxWidth: 560,
-          margin: "0 auto",
-          borderRadius: 12,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-          textAlign: "center",
-        }}
-      >
+    ) : (
+      <div style={{ textAlign: "center" }}>
         <Title level={3} style={{ marginBottom: 8 }}>
           Chuyển khoản ngân hàng
         </Title>
-        <Text type="secondary">
-          Quét mã QR bằng app ngân hàng (ví dụ MBBank). Hệ thống sẽ tự xác nhận sau khi tiền vào 
-        </Text>
+        <Text type="secondary">Quét mã QR bằng app ngân hàng (ví dụ MBBank). Hệ thống sẽ tự xác nhận sau khi tiền vào</Text>
 
         <div style={{ marginTop: 12 }}>
           <Text type="secondary">
@@ -393,11 +379,6 @@ const BookingPaymentPage: React.FC = () => {
 
         <Divider style={{ margin: "16px 0" }} />
 
-        <div style={{ marginBottom: 10 }}>
-          <Text type="secondary">Trạng thái hiện tại: </Text>
-          <Text strong>{paymentStatusLabel}</Text>
-        </div>
-
         {paymentAmount <= 0 ? (
           <Alert type="info" message="Không có số tiền cần thanh toán." showIcon />
         ) : qrLoading ? (
@@ -406,21 +387,8 @@ const BookingPaymentPage: React.FC = () => {
           </Spin>
         ) : qrData?.qrUrl ? (
           <>
-            <div
-              style={{
-                margin: "16px auto",
-                padding: 12,
-                background: "#fff",
-                borderRadius: 16,
-                border: "1px solid #f0f0f0",
-                display: "inline-block",
-              }}
-            >
-              <img
-                src={qrData.qrUrl}
-                alt="QR chuyển khoản"
-                style={{ width: 260, height: 260, objectFit: "contain", display: "block" }}
-              />
+            <div style={{ margin: "16px auto", padding: 12, background: "#fff", borderRadius: 16, border: "1px solid #f0f0f0", display: "inline-block" }}>
+              <img src={qrData.qrUrl} alt="QR chuyển khoản" style={{ width: 260, height: 260, objectFit: "contain", display: "block" }} />
             </div>
 
             <div style={{ textAlign: "left", maxWidth: 400, margin: "0 auto 16px", fontSize: 14 }}>
@@ -476,9 +444,111 @@ const BookingPaymentPage: React.FC = () => {
           <Button size="large" onClick={() => navigate(`/booking/success/${id}`)}>
             Xem đơn hàng
           </Button>
-          
         </div>
-      </Card>
+      </div>
+    );
+
+  return (
+    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
+        <Title level={2} style={{ marginBottom: 6 }}>
+          ĐẶT TOUR
+        </Title>
+        <Text type="secondary">Hoàn tất thông tin để đặt tour nhanh chóng</Text>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+        <Steps current={1} items={[{ title: "Nhập thông tin" }, { title: "Thanh toán" }, { title: "Hoàn tất" }]} style={{ maxWidth: 700, width: "100%" }} />
+      </div>
+
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={16}>
+          <Card style={{ borderRadius: 12 }}>{leftContent}</Card>
+        </Col>
+
+        <Col xs={24} lg={8}>
+          <Card style={{ borderRadius: 12 }}>
+            <Title level={4} style={{ marginBottom: 12 }}>
+              Tóm tắt chuyến đi
+            </Title>
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <img
+                src={tourImage || "https://via.placeholder.com/120x80?text=Tour"}
+                alt={tourName || "tour"}
+                style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 10 }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "https://via.placeholder.com/120x80?text=Tour";
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontWeight: 700, display: "block" }} ellipsis={{ tooltip: tourName }}>
+                  {tourName}
+                </Text>
+                <Text type="secondary" style={{ display: "block" }}>
+                  Mã tour: {tourCode || "---"}
+                </Text>
+              </div>
+            </div>
+
+            <Divider />
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <Text>Ngày khởi hành</Text>
+              <Text style={{ fontWeight: 700 }}>{booking?.startDate ? dayjs(booking.startDate).format("DD/MM/YYYY") : "---"}</Text>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <Text>Số khách</Text>
+              <Text style={{ fontWeight: 700 }}>{Number(booking?.groupSize || 0) || "---"}</Text>
+            </div>
+
+            <Divider style={{ margin: "12px 0" }} />
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <Text>Thanh toán</Text>
+              <Tag color={paymentTag.color} style={{ marginInlineEnd: 0 }}>
+                {paymentTag.label}
+              </Tag>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <Text>Cần thanh toán</Text>
+              <Text strong style={{ color: "#f5222d" }}>
+                {Number(paymentAmount || 0).toLocaleString("vi-VN")}đ
+              </Text>
+            </div>
+
+            <Divider style={{ margin: "12px 0" }} />
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <Title level={5} style={{ margin: 0 }}>
+                Tổng tiền
+              </Title>
+              <Title level={4} style={{ margin: 0, color: "#f5222d" }}>
+                {Number(totalPrice || 0).toLocaleString("vi-VN")}đ
+              </Title>
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+              <Button block size="large" onClick={() => navigate(`/booking/success/${id}`)}>
+                Xem đơn hàng
+              </Button>
+              <Button
+                block
+                type="primary"
+                size="large"
+                onClick={() => {
+                  if (!tourInfo?._id && !tourInfo?.id) return navigate("/tours");
+                  navigate(`/tours/${tourInfo?._id || tourInfo?.id}`);
+                }}
+              >
+                Xem tour
+              </Button>
+            </div>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };

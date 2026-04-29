@@ -1,0 +1,35 @@
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0 !important;
+}
+
+.subtitle {
+  color: #64748b;
+}
+
+.filter {
+  background: rgba(19, 182, 236, 0.10);
+  border: 1px solid rgba(19, 182, 236, 0.22);
+  padding: 6px;
+  border-radius: 999px;
+}
+
+.cardWrap {
+  border-radius: 16px !important;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+

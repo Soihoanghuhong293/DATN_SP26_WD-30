@@ -1,0 +1,145 @@
+.card {
+  border-radius: 16px !important;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  background: #fff;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+  border-color: rgba(19, 182, 236, 0.35);
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.thumb {
+  width: 160px;
+  min-width: 160px;
+  height: 120px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #f1f5f9;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.codeRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.amount {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ef4444;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.btnPrimary {
+  background: #13b6ec !important;
+  border-color: #13b6ec !important;
+  box-shadow: 0 10px 22px rgba(19, 182, 236, 0.28);
+}
+
+.btnPrimary:hover {
+  filter: brightness(0.98);
+}
+
+.btnPay {
+  background: linear-gradient(135deg, #096dd9, #13b6ec) !important;
+  border: none !important;
+  box-shadow: 0 10px 22px rgba(9, 109, 217, 0.22);
+}
+
+.btnDangerSoft {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.fadeIn {
+  animation: fadeInUp 220ms ease both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+  }
+  .thumb {
+    width: 100%;
+    min-width: 0;
+    height: 190px;
+  }
+  .title {
+    font-size: 17px;
+  }
+}
+

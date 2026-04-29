@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Empty, List, Segmented, Space, Spin, Tag, Typography, message, Button, Modal, Input, Select, Upload, Divider } from "antd";
+import { Button, Card, Divider, Input, Modal, Segmented, Select, Space, Typography, Upload, message } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
 import type { UploadFile } from "antd";
 import type { RcFile } from "antd/es/upload";
+import { BookingList } from "../components/Client/bookings/BookingList";
+import type { BookingCardModel } from "../components/Client/bookings/BookingCard";
+import pageStyles from "./styles/MyBookingsPage.module.css";
 
 const { Title, Text } = Typography;
 
@@ -15,19 +18,24 @@ const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
 
-const paymentStatusInfo = (payment: string) => {
-  const p = String(payment || "unpaid");
-  if (p === "paid") return { color: "green" as const, label: "Đã thanh toán" };
-  if (p === "deposit") return { color: "orange" as const, label: "Đã đặt cọc" };
-  if (p === "refunded") return { color: "default" as const, label: "Đã hoàn tiền" };
-  return { color: "blue" as const, label: "Chưa thanh toán" };
+const normalizePaymentStatus = (booking: any): "unpaid" | "deposit" | "paid" | "refunded" => {
+  const raw =
+    booking?.payment_status ??
+    (booking?.status === "paid"
+      ? "paid"
+      : booking?.status === "deposit"
+        ? "deposit"
+        : booking?.status === "refunded"
+          ? "refunded"
+          : "unpaid");
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : raw;
+  if (s === "paid" || s === "deposit" || s === "refunded" || s === "unpaid") return s;
+  return "unpaid";
 };
 
-const bookingStatusInfo = (status: string) => {
+const normalizeBookingStatus = (status: any): "pending" | "confirmed" | "cancelled" => {
   const s = ["pending", "confirmed", "cancelled"].includes(String(status)) ? String(status) : "confirmed";
-  if (s === "pending") return { color: "gold" as const, label: "Chờ xử lý" };
-  if (s === "cancelled") return { color: "red" as const, label: "Đã hủy" };
-  return { color: "green" as const, label: "Đã xác nhận" };
+  return s as any;
 };
 
 const MyBookingsPage: React.FC = () => {
@@ -59,7 +67,8 @@ const MyBookingsPage: React.FC = () => {
       try {
         const res = await axios.get(`${API_V1}/bookings/me`, {
           ...getAuthHeader(),
-          params: status === "all" ? {} : { status },
+          // luôn fetch all để gom "chưa thanh toán" vào tab "Chờ xử lý"
+          params: {},
         });
         const data = res.data?.data || [];
         setItems(Array.isArray(data) ? data : []);
@@ -73,18 +82,63 @@ const MyBookingsPage: React.FC = () => {
     fetchMine();
   }, [status]);
 
-  const grouped = useMemo(() => items, [items]);
+  const grouped = useMemo(() => {
+    const all = Array.isArray(items) ? items : [];
+    if (status === "all") return all;
+    if (status === "cancelled") return all.filter((b: any) => String(b?.status) === "cancelled");
+    if (status === "pending") {
+      return all.filter((b: any) => String(b?.status) === "pending" || normalizePaymentStatus(b) === "unpaid");
+    }
+    // confirmed tab: confirmed nhưng đã có thanh toán (deposit/paid) hoặc các trường hợp không unpaid
+    return all.filter((b: any) => String(b?.status) === "confirmed" && normalizePaymentStatus(b) !== "unpaid");
+  }, [items, status]);
+
+  const bookingCards: BookingCardModel[] = useMemo(() => {
+    return grouped
+      .map((b: any) => {
+        const id = String(b?._id || b?.id || "");
+        if (!id) return null;
+        const paymentStatusRaw = normalizePaymentStatus(b);
+        const bookingStatusRaw = normalizeBookingStatus(b?.status);
+
+        const startDateObj = b?.startDate ? new Date(b.startDate) : null;
+        const isPastOrOnStart = startDateObj ? Date.now() >= startDateObj.getTime() : false;
+        const hasPendingCancel = Boolean(b?.cancel_request?.status === "pending");
+        const tourStage = String(b?.tour_stage || "scheduled");
+        const canCancel =
+          bookingStatusRaw !== "cancelled" &&
+          !hasPendingCancel &&
+          tourStage !== "in_progress" &&
+          tourStage !== "completed" &&
+          !isPastOrOnStart;
+
+        return {
+          id,
+          tourName: b?.tour_id?.name || "Tour",
+          tourThumb: b?.tour_id?.images?.[0] || "",
+          startDate: b?.startDate || null,
+          endDate: b?.endDate || null,
+          createdAt: b?.created_at || null,
+          totalPrice: Number(b?.total_price || b?.totalPrice || 0),
+          bookingStatus: bookingStatusRaw,
+          paymentStatus: paymentStatusRaw,
+          canCancel,
+          hasPendingCancel,
+        } as BookingCardModel;
+      })
+      .filter(Boolean) as BookingCardModel[];
+  }, [grouped]);
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}>
-      <Space direction="vertical" size={14} style={{ width: "100%" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <div>
-            <Title level={3} style={{ marginBottom: 0 }}>
-              Đơn của tôi
-            </Title>
-            <Text type="secondary">Theo dõi tình trạng booking và thanh toán.</Text>
-          </div>
+    <div className={pageStyles.page}>
+      <div className={pageStyles.header}>
+        <div>
+          <Title level={3} className={pageStyles.title}>
+            Đơn của tôi
+          </Title>
+          <div className={pageStyles.subtitle}>Theo dõi tình trạng booking và thanh toán.</div>
+        </div>
+        <div className={pageStyles.filter}>
           <Segmented
             value={status}
             onChange={(v) => setStatus(v as any)}
@@ -96,111 +150,36 @@ const MyBookingsPage: React.FC = () => {
             ]}
           />
         </div>
+      </div>
 
-        <Card style={{ borderRadius: 12 }}>
-          {loading ? (
-            <div style={{ padding: 40, display: "flex", justifyContent: "center" }}>
-              <Spin />
-            </div>
-          ) : grouped.length === 0 ? (
-            <Empty description="Chưa có đơn nào." />
-          ) : (
-            <List
-              itemLayout="vertical"
-              dataSource={grouped}
-              renderItem={(b: any) => {
-                const pay = paymentStatusInfo(b?.payment_status || "unpaid");
-                const st = bookingStatusInfo(b?.status || "confirmed");
-                const tourName = b?.tour_id?.name || "Tour";
-                const start = b?.startDate ? dayjs(b.startDate).format("DD/MM/YYYY") : "---";
-                const end = b?.endDate ? dayjs(b.endDate).format("DD/MM/YYYY") : "---";
-                const total = Number(b?.total_price || b?.totalPrice || 0);
-                const deposit = Number(b?.deposit_amount || Math.round(total * 0.3));
-                const hasPendingCancel = Boolean(b?.cancel_request?.status === "pending");
-                const tourStage = String(b?.tour_stage || "scheduled");
-                const startDateObj = b?.startDate ? new Date(b.startDate) : null;
-                const isPastOrOnStart = startDateObj ? Date.now() >= startDateObj.getTime() : false;
-                const canCancel =
-                  st.label !== "Đã hủy" &&
-                  !hasPendingCancel &&
-                  tourStage !== "in_progress" &&
-                  tourStage !== "completed" &&
-                  !isPastOrOnStart;
-                const paymentStatusRaw = String(b?.payment_status || "unpaid");
-                const daysBeforeStart = startDateObj ? Math.floor((startDateObj.getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : 0;
-                const timeRefundPercent = daysBeforeStart > 7 ? 100 : daysBeforeStart >= 3 ? 50 : 0;
-                const paidAmount = paymentStatusRaw === "paid" ? total : paymentStatusRaw === "deposit" ? Math.max(0, deposit) : 0;
-                const refundPercent = timeRefundPercent;
-                const refundAmount = Math.max(0, Math.round((paidAmount * refundPercent) / 100));
-                return (
-                  <List.Item
-                    key={String(b?._id || b?.id)}
-                    style={{ padding: "16px 8px" }}
-                    actions={[
-                      <Button key="detail" type="primary" onClick={() => navigate(`/my-bookings/${b?._id || b?.id}`)}>
-                        Xem chi tiết
-                      </Button>,
-                      <Button
-                        key="cancel"
-                        danger
-                        disabled={!canCancel}
-                        onClick={() => {
-                          setCancelBooking({ ...b, _refundAmount: refundAmount, _refundPercent: refundPercent, _payLabel: pay.label });
-                          setCancelOpen(true);
-                        }}
-                      >
-                        {hasPendingCancel ? "Đang chờ hủy" : "Hủy tour"}
-                      </Button>,
-                      <Button
-                        key="pay"
-                        disabled={
-                          st.label === "Đã hủy" ||
-                          pay.label === "Đã hoàn tiền" ||
-                          (pay.label !== "Đã thanh toán" && isPastOrOnStart)
-                        }
-                        onClick={() => navigate(`/booking/success/${b?._id || b?.id}`)}
-                      >
-                        Thanh toán / Hóa đơn
-                      </Button>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <Text strong>{tourName}</Text>
-                          <Space size={8}>
-                            <Tag color={st.color}>{st.label}</Tag>
-                            <Tag color={pay.color}>{pay.label}</Tag>
-                          </Space>
-                        </div>
-                      }
-                      description={
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                          <Text type="secondary">
-                            Khởi hành: <b>{start}</b> · Kết thúc: <b>{end}</b>
-                          </Text>
-                          <Text>
-                            Tổng tiền:{" "}
-                            <Text strong style={{ color: "#d90429" }}>
-                              {total.toLocaleString("vi-VN")}đ
-                            </Text>
-                          </Text>
-                        </div>
-                      }
-                    />
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <Text type="secondary">Mã booking: <Text copyable>{b?._id || b?.id}</Text></Text>
-                      <Text type="secondary">
-                        Ngày tạo: {b?.created_at ? dayjs(b.created_at).format("DD/MM/YYYY HH:mm") : "---"}
-                      </Text>
-                    </div>
-                  </List.Item>
-                );
-              }}
-            />
-          )}
-        </Card>
-      </Space>
+      <Card className={pageStyles.cardWrap} bodyStyle={{ padding: 14 }}>
+        <BookingList
+          loading={loading}
+          items={bookingCards}
+          onViewDetail={(id) => navigate(`/my-bookings/${id}`)}
+          onPay={(id) => navigate(`/booking/payment/${id}?gateway=bank`)}
+          onInvoice={(id) => navigate(`/booking/success/${id}`)}
+          onCancel={(id) => {
+            const b = items.find((x: any) => String(x?._id || x?.id) === String(id));
+            if (!b) return;
+
+            const total = Number(b?.total_price || b?.totalPrice || 0);
+            const deposit = Number(b?.deposit_amount || Math.round(total * 0.3));
+            const startDateObj = b?.startDate ? new Date(b.startDate) : null;
+            const daysBeforeStart = startDateObj
+              ? Math.floor((startDateObj.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+              : 0;
+            const timeRefundPercent = daysBeforeStart > 7 ? 100 : daysBeforeStart >= 3 ? 50 : 0;
+            const paymentStatusRaw = normalizePaymentStatus(b);
+            const paidAmount =
+              paymentStatusRaw === "paid" ? total : paymentStatusRaw === "deposit" ? Math.max(0, deposit) : 0;
+            const refundAmount = Math.max(0, Math.round((paidAmount * timeRefundPercent) / 100));
+
+            setCancelBooking({ ...b, _refundAmount: refundAmount, _refundPercent: timeRefundPercent });
+            setCancelOpen(true);
+          }}
+        />
+      </Card>
 
       <Modal
         open={cancelOpen}
