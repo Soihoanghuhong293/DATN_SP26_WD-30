@@ -279,12 +279,14 @@ export const adminListTourReviews = async (req: AuthRequest, res: Response) => {
     const status = typeof req.query.status === 'string' ? req.query.status.trim() : '';
     const ratingRaw = typeof req.query.rating === 'string' ? req.query.rating.trim() : '';
     const tourId = typeof req.query.tour_id === 'string' ? req.query.tour_id.trim() : '';
+    const guideUserId = typeof req.query.guide_user_id === 'string' ? req.query.guide_user_id.trim() : '';
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
 
     const filter: any = {};
     if (status && ['pending', 'approved', 'hidden'].includes(status)) filter.status = status;
     if (ratingRaw && !Number.isNaN(Number(ratingRaw))) filter.rating = Number(ratingRaw);
     if (tourId && isValidObjectId(tourId)) filter.tour_id = tourId;
+    if (guideUserId && isValidObjectId(guideUserId)) filter.guide_user_id = guideUserId;
     if (q) filter.comment = { $regex: q, $options: 'i' };
 
     const reviews = await TourReview.find(filter)

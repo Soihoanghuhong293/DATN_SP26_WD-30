@@ -439,6 +439,7 @@ export async function adminGetTourReviews(params: {
   status?: TourReviewStatus;
   rating?: number;
   tour_id?: string;
+  guide_user_id?: string;
   q?: string;
 } = {}) {
   const res = await api.get(ENDPOINTS.tourReviews, { ...getAuthConfig(), params });
