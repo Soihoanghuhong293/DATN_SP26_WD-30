@@ -262,7 +262,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
   return (
     <div className="admin-sider">
       <div className="admin-sider__brand">
-        <Avatar size={40} className="admin-sider__avatar" src={profile?.avatarUrl || undefined}>
+        <Avatar size={40} className="admin-sider__avatar">
           <UserOutlined />
         </Avatar>
         <div className="admin-sider__brandText">

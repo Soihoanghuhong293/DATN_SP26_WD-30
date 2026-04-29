@@ -28,6 +28,7 @@ import HdvDashboard from '../pages/HdvDashboard';
 import HdvTours from '../pages/HdvTours';
 import HdvBookingDetail from '../pages/HdvBookingDetail';
 import HdvSchedule from '../pages/HdvSchedule';
+import HdvSettingsPage from '../pages/HdvSettingsPage';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -83,6 +84,7 @@ const AppRoutes = () => {
         <Route path="tours" element={<HdvTours />} />
         <Route path="tours/:id" element={<HdvBookingDetail />} />
         <Route path="schedule" element={<HdvSchedule />} />
+        <Route path="settings" element={<HdvSettingsPage />} />
       </Route>
 
       {/* ===== ADMIN ===== */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
@@ -32,6 +32,33 @@ import {
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
+
+const getAuthHeaders = () => ({
+  Authorization: `Bearer ${
+    localStorage.getItem('token') || localStorage.getItem('admin_token') || ''
+  }`,
+});
+
+const normalizeDate = (dateVal: string) => {
+  if (!dateVal) return '';
+  const raw = String(dateVal).trim();
+  if (!raw) return '';
+
+  // ISO date-time
+  if (raw.includes('T')) return raw.split('T')[0];
+
+  // DD/MM/YYYY
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const dd = slash[1].padStart(2, '0');
+    const mm = slash[2].padStart(2, '0');
+    const yyyy = slash[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const d = dayjs(raw);
+  return d.isValid() ? d.format('YYYY-MM-DD') : '';
+};
 
 function priceTierAmount(p: any): number {
   const v = p?.price ?? p?.amount ?? p?.value;
@@ -131,13 +158,15 @@ const TourDetail = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [scheduleForm] = Form.useForm();
+  const [bookedSlotsByDate, setBookedSlotsByDate] = useState<Record<string, number>>({});
+  const [loadingBookedSlots, setLoadingBookedSlots] = useState(false);
 
   // 1. API GET DATA
   const { data: tour, isLoading } = useQuery({
     queryKey: ['tour', id],
     queryFn: async () => {
       const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: getAuthHeaders(),
       });
       const raw = res.data?.data;
       if (raw && typeof raw === 'object' && 'tour' in raw && (raw as any).tour) {
@@ -160,7 +189,7 @@ const TourDetail = () => {
     mutationFn: async (providerIds: string[]) => {
       await axios.put(`http://localhost:5000/api/v1/tours/${id}`, {
         suppliers: providerIds,
-      });
+      }, { headers: getAuthHeaders() });
     },
     onSuccess: () => {
       message.success('Đã cập nhật nhà cung cấp');
@@ -184,7 +213,7 @@ const TourDetail = () => {
       
       await axios.put(`http://localhost:5000/api/v1/tours/${id}`, {
         departure_schedule: payload,
-      }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      }, { headers: getAuthHeaders() });
     },
     onSuccess: () => {
       message.success('Đã cập nhật lịch khởi hành');
@@ -214,7 +243,7 @@ const TourDetail = () => {
   // 2. API DELETE
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      await axios.delete(`http://localhost:5000/api/v1/tours/${id}`);
+      await axios.delete(`http://localhost:5000/api/v1/tours/${id}`, { headers: getAuthHeaders() });
     },
     onSuccess: () => {
       message.success('Đã xóa tour thành công');
@@ -223,6 +252,59 @@ const TourDetail = () => {
     },
     onError: () => message.error('Xóa thất bại')
   });
+
+  // Compute remaining slots for this tour/trip from bookings
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBooked = async () => {
+      try {
+        setLoadingBookedSlots(true);
+        const tourId = String((tour as any)?._id || (tour as any)?.id || id || '');
+        if (!tourId) return;
+
+        const res = await axios.get(`http://localhost:5000/api/v1/bookings`, {
+          headers: getAuthHeaders(),
+          params: { _t: Date.now() },
+        });
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        const grouped: Record<string, number> = {};
+
+        for (const b of list) {
+          if (!b) continue;
+          const bookingTourId = b?.tour_id?._id || b?.tour_id;
+          if (String(bookingTourId) !== String(tourId)) continue;
+          if (String(b?.status || '').toLowerCase() === 'cancelled') continue;
+
+          const dateStr = normalizeDate(String(b?.startDate || ''));
+          if (!dateStr) continue;
+          const size = Number(b?.groupSize || 0);
+          grouped[dateStr] = (grouped[dateStr] || 0) + (Number.isFinite(size) ? size : 0);
+        }
+
+        if (!cancelled) setBookedSlotsByDate(grouped);
+      } catch {
+        if (!cancelled) setBookedSlotsByDate({});
+      } finally {
+        if (!cancelled) setLoadingBookedSlots(false);
+      }
+    };
+
+    if (tour) fetchBooked();
+    return () => {
+      cancelled = true;
+    };
+  }, [tour, id]);
+
+  const departureScheduleWithRemaining = useMemo(() => {
+    const ds = Array.isArray((tour as any)?.departure_schedule) ? ((tour as any).departure_schedule as any[]) : [];
+    return ds.map((row: any) => {
+      const dateStr = normalizeDate(String(row?.date || ''));
+      const slots = Number(row?.slots ?? 0);
+      const booked = Number(bookedSlotsByDate[dateStr] || 0);
+      const remaining = Number.isFinite(slots) ? Math.max(slots - booked, 0) : 0;
+      return { ...row, _dateKey: dateStr, _booked: booked, _remaining: remaining };
+    });
+  }, [tour, bookedSlotsByDate]);
 
   if (isLoading) return (
     <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -377,14 +459,26 @@ const TourDetail = () => {
           className="saas-card mb-6"
         >
           <Table
-            dataSource={tour.departure_schedule || []}
+            loading={loadingBookedSlots}
+            dataSource={departureScheduleWithRemaining}
             rowKey={(r: any, i) => String(r?.date ?? i)}
             pagination={false}
             size="small"
             locale={{ emptyText: 'Chưa có lịch khởi hành cụ thể.' }}
             columns={[
                 { title: 'Ngày', dataIndex: 'date', key: 'date', render: (date: string) => <Text strong>{date ? dayjs(date).format('DD/MM/YYYY') : '—'}</Text> },
-                { title: 'Số chỗ', dataIndex: 'slots', key: 'slots', align: 'right', render: (slots: number) => <Tag color="blue">{slots}</Tag> }
+                { title: 'Số chỗ', dataIndex: 'slots', key: 'slots', align: 'right', render: (slots: number) => <Tag color="blue">{slots}</Tag> },
+                { title: 'Đã đặt', dataIndex: '_booked', key: '_booked', align: 'right', render: (v: number) => <Tag color="gold">{Number(v || 0)}</Tag> },
+                {
+                  title: 'Còn trống',
+                  dataIndex: '_remaining',
+                  key: '_remaining',
+                  align: 'right',
+                  render: (v: number) => {
+                    const n = Number(v || 0);
+                    return <Tag color={n <= 0 ? 'red' : n <= 5 ? 'orange' : 'green'}>{n}</Tag>;
+                  }
+                }
             ]}
           />
         </Card>
