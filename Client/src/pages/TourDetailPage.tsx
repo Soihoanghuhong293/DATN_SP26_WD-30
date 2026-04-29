@@ -7,6 +7,7 @@ import {
   Button,
   Tag,
   Divider,
+  Collapse,
   message,
   Modal,
   Rate,
@@ -14,7 +15,6 @@ import {
 import {
   ArrowLeftOutlined,
   CalendarOutlined,
-  DollarOutlined,
   CheckCircleOutlined,
   TeamOutlined,
   LeftOutlined,
@@ -27,7 +27,7 @@ import {
 import axios from "axios";
 import dayjs from "dayjs";
 import { addWishlistTour, getTour, getWishlistTourStatus, removeWishlistTour } from "../services/api";
-import { getTourReviewsByTour } from "../services/api";
+import { getTourReviewsByTour, getTours } from "../services/api";
 import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
@@ -65,6 +65,9 @@ const TourDetailPage = () => {
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [approvedReviews, setApprovedReviews] = useState<any[]>([]);
+  const [relatedTours, setRelatedTours] = useState<ITour[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [expandedScheduleKeys, setExpandedScheduleKeys] = useState<string[]>([]);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -131,6 +134,119 @@ const TourDetailPage = () => {
       cancelled = true;
     };
   }, [id, (tour as any)?._id]);
+
+  // Fetch tours liên quan/gợi ý thêm (ưu tiên cùng category)
+  useEffect(() => {
+    const fetchRelated = async () => {
+      const current = tour;
+      const currentId = current?.id || (current as any)?._id || id;
+      if (!currentId) return;
+
+      try {
+        setRelatedLoading(true);
+
+        const normalizeText = (v: any) => String(v ?? "").trim().toLowerCase();
+
+        const getTourLocationKey = (t: any) => {
+          // support multiple backend field names
+          const candidates = [
+            t?.location,
+            t?.destination,
+            t?.province,
+            t?.city,
+            t?.start_location,
+            t?.end_location,
+            t?.place,
+          ];
+          const found = candidates.find((x) => normalizeText(x));
+          return normalizeText(found);
+        };
+
+        const getTourServiceLevelKey = (t: any) => {
+          const candidates = [
+            t?.serviceLevel,
+            t?.service_level,
+            t?.service_level_name,
+            t?.service_level_id?.name,
+            t?.service_level_id,
+          ];
+          const found = candidates.find((x) => normalizeText(x));
+          return normalizeText(found);
+        };
+
+        const pickUnique = (arr: ITour[]) => {
+          const seen = new Set<string>();
+          const out: ITour[] = [];
+          const currentGroup = normalizeGroupName((current as any)?.name);
+
+          for (const t of arr) {
+            const tid = (t as any)?.id || (t as any)?._id;
+            if (!tid) continue;
+            const groupKey = normalizeGroupName((t as any)?.name);
+            const key = groupKey || String(tid);
+
+            // gom theo chương trình tour chính, tránh trùng nhiều trip cùng tên
+            if (groupKey && currentGroup && groupKey === currentGroup) continue;
+            if (!groupKey && key === String(currentId)) continue;
+            if (seen.has(key)) continue;
+
+            seen.add(key);
+            out.push(t);
+          }
+          return out;
+        };
+
+        // Fetch a pool then rank by priority:
+        // 1) same location 2) same serviceLevel 3) exclude current
+        const poolRes = await getTours({ page: 1, limit: 200, status: "active" });
+        const pool = pickUnique(Array.isArray(poolRes?.data) ? poolRes.data : []);
+
+        const curLoc = getTourLocationKey(current);
+        const curSvc = getTourServiceLevelKey(current);
+
+        const scored = pool
+          .map((t) => {
+            const loc = getTourLocationKey(t as any);
+            const svc = getTourServiceLevelKey(t as any);
+            const sameLoc = !!curLoc && !!loc && curLoc === loc;
+            const sameSvc = !!curSvc && !!svc && curSvc === svc;
+            const score = (sameLoc ? 100 : 0) + (sameSvc ? 10 : 0);
+            return { t, score };
+          })
+          .sort((a, b) => b.score - a.score);
+
+        const top = scored
+          .filter((x) => x.score > 0)
+          .map((x) => x.t)
+          .slice(0, 8);
+
+        // Fallback if missing location/serviceLevel on data: use category match then latest tours
+        if (top.length >= 4) {
+          setRelatedTours(top);
+          return;
+        }
+
+        const categoryId = (current as any)?.category_id?._id || (current as any)?.category_id;
+        let fallback: ITour[] = [];
+        if (categoryId) {
+          const byCat = pool.filter((t: any) => {
+            const cat = t?.category_id?._id || t?.category_id;
+            return cat && String(cat) === String(categoryId);
+          });
+          fallback = byCat;
+        }
+
+        const merged = pickUnique([...top, ...fallback, ...pool]).slice(0, 8);
+        setRelatedTours(merged);
+      } catch (e) {
+        setRelatedTours([]);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    fetchRelated();
+  }, [tour, id]);
 
   // Fetch all tour instances cùng tên để gộp lịch khởi hành (khách hàng chỉ thấy 1 tour)
   useEffect(() => {
@@ -412,10 +528,14 @@ const TourDetailPage = () => {
     }
   };
 
-  const durationDays = tour?.duration_days ?? tour?.duration_;
+  const handleGoToTour = (tourId: string) => {
+    navigate(`/tours/${tourId}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const averageRating = Number((tour as any)?.rating?.average || 0);
   const totalReviews = Number((tour as any)?.rating?.total_reviews || approvedReviews.length || 0);
+  const relatedToursDisplay = useMemo(() => relatedTours.slice(0, 3), [relatedTours]);
 
   if (loading) {
     return (
@@ -595,99 +715,82 @@ const TourDetailPage = () => {
 
       {/* CONTENT */}
       <div className="tour-detail-container">
-        <div>
-          {/* QUICK INFO */}
-          <div className="tour-detail-quick-info">
-            <div className="info-card">
-              <CalendarOutlined />
-              <div>
-                <p>Thời gian</p>
-                <b>
-                  {(() => {
-                    const days =
-                      (tour as any)?.duration_days ??
-                      (tour as any)?.durationDays ??
-                      (tour as any)?.duration_ ??
-                      null;
-                    if (!days || Number(days) <= 0) return "Chưa cập nhật";
-                    return `${Number(days)} ngày`;
-                  })()}
-                </b>
-                <b>{durationDays ? `${durationDays} ngày` : "Chưa cập nhật"}</b>
-              </div>
-            </div>
-
-            <div className="info-card">
-              <DollarOutlined />
-              <div>
-                <p>Giá từ</p>
-                <b style={{ color: "#d90429" }}>
-                  {getPriceForDate(selectedDepartureDate || defaultDepartureDate || "").toLocaleString()}đ / khách
-                </b>
-              </div>
-            </div>
-
-            
-          </div>
-
-        
+        <div className="tour-detail-main">
           <Divider />
 
           {tour.schedule?.length > 0 && (
             <section className="detail-section">
               <h2>Lịch trình</h2>
 
-              {tour.schedule.map((item, index) => (
-                <div key={index} className="schedule-item">
-                  <div className="schedule-day">Ngày {item.day}</div>
+              <Collapse
+                bordered={false}
+                className="tour-schedule-collapse"
+                activeKey={expandedScheduleKeys}
+                onChange={(keys) => setExpandedScheduleKeys(Array.isArray(keys) ? keys.map(String) : [String(keys)])}
+                items={tour.schedule.map((item, index) => {
+                  const key = String(index);
+                  const isExpanded = expandedScheduleKeys.includes(key);
+                  const preview = Array.isArray(item.activities) ? item.activities.slice(0, 2).join(" · ") : "";
 
-                  <div className="schedule-content">
-                    <h3>{item.title}</h3>
-                    <ul>
-                      {item.activities?.map((act, i) => (
-                        <li key={i}>
-                          <CheckCircleOutlined /> {act}
-                        </li>
-                      ))}
-                    </ul>
-                    {(() => {
-                      const day = item as any;
-                      const lunch = day.lunch_restaurant_id?.name;
-                      const dinner = day.dinner_restaurant_id?.name;
-                      if (!lunch && !dinner) return null;
-                      return (
-                        <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
-                          {lunch ? (
-                            <div>
-                              <b>Buổi trưa:</b> {lunch}
-                            </div>
-                          ) : null}
-                          {dinner ? (
-                            <div>
-                              <b>Buổi tối:</b> {dinner}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                    {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
-                      <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
-                        <b>Vé:</b>{' '}
-                        {(item as any).ticket_ids
-                          .map((tk: any) => {
-                            if (typeof tk === 'object' && tk?.name) {
-                              const mode =
-                                tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
-                              return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
-                            }
-                            return String(tk);
-                          })
-                          .join('; ')}
+                  return {
+                    key,
+                    label: (
+                      <div className="tour-schedule-head">
+                        <div className="tour-schedule-title">Ngày {item.day}: {item.title}</div>
+                        {!isExpanded ? (
+                          <div className="tour-schedule-preview">{preview || "Nhấn để xem chi tiết lịch trình..."}</div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                    ),
+                    children: (
+                      <div className="schedule-content">
+                        <ul>
+                          {item.activities?.map((act, i) => (
+                            <li key={i}>
+                              <CheckCircleOutlined /> {act}
+                            </li>
+                          ))}
+                        </ul>
+                        {(() => {
+                          const day = item as any;
+                          const lunch = day.lunch_restaurant_id?.name;
+                          const dinner = day.dinner_restaurant_id?.name;
+                          if (!lunch && !dinner) return null;
+                          return (
+                            <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                              {lunch ? (
+                                <div>
+                                  <b>Buổi trưa:</b> {lunch}
+                                </div>
+                              ) : null}
+                              {dinner ? (
+                                <div>
+                                  <b>Buổi tối:</b> {dinner}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })()}
+                        {Array.isArray((item as any).ticket_ids) && (item as any).ticket_ids.length > 0 ? (
+                          <div style={{ marginTop: 10, fontSize: 14, color: '#555' }}>
+                            <b>Vé:</b>{' '}
+                            {(item as any).ticket_ids
+                              .map((tk: any) => {
+                                if (typeof tk === 'object' && tk?.name) {
+                                  const mode =
+                                    tk.application_mode === 'included_in_tour' ? ' (bao gồm)' : ' (mua thêm)';
+                                  return `${tk.name}${tk.ticket_type ? ` — ${tk.ticket_type}` : ''}${mode}`;
+                                }
+                                return String(tk);
+                              })
+                              .join('; ')}
+                          </div>
+                        ) : null}
+                      </div>
+                    ),
+                  };
+                })}
+              />
             </section>
           )}
 
@@ -733,6 +836,85 @@ const TourDetailPage = () => {
           </section>
         </div>
       </div>
+
+      {/* RELATED / CROSS-SELL - bottom horizontal */}
+      {relatedLoading || relatedToursDisplay.length > 0 ? (
+        <section className="tour-related tour-related--bottom">
+          <div className="tour-related__header">
+            <h2 className="tour-related__title">CÁC CHƯƠNG TRÌNH KHÁC</h2>
+          </div>
+
+          {relatedLoading ? (
+            <div className="tour-related__loading">
+              <Spin />
+            </div>
+          ) : (
+            <div className="tour-related__grid">
+              {relatedToursDisplay.map((t) => {
+                const tid = (t as any)?.id || (t as any)?._id;
+                const img = Array.isArray((t as any)?.images) ? (t as any).images?.[0] : undefined;
+                const name = (t as any)?.name || "Tour";
+                const departureText =
+                  (t as any)?.start_location ||
+                  (t as any)?.location ||
+                  (t as any)?.destination ||
+                  (t as any)?.city ||
+                  "Đang cập nhật";
+                const codeText =
+                  (t as any)?.code ||
+                  (t as any)?.tour_code ||
+                  (t as any)?.sku ||
+                  String(tid || "").slice(-8).toUpperCase();
+                const rawPrice = (t as any)?.price;
+                const priceNum = rawPrice === null || rawPrice === undefined ? NaN : Number(rawPrice);
+                const hasPrice = Number.isFinite(priceNum) && priceNum > 0;
+                const days =
+                  Number(
+                    (t as any)?.duration_days ?? (t as any)?.durationDays ?? (t as any)?.duration_ ?? 0
+                  ) || 0;
+
+                return (
+                  <button
+                    key={String(tid)}
+                    className="tour-related-card"
+                    type="button"
+                    onClick={() => tid && handleGoToTour(String(tid))}
+                  >
+                    <div className="tour-related-card__img">
+                      {img ? (
+                        <img src={img} alt={name} loading="lazy" />
+                      ) : (
+                        <div className="tour-related-card__img--empty" />
+                      )}
+                      <span className="tour-related-card__fav">
+                        <HeartOutlined />
+                      </span>
+                    </div>
+                    <div className="tour-related-card__body">
+                      <div className="tour-related-card__name" title={name}>
+                        {name}
+                      </div>
+                      <div className="tour-related-card__lines">
+                        <div className="tour-related-card__line">Khởi hành: {departureText}</div>
+                        <div className="tour-related-card__line">Mã chương trình: {codeText}{days > 0 ? ` (${days}N${Math.max(0, days - 1)}Đ)` : ""}</div>
+                      </div>
+                      <div className="tour-related-card__footer">
+                        <div>
+                          <div className="tour-related-card__label">Giá từ</div>
+                          <span className="tour-related-card__price">
+                            {hasPrice ? `${priceNum.toLocaleString("vi-VN")} đ` : "Liên hệ"}
+                          </span>
+                        </div>
+                        <span className="tour-related-card__detail">Xem chi tiết →</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <Modal
         title="Lịch khởi hành"
