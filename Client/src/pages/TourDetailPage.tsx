@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../components/styles/tourDetailU.css";
 import {
@@ -68,6 +68,8 @@ const TourDetailPage = () => {
   const [relatedTours, setRelatedTours] = useState<ITour[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [expandedScheduleKeys, setExpandedScheduleKeys] = useState<string[]>([]);
+  const [hidePriceSidebar, setHidePriceSidebar] = useState(false);
+  const relatedSectionRef = useRef<HTMLElement | null>(null);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -77,6 +79,11 @@ const TourDetailPage = () => {
       .replace(/\s*\(\s*copy\s*\)\s*$/i, "")
       .trim();
   };
+
+  useEffect(() => {
+    // Luon vao trang chi tiet tu dau trang, tranh giu vi tri cu (vd dang o muc danh gia)
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [id]);
 
   useEffect(() => {
     const fetchTourDetail = async () => {
@@ -537,6 +544,24 @@ const TourDetailPage = () => {
   const totalReviews = Number((tour as any)?.rating?.total_reviews || approvedReviews.length || 0);
   const relatedToursDisplay = useMemo(() => relatedTours.slice(0, 3), [relatedTours]);
 
+  useEffect(() => {
+    const el = relatedSectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        setHidePriceSidebar(Boolean(entry?.isIntersecting));
+      },
+      { root: null, threshold: 0.06 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [relatedToursDisplay.length, relatedLoading]);
+
+
+
   if (loading) {
     return (
       <div className="tour-detail-loading">
@@ -617,7 +642,7 @@ const TourDetailPage = () => {
 
           {/* RIGHT: SIDEBAR */}
          {/* RIGHT: SIDEBAR */}
-          <div className="tour-detail-sidebar">
+          <div className={`tour-detail-sidebar${hidePriceSidebar ? " is-hidden" : ""}`}>
             <div className="sidebar-card">
               <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>GIÁ TOUR</h3>
               <div style={{ marginBottom: 10 }}>
@@ -699,15 +724,6 @@ const TourDetailPage = () => {
               <Button block style={{ marginTop: 10 }}>
                 Liên hệ tư vấn
               </Button>
-
-              {/* MÔ TẢ TOUR ĐƯỢC CHUYỂN LÊN ĐÂY */}
-              <Divider />
-              <div className="tour-description-sidebar">
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>MÔ TẢ</h3>
-                <p style={{ color: '#4b5563', lineHeight: '1.6', fontSize: '14px', margin: 0 }}>
-                  {tour.description}
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -839,7 +855,7 @@ const TourDetailPage = () => {
 
       {/* RELATED / CROSS-SELL - bottom horizontal */}
       {relatedLoading || relatedToursDisplay.length > 0 ? (
-        <section className="tour-related tour-related--bottom">
+        <section ref={relatedSectionRef} className="tour-related tour-related--bottom" id="related-tours">
           <div className="tour-related__header">
             <h2 className="tour-related__title">CÁC CHƯƠNG TRÌNH KHÁC</h2>
           </div>
