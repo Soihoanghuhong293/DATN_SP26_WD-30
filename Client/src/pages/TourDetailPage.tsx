@@ -9,6 +9,7 @@ import {
   Divider,
   message,
   Modal,
+  Rate,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -26,6 +27,7 @@ import {
 import axios from "axios";
 import dayjs from "dayjs";
 import { addWishlistTour, getTour, getWishlistTourStatus, removeWishlistTour } from "../services/api";
+import { getTourReviewsByTour } from "../services/api";
 import { ITour } from "../types/tour.types";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
@@ -62,6 +64,7 @@ const TourDetailPage = () => {
   const [groupInstances, setGroupInstances] = useState<any[]>([]);
   const [wishlisted, setWishlisted] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [approvedReviews, setApprovedReviews] = useState<any[]>([]);
 
   const normalizeGroupName = (name?: string) => {
     const n = String(name || "").trim();
@@ -162,6 +165,20 @@ const TourDetailPage = () => {
     };
     fetchHolidayRules();
   }, []);
+
+  useEffect(() => {
+    const fetchApprovedReviews = async () => {
+      const tourId = String((tour as any)?._id || (tour as any)?.id || "").trim();
+      if (!tourId) return;
+      try {
+        const res = await getTourReviewsByTour(tourId);
+        setApprovedReviews(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        setApprovedReviews([]);
+      }
+    };
+    fetchApprovedReviews();
+  }, [tour?._id, tour?.id]);
 
   const tourImages = useMemo(() => {
     const imgs = (tour?.images || []).filter(Boolean);
@@ -396,6 +413,9 @@ const TourDetailPage = () => {
   };
 
   const durationDays = tour?.duration_days ?? tour?.duration_;
+
+  const averageRating = Number((tour as any)?.rating?.average || 0);
+  const totalReviews = Number((tour as any)?.rating?.total_reviews || approvedReviews.length || 0);
 
   if (loading) {
     return (
@@ -670,6 +690,47 @@ const TourDetailPage = () => {
               ))}
             </section>
           )}
+
+          <section className="detail-section tour-review-section">
+            <h2>Đánh giá tour</h2>
+
+            <div className="tour-review-summary">
+              <div className="tour-review-score">{averageRating.toFixed(1)}</div>
+              <div>
+                <Rate disabled allowHalf value={averageRating} />
+                <div className="tour-review-count">{totalReviews} đánh giá đã duyệt</div>
+              </div>
+            </div>
+
+            {approvedReviews.length > 0 ? (
+              <div className="tour-review-list">
+                {approvedReviews.map((review: any) => (
+                  <div key={review?._id} className="tour-review-item">
+                    <div className="tour-review-item-head">
+                      <strong>{review?.user_id?.name || "Khách hàng"}</strong>
+                      <span>{dayjs(review?.created_at).isValid() ? dayjs(review.created_at).format("DD/MM/YYYY") : ""}</span>
+                    </div>
+                    <Rate disabled value={Number(review?.rating || 0)} />
+                    {review?.comment ? <p className="tour-review-comment">{review.comment}</p> : null}
+                    {Number(review?.guide_rating || 0) > 0 ? (
+                      <div className="tour-review-guide-rating">
+                        HDV: <Rate disabled value={Number(review.guide_rating)} />
+                      </div>
+                    ) : null}
+                    {Array.isArray(review?.images) && review.images.length > 0 ? (
+                      <div className="tour-review-images">
+                        {review.images.slice(0, 4).map((img: string, idx: number) => (
+                          <img key={`${review?._id}-${idx}`} src={img} alt="review" />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty description="Chưa có đánh giá nào được duyệt cho tour này" />
+            )}
+          </section>
         </div>
       </div>
 

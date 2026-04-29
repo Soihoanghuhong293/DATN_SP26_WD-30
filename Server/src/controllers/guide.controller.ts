@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import Guide from '../models/Guide'; // Thêm .js nếu project của bạn yêu cầu
 import User from '../models/user.model';
 import GuideReview from '../models/GuideReview';
+import TourReview from '../models/TourReview';
 import { catchAsync } from '../utils/catchAsync';
 import { AppError } from '../utils/AppError';
 import mongoose from 'mongoose';
@@ -40,7 +41,12 @@ const ensureGuideDocsForGuideUsers = async () => {
 };
 
 const recomputeAllGuideRatings = async () => {
-  const agg = await GuideReview.aggregate([
+  const guideReviewAgg = await GuideReview.aggregate([
+    {
+      $match: {
+        status: 'approved',
+      },
+    },
     {
       $group: {
         _id: '$guide_user_id',
@@ -50,21 +56,53 @@ const recomputeAllGuideRatings = async () => {
     },
   ]);
 
-  if (!agg.length) {
+  const tourReviewAgg = await TourReview.aggregate([
+    {
+      $match: {
+        status: 'approved',
+        guide_rating: { $exists: true, $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: '$guide_user_id',
+        avg: { $avg: '$guide_rating' },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const statMap = new Map<string, { sum: number; count: number }>();
+  const collect = (arr: any[]) => {
+    for (const row of arr) {
+      const id = String(row?._id || '');
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) continue;
+      const avg = Number(row?.avg || 0);
+      const count = Number(row?.count || 0);
+      if (count <= 0) continue;
+      const prev = statMap.get(id) || { sum: 0, count: 0 };
+      prev.sum += avg * count;
+      prev.count += count;
+      statMap.set(id, prev);
+    }
+  };
+
+  collect(guideReviewAgg);
+  collect(tourReviewAgg);
+
+  if (!statMap.size) {
     // nếu chưa có review nào thì không cần bulk update
     return;
   }
 
   await Guide.bulkWrite(
-    agg
-      .filter((g) => mongoose.Types.ObjectId.isValid(String(g._id)))
-      .map((g) => ({
+    Array.from(statMap.entries()).map(([guideUserId, stats]) => ({
         updateOne: {
-          filter: { user_id: g._id },
+          filter: { user_id: guideUserId },
           update: {
             $set: {
-              'rating.average': Number(g.avg || 0),
-              'rating.totalReviews': Number(g.count || 0),
+              'rating.average': Number(stats.count > 0 ? stats.sum / stats.count : 0),
+              'rating.totalReviews': Number(stats.count || 0),
             },
           },
         },

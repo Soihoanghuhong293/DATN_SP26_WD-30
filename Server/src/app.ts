@@ -29,6 +29,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import guideReviewRoutes from './routes/guideReview.routes';
 import settingsRoutes from './routes/settings.routes';
+import tourReviewRoutes from './routes/tourReview.routes';
 import path from 'path';
 import { generateSepayQR, handleSepayWebhook, getLastSepayWebhookDebug } from './controllers/payment.controller';
 import wishlistTourRoutes from './routes/wishlistTour.routes.js';
@@ -74,9 +75,8 @@ app.use('/api/v1/contact-messages', contactMessageRouter);
 
 app.use('/api/v1/holiday-pricings', holidayPricingRoutes);
 app.use('/api/v1/guide-reviews', guideReviewRoutes);
+app.use('/api/v1/tour-reviews', tourReviewRoutes);
 app.use('/api/v1/uploads', uploadRoutes);
-app.use('/api/v1/settings', settingsRoutes);
-app.use('/api/v1/wishlist-tours', wishlistTourRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/wishlist-tours', wishlistTourRoutes);
 

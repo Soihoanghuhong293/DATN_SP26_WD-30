@@ -49,6 +49,11 @@ export interface ITour extends Document {
   primary_guide_id?: mongoose.Types.ObjectId;
   // hdv phụ
   secondary_guide_ids?: mongoose.Types.ObjectId[];
+
+  rating?: {
+    average: number;
+    total_reviews: number;
+  };
 }
 
 
@@ -118,6 +123,11 @@ departure_schedule: [{
 
   primary_guide_id: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   secondary_guide_ids: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+
+  rating: {
+    average: { type: Number, default: 0 },
+    total_reviews: { type: Number, default: 0 },
+  },
 
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

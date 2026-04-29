@@ -24,6 +24,7 @@ import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
 import GuideReviewManagement from '../pages/admin/GuideReviewManagement';
+import TourReviewManagement from '../pages/admin/TourReviewManagement';
 import HdvDashboard from '../pages/HdvDashboard';
 import HdvTours from '../pages/HdvTours';
 import HdvBookingDetail from '../pages/HdvBookingDetail';
@@ -107,6 +108,7 @@ const AppRoutes = () => {
         <Route path="guides/edit/:id" element={<GuideEdit />} />
 
         <Route path="guide-reviews" element={<GuideReviewManagement />} />
+        <Route path="tour-reviews" element={<TourReviewManagement />} />
 
         <Route path="categories" element={<CategoryList />} />
         <Route path="categories/create" element={<CategoryCreate />} />

@@ -80,6 +80,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
     if (pathname.includes("/admin/providers")) keys.push("provider-management");
     if (pathname.includes("/admin/holiday-pricing")) keys.push("holiday-pricing-management");
     if (pathname.includes("/admin/guide-reviews")) keys.push("guide-management");
+    if (pathname.includes("/admin/tour-reviews")) keys.push("guide-management");
     return keys;
   };
 
@@ -163,6 +164,11 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
             key: "/admin/guide-reviews",
             icon: <StarOutlined />,
             label: "Quản lý đánh giá",
+          },
+          {
+            key: "/admin/tour-reviews",
+            icon: <StarOutlined />,
+            label: "Đánh giá tour",
           },
         ],
       },

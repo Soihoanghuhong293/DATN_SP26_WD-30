@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input, Modal, Select, Upload } from "antd";
+import { Card, Descriptions, Divider, Empty, Spin, Tag, Timeline, Typography, Button, Space, message, Rate, Input, Modal, Select, Upload, Popconfirm } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
 import type { UploadFile } from "antd";
 import type { RcFile } from "antd/es/upload";
+import { createTourReview, deleteTourReview, getMyTourReviewByBooking, updateTourReview } from "../services/api";
 
 const { Title, Text } = Typography;
 
@@ -83,7 +84,9 @@ const MyBookingDetailPage: React.FC = () => {
   const [booking, setBooking] = useState<any>(null);
   const [myReview, setMyReview] = useState<any>(null);
   const [reviewScore, setReviewScore] = useState<number>(5);
+  const [guideRating, setGuideRating] = useState<number>(0);
   const [reviewComment, setReviewComment] = useState<string>("");
+  const [reviewImages, setReviewImages] = useState<string>("");
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -123,11 +126,8 @@ const MyBookingDetailPage: React.FC = () => {
     const fetchMyReview = async () => {
       if (!id) return;
       try {
-        const res = await axios.get(`${API_V1}/guide-reviews/me`, {
-          ...getAuthHeader(),
-          params: { booking_id: id },
-        });
-        setMyReview(res.data?.data || null);
+        const res = await getMyTourReviewByBooking(id);
+        setMyReview(res?.data || null);
       } catch {
         setMyReview(null);
       }
@@ -160,8 +160,38 @@ const MyBookingDetailPage: React.FC = () => {
   const refundAmount = Math.max(0, Math.round((paidAmount * refundPercent) / 100));
   const canReview =
     String(booking?.status || "") !== "cancelled" &&
-    tourStage === "completed" &&
-    Boolean(booking?.guide_id);
+    tourStage === "completed";
+
+  const reviewStatusInfo = (status: string) => {
+    const s = String(status || "pending");
+    if (s === "approved") return { color: "green" as const, label: "Đã duyệt" };
+    if (s === "hidden") return { color: "red" as const, label: "Đã ẩn" };
+    return { color: "gold" as const, label: "Chờ duyệt" };
+  };
+
+  const parseImages = (value: string) =>
+    value
+      .split(/\r?\n|,/g)
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+
+  const fillFormFromReview = (review: any) => {
+    setReviewScore(Number(review?.rating || 5));
+    setGuideRating(Number(review?.guide_rating || 0));
+    setReviewComment(String(review?.comment || ""));
+    setReviewImages(Array.isArray(review?.images) ? review.images.join("\n") : "");
+  };
+
+  useEffect(() => {
+    if (myReview) fillFormFromReview(myReview);
+    else {
+      setReviewScore(5);
+      setGuideRating(0);
+      setReviewComment("");
+      setReviewImages("");
+    }
+  }, [myReview]);
 
   const logs = useMemo(() => {
     const arr = Array.isArray(booking?.logs) ? booking.logs : [];
@@ -271,7 +301,7 @@ const MyBookingDetailPage: React.FC = () => {
 
           <Divider />
 
-          <Title level={4} style={{ marginBottom: 10 }}>Đánh giá hướng dẫn viên</Title>
+          <Title level={4} style={{ marginBottom: 10 }}>Đánh giá tour</Title>
           {booking?.guide_id ? (
             <Text type="secondary">
               Hướng dẫn viên: <Text strong>{booking.guide_id?.name || "—"}</Text>
@@ -288,27 +318,113 @@ const MyBookingDetailPage: React.FC = () => {
                     ? "Tour chưa kết thúc nên chưa thể đánh giá."
                     : String(booking?.status || "") === "cancelled"
                     ? "Booking đã hủy nên không thể đánh giá."
-                    : "Booking chưa có hướng dẫn viên để đánh giá."
+                    : "Bạn có thể đánh giá tour sau khi tour kết thúc."
                 }
               />
             ) : myReview ? (
               <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
-                <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                  <Rate disabled value={Number(myReview?.score || 0)} />
-                  <Text>{myReview?.comment || "Không có nội dung."}</Text>
+                <Space direction="vertical" size={10} style={{ width: "100%" }}>
+                  <Space style={{ justifyContent: "space-between", width: "100%" }}>
+                    <Text strong>Đánh giá của bạn</Text>
+                    <Tag color={reviewStatusInfo(myReview?.status).color}>{reviewStatusInfo(myReview?.status).label}</Tag>
+                  </Space>
+                  <div>
+                    <Text type="secondary">Điểm tour</Text>
+                    <div><Rate value={reviewScore} onChange={setReviewScore} /></div>
+                  </div>
+                  <div>
+                    <Text type="secondary">Điểm hướng dẫn viên (tùy chọn)</Text>
+                    <div><Rate value={guideRating} onChange={setGuideRating} /></div>
+                  </div>
+                  <Input.TextArea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Viết đánh giá tour của bạn..."
+                    autoSize={{ minRows: 3, maxRows: 6 }}
+                    maxLength={1000}
+                    showCount
+                  />
+                  <Input.TextArea
+                    value={reviewImages}
+                    onChange={(e) => setReviewImages(e.target.value)}
+                    placeholder="Ảnh review (mỗi dòng 1 URL, tối đa 8 ảnh)"
+                    autoSize={{ minRows: 2, maxRows: 4 }}
+                  />
+                  {Array.isArray(myReview?.images) && myReview.images.length > 0 ? (
+                    <Text type="secondary">Đã đính kèm {myReview.images.length} ảnh.</Text>
+                  ) : null}
+                  <Space wrap>
+                    <Button
+                      type="primary"
+                      loading={submittingReview}
+                      onClick={async () => {
+                        if (!myReview?._id) return;
+                        setSubmittingReview(true);
+                        try {
+                          const res = await updateTourReview(String(myReview._id), {
+                            rating: reviewScore,
+                            guide_rating: guideRating > 0 ? guideRating : undefined,
+                            comment: reviewComment,
+                            images: parseImages(reviewImages),
+                          });
+                          setMyReview(res?.data || null);
+                          message.success("Đã cập nhật đánh giá");
+                        } catch (e: any) {
+                          message.error(e?.response?.data?.message || "Cập nhật đánh giá thất bại");
+                        } finally {
+                          setSubmittingReview(false);
+                        }
+                      }}
+                    >
+                      Cập nhật đánh giá
+                    </Button>
+                    <Popconfirm
+                      title="Xóa đánh giá này?"
+                      okText="Xóa"
+                      cancelText="Hủy"
+                      onConfirm={async () => {
+                        if (!myReview?._id) return;
+                        setSubmittingReview(true);
+                        try {
+                          await deleteTourReview(String(myReview._id));
+                          setMyReview(null);
+                          message.success("Đã xóa đánh giá");
+                        } catch (e: any) {
+                          message.error(e?.response?.data?.message || "Xóa đánh giá thất bại");
+                        } finally {
+                          setSubmittingReview(false);
+                        }
+                      }}
+                    >
+                      <Button danger loading={submittingReview}>Xóa đánh giá</Button>
+                    </Popconfirm>
+                  </Space>
                 </Space>
               </Card>
             ) : (
               <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
                 <Space direction="vertical" size={10} style={{ width: "100%" }}>
-                  <Rate value={reviewScore} onChange={(v) => setReviewScore(v)} />
+                  <div>
+                    <Text type="secondary">Điểm tour</Text>
+                    <div><Rate value={reviewScore} onChange={(v) => setReviewScore(v)} /></div>
+                  </div>
+                  <div>
+                    <Text type="secondary">Điểm hướng dẫn viên (tùy chọn)</Text>
+                    <div><Rate value={guideRating} onChange={(v) => setGuideRating(v)} /></div>
+                  </div>
                   <Input.TextArea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Viết đánh giá của bạn về hướng dẫn viên..."
+                    placeholder="Viết đánh giá của bạn về tour..."
                     autoSize={{ minRows: 3, maxRows: 6 }}
                     maxLength={1000}
                     showCount
+                  />
+                  <Input.TextArea
+                    value={reviewImages}
+                    onChange={(e) => setReviewImages(e.target.value)}
+                    placeholder="Ảnh review (mỗi dòng 1 URL, tối đa 8 ảnh)"
+                    autoSize={{ minRows: 2, maxRows: 4 }}
                   />
                   <Button
                     type="primary"
@@ -317,12 +433,14 @@ const MyBookingDetailPage: React.FC = () => {
                       if (!id) return;
                       setSubmittingReview(true);
                       try {
-                        const res = await axios.post(
-                          `${API_V1}/guide-reviews`,
-                          { booking_id: id, score: reviewScore, comment: reviewComment },
-                          getAuthHeader()
-                        );
-                        setMyReview(res.data?.data || null);
+                        const res = await createTourReview({
+                          booking_id: id,
+                          rating: reviewScore,
+                          guide_rating: guideRating > 0 ? guideRating : undefined,
+                          comment: reviewComment,
+                          images: parseImages(reviewImages),
+                        });
+                        setMyReview(res?.data || null);
                         message.success("Đã gửi đánh giá");
                       } catch (e: any) {
                         message.error(e?.response?.data?.message || "Gửi đánh giá thất bại");

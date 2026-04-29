@@ -25,6 +25,11 @@ export const ENDPOINTS = {
   wishlistTours: '/wishlist-tours',
   wishlistTourStatus: (tourId: string) => `/wishlist-tours/status/${tourId}`,
   wishlistTourById: (tourId: string) => `/wishlist-tours/${tourId}`,
+
+  tourReviews: '/tour-reviews',
+  tourReviewMeById: (id: string) => `/tour-reviews/me/${id}`,
+  tourReviewById: (id: string) => `/tour-reviews/${id}`,
+  tourReviewPublicList: '/tour-reviews/public/list',
 } as const;
 
 
