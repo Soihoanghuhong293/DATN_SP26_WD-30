@@ -23,7 +23,6 @@ import ProviderEdit from '../pages/admin/providers/ProviderEdit';
 import TourCreate from '../features/admin/tours/TourCreate';
 import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
-import GuideReviewManagement from '../pages/admin/GuideReviewManagement';
 import TourReviewManagement from '../pages/admin/TourReviewManagement';
 import HdvDashboard from '../pages/HdvDashboard';
 import HdvTours from '../pages/HdvTours';
@@ -107,7 +106,6 @@ const AppRoutes = () => {
         <Route path="guides/create" element={<GuideCreate />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
 
-        <Route path="guide-reviews" element={<GuideReviewManagement />} />
         <Route path="tour-reviews" element={<TourReviewManagement />} />
 
         <Route path="categories" element={<CategoryList />} />

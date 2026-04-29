@@ -41,7 +41,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       "provider-management",
       "booking-management",
       "holiday-pricing-management",
-      "guide-review-management",
+      "review-management",
     ],
     []
   );
@@ -79,8 +79,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
     if (pathname.includes("/admin/guides")) keys.push("guide-management");
     if (pathname.includes("/admin/providers")) keys.push("provider-management");
     if (pathname.includes("/admin/holiday-pricing")) keys.push("holiday-pricing-management");
-    if (pathname.includes("/admin/guide-reviews")) keys.push("guide-management");
-    if (pathname.includes("/admin/tour-reviews")) keys.push("guide-management");
+    if (pathname.includes("/admin/tour-reviews")) keys.push("review-management");
     return keys;
   };
 
@@ -160,15 +159,19 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
             icon: <UnorderedListOutlined />,
             label: "Danh sách HDV",
           },
-          {
-            key: "/admin/guide-reviews",
-            icon: <StarOutlined />,
-            label: "Quản lý đánh giá",
-          },
+        ],
+      },
+      {
+        key: "review-management",
+        icon: <StarOutlined />,
+        label: "Quản lý đánh giá",
+        onTitleClick: () =>
+          setOpenKeys((prev) => (prev.includes("review-management") ? [] : ["review-management"])),
+        children: [
           {
             key: "/admin/tour-reviews",
             icon: <StarOutlined />,
-            label: "Đánh giá tour",
+            label: "Đánh giá tour & HDV",
           },
         ],
       },
