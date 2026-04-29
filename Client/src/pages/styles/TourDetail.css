@@ -296,6 +296,65 @@
     max-width: 100%;
   }
 
+  /* ===== EXTRA INFO ===== */
+
+  .tour-extra-info{
+    margin-top: 22px;
+    margin-bottom: 18px;
+  }
+
+  .tour-extra-info__title{
+    margin: 0 0 18px;
+    text-align: center;
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    color: #0b5fad;
+    text-transform: uppercase;
+  }
+
+  .tour-extra-info__grid{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 26px 34px;
+    padding: 10px 6px;
+  }
+
+  .tour-extra-info__item{
+    display: grid;
+    grid-template-columns: 38px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 14px;
+    row-gap: 4px;
+    align-items: start;
+  }
+
+  .tour-extra-info__icon{
+    grid-row: 1 / span 2;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(22, 119, 255, 0.08);
+    color: #1677ff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .tour-extra-info__heading{
+    font-size: 18px;
+    font-weight: 900;
+    color: #111827;
+    line-height: 1.15;
+  }
+
+  .tour-extra-info__text{
+    font-size: 15px;
+    color: #111827;
+    line-height: 1.5;
+  }
+
   /* ===== REVIEW OVERVIEW ===== */
 
   .tour-review-section{
@@ -721,6 +780,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .tour-extra-info__title{
+    font-size: 26px;
+  }
+
+  .tour-extra-info__grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 18px;
+  }
+
   .tour-related-card__img{
     height: 240px;
     border-radius: 18px;
@@ -775,6 +843,17 @@
   
   .detail-section{
   padding:20px;
+  }
+
+  .tour-extra-info__title{
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  .tour-extra-info__grid{
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 6px 2px;
   }
 
   .tour-related__grid{

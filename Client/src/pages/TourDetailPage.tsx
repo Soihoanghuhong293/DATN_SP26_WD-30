@@ -23,6 +23,10 @@ import {
   UsergroupAddOutlined,
   HeartOutlined,
   HeartFilled,
+  EnvironmentOutlined,
+  CoffeeOutlined,
+  CarOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -48,6 +52,114 @@ function normalizeDepartureDateRaw(raw: string): string {
   }
   const parsed = dayjs(trimmed);
   return parsed.isValid() ? parsed.format("YYYY-MM-DD") : "";
+}
+
+function buildAttractionsFromSchedule(schedule: any[]): string {
+  const rows = Array.isArray(schedule) ? schedule : [];
+
+  const normalize = (s: string) =>
+    s
+      .replace(/\s+/g, " ")
+      .replace(/[“”"]/g, "")
+      .trim();
+
+  const isNonAttractionPlace = (p: string) => {
+    const s = normalize(p).toLowerCase();
+    if (!s) return true;
+
+    // Các điểm trung chuyển / logistics (không phải điểm tham quan)
+    const banned: RegExp[] = [
+      /\bkhách sạn\b/i,
+      /\bhotel\b/i,
+      /\bđiểm hẹn\b/i,
+      /\bđiểm đón\b/i,
+      /\bđiểm trả\b/i,
+      /\bđiểm tập trung\b/i,
+      /\btrạm dừng\b/i,
+      /\bnhà hàng\b/i,
+      /\bquán ăn\b/i,
+      /\băn trưa\b/i,
+      /\băn tối\b/i,
+      /\băn sáng\b/i,
+      /\bnghỉ\b/i,
+      /\bnhận phòng\b/i,
+      /\btrả phòng\b/i,
+      /\bbến xe\b/i,
+      /\bga\b/i,
+      /\bsân bay\b/i,
+      /\bbến tàu\b/i,
+      /\bcảng\b/i,
+      /\btrên xe\b/i,
+    ];
+    if (banned.some((re) => re.test(s))) return true;
+
+    // Quá chung chung
+    if (/^(địa điểm|điểm|nơi|khu vực|trung tâm)\b/i.test(s)) return true;
+
+    return false;
+  };
+
+  const splitPlaces = (s: string) => {
+    const cleaned = normalize(s);
+    return cleaned
+      .split(/\s*(?:,|;|\/|&|\+|\bvà\b|·|•)\s*/gi)
+      .map((x) => normalize(x))
+      .filter(Boolean);
+  };
+
+  const extractFromText = (raw: string): string[] => {
+    const text = normalize(raw);
+    if (!text) return [];
+
+    const places: string[] = [];
+
+    // e.g. "Đến Thác Prenn", "Tham quan Euro Garden", "Check-in Puppy Farm", "Di chuyển đến Tuần Châu"
+    const patterns: RegExp[] = [
+      /\b(?:đến|tới|tại|ghé|qua|về|tham quan|thăm quan|check-?in|khám phá|di chuyển đến|di chuyển tới|khởi hành đến|xuất phát đến|dừng chân tại)\b\s*[:\-]?\s*([^.;()]+)(?=$|[.;()])/gi,
+      // titles often like "Đà Lạt - Thác Prenn - ...", "Hà Nội → Hạ Long"
+      /([^.;()]+?)\s*(?:→|–|-|—)\s*([^.;()]+)/g,
+    ];
+
+    for (const re of patterns) {
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text))) {
+        const captured = m.slice(1).filter(Boolean).join(" ");
+        for (const p of splitPlaces(captured)) {
+          // drop overly generic verbs/phrases
+          const bad =
+            /^(\b(ăn|nghỉ|ngơi|ngủ|tắm|tự do|mua sắm|nhận phòng|trả phòng|dùng bữa|dùng cơm|ăn trưa|ăn tối|ăn sáng|lên xe|xuống xe)\b)/i.test(
+              p
+            );
+          if (!bad && p.length >= 3 && !isNonAttractionPlace(p)) places.push(p);
+        }
+      }
+    }
+
+    return places;
+  };
+
+  const candidates: string[] = [];
+  for (const day of rows) {
+    if (day?.title) candidates.push(String(day.title));
+    const acts = Array.isArray(day?.activities) ? day.activities : [];
+    for (const a of acts) candidates.push(String(a ?? ""));
+  }
+
+  const extracted = candidates.flatMap(extractFromText).map(normalize).filter(Boolean);
+
+  const seen = new Set<string>();
+  const uniq: string[] = [];
+  for (const p of extracted) {
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(p);
+  }
+
+  if (!uniq.length) return "Chưa cập nhật";
+  const max = 10;
+  const clipped = uniq.slice(0, max);
+  return uniq.length > max ? `${clipped.join(", ")}, ...` : clipped.join(", ");
 }
 
 const TourDetailPage = () => {
@@ -544,6 +656,20 @@ const TourDetailPage = () => {
   const totalReviews = Number((tour as any)?.rating?.total_reviews || approvedReviews.length || 0);
   const relatedToursDisplay = useMemo(() => relatedTours.slice(0, 3), [relatedTours]);
 
+  const extraInfo = useMemo(() => {
+    return {
+      // Dựa trên lịch trình tour
+      attractions: buildAttractionsFromSchedule((tour as any)?.schedule),
+
+      // Mặc định cho tất cả tour
+      cuisine: "Buffet sáng, Theo thực đơn, Đặc sản địa phương",
+      suitableFor: "Người lớn tuổi, Cặp đôi, Gia đình nhiều thế hệ, Thanh niên, Trẻ em",
+      bestTime: "Quanh năm",
+      transport: "Xe du lịch",
+      promotion: "Đã bao gồm ưu đãi trong giá tour",
+    };
+  }, [tour]);
+
   useEffect(() => {
     const el = relatedSectionRef.current;
     if (!el) return;
@@ -809,6 +935,59 @@ const TourDetailPage = () => {
               />
             </section>
           )}
+
+          <section className="tour-extra-info" aria-label="Thông tin thêm về chuyến đi">
+            <h2 className="tour-extra-info__title">THÔNG TIN THÊM VỀ CHUYẾN ĐI</h2>
+            <div className="tour-extra-info__grid">
+              <div className="tour-extra-info__item">
+                <div className="tour-extra-info__icon">
+                  <EnvironmentOutlined />
+                </div>
+                <div className="tour-extra-info__heading">Điểm tham quan</div>
+                <div className="tour-extra-info__text">{extraInfo.attractions}</div>
+              </div>
+
+              <div className="tour-extra-info__item">
+                <div className="tour-extra-info__icon">
+                  <CoffeeOutlined />
+                </div>
+                <div className="tour-extra-info__heading">Ẩm thực</div>
+                <div className="tour-extra-info__text">{extraInfo.cuisine}</div>
+              </div>
+
+              <div className="tour-extra-info__item">
+                <div className="tour-extra-info__icon">
+                  <TeamOutlined />
+                </div>
+                <div className="tour-extra-info__heading">Đối tượng thích hợp</div>
+                <div className="tour-extra-info__text">{extraInfo.suitableFor}</div>
+              </div>
+
+              <div className="tour-extra-info__item">
+                <div className="tour-extra-info__icon">
+                  <ClockCircleOutlined />
+                </div>
+                <div className="tour-extra-info__heading">Thời gian lý tưởng</div>
+                <div className="tour-extra-info__text">{extraInfo.bestTime}</div>
+              </div>
+
+              <div className="tour-extra-info__item">
+                <div className="tour-extra-info__icon">
+                  <CarOutlined />
+                </div>
+                <div className="tour-extra-info__heading">Phương tiện</div>
+                <div className="tour-extra-info__text">{extraInfo.transport}</div>
+              </div>
+
+              <div className="tour-extra-info__item">
+                <div className="tour-extra-info__icon">
+                  <GiftOutlined />
+                </div>
+                <div className="tour-extra-info__heading">Khuyến mãi</div>
+                <div className="tour-extra-info__text">{extraInfo.promotion}</div>
+              </div>
+            </div>
+          </section>
 
           <section className="detail-section tour-review-section">
             <h2>Đánh giá tour</h2>
