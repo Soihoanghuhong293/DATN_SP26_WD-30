@@ -936,6 +936,47 @@ const TourDetailPage = () => {
             </section>
           )}
 
+          <section className="detail-section tour-review-section">
+            <h2>Đánh giá tour</h2>
+
+            <div className="tour-review-summary">
+              <div className="tour-review-score">{averageRating.toFixed(1)}</div>
+              <div>
+                <Rate disabled allowHalf value={averageRating} />
+                <div className="tour-review-count">{totalReviews} đánh giá đã duyệt</div>
+              </div>
+            </div>
+
+            {approvedReviews.length > 0 ? (
+              <div className="tour-review-list">
+                {approvedReviews.map((review: any) => (
+                  <div key={review?._id} className="tour-review-item">
+                    <div className="tour-review-item-head">
+                      <strong>{review?.user_id?.name || "Khách hàng"}</strong>
+                      <span>{dayjs(review?.created_at).isValid() ? dayjs(review.created_at).format("DD/MM/YYYY") : ""}</span>
+                    </div>
+                    <Rate disabled value={Number(review?.rating || 0)} />
+                    {review?.comment ? <p className="tour-review-comment">{review.comment}</p> : null}
+                    {Number(review?.guide_rating || 0) > 0 ? (
+                      <div className="tour-review-guide-rating">
+                        HDV: <Rate disabled value={Number(review.guide_rating)} />
+                      </div>
+                    ) : null}
+                    {Array.isArray(review?.images) && review.images.length > 0 ? (
+                      <div className="tour-review-images">
+                        {review.images.slice(0, 4).map((img: string, idx: number) => (
+                          <img key={`${review?._id}-${idx}`} src={img} alt="review" />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty description="Chưa có đánh giá nào được duyệt cho tour này" />
+            )}
+          </section>
+
           <section className="tour-extra-info" aria-label="Thông tin thêm về chuyến đi">
             <h2 className="tour-extra-info__title">THÔNG TIN THÊM VỀ CHUYẾN ĐI</h2>
             <div className="tour-extra-info__grid">
@@ -987,47 +1028,6 @@ const TourDetailPage = () => {
                 <div className="tour-extra-info__text">{extraInfo.promotion}</div>
               </div>
             </div>
-          </section>
-
-          <section className="detail-section tour-review-section">
-            <h2>Đánh giá tour</h2>
-
-            <div className="tour-review-summary">
-              <div className="tour-review-score">{averageRating.toFixed(1)}</div>
-              <div>
-                <Rate disabled allowHalf value={averageRating} />
-                <div className="tour-review-count">{totalReviews} đánh giá đã duyệt</div>
-              </div>
-            </div>
-
-            {approvedReviews.length > 0 ? (
-              <div className="tour-review-list">
-                {approvedReviews.map((review: any) => (
-                  <div key={review?._id} className="tour-review-item">
-                    <div className="tour-review-item-head">
-                      <strong>{review?.user_id?.name || "Khách hàng"}</strong>
-                      <span>{dayjs(review?.created_at).isValid() ? dayjs(review.created_at).format("DD/MM/YYYY") : ""}</span>
-                    </div>
-                    <Rate disabled value={Number(review?.rating || 0)} />
-                    {review?.comment ? <p className="tour-review-comment">{review.comment}</p> : null}
-                    {Number(review?.guide_rating || 0) > 0 ? (
-                      <div className="tour-review-guide-rating">
-                        HDV: <Rate disabled value={Number(review.guide_rating)} />
-                      </div>
-                    ) : null}
-                    {Array.isArray(review?.images) && review.images.length > 0 ? (
-                      <div className="tour-review-images">
-                        {review.images.slice(0, 4).map((img: string, idx: number) => (
-                          <img key={`${review?._id}-${idx}`} src={img} alt="review" />
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Empty description="Chưa có đánh giá nào được duyệt cho tour này" />
-            )}
           </section>
         </div>
       </div>

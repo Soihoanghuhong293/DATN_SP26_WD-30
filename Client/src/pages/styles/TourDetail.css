@@ -306,7 +306,7 @@
   .tour-extra-info__title{
     margin: 0 0 18px;
     text-align: center;
-    font-size: 34px;
+    font-size: 24px;
     font-weight: 900;
     letter-spacing: 0.5px;
     color: #0b5fad;
@@ -469,7 +469,7 @@
 
   .tour-related__title{
     margin:0;
-    font-size:36px;
+    font-size:24px;
     font-weight:900;
     color:#0b5fad;
     text-transform:uppercase;
@@ -781,7 +781,10 @@
   }
 
   .tour-extra-info__title{
-    font-size: 26px;
+    font-size: 20px;
+  }
+  .tour-related__title{
+    font-size: 20px;
   }
 
   .tour-extra-info__grid{
@@ -846,8 +849,12 @@
   }
 
   .tour-extra-info__title{
-    font-size: 20px;
+    font-size: 18px;
     margin-bottom: 14px;
+  }
+
+  .tour-related__title{
+    font-size: 18px;
   }
 
   .tour-extra-info__grid{
