@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient, useQueries } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
-import type { IRestaurant, IProviderTicket } from '../../../types/provider.types';
+import { getProviders } from '../../../services/api';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
   Space, Typography, message, Select, Divider, Spin, DatePicker, Upload
@@ -18,87 +17,9 @@ const { Title } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-const stableJson = (v: any) => {
-  try {
-    return JSON.stringify(v ?? null);
-  } catch {
-    return String(v);
-  }
-};
-
-const isEqualLoose = (a: any, b: any) => {
-  if (a === b) return true;
-  // compare primitives after string-coercion (helps ObjectId vs string)
-  if (
-    (typeof a === 'string' || typeof a === 'number' || typeof a === 'boolean' || a == null) &&
-    (typeof b === 'string' || typeof b === 'number' || typeof b === 'boolean' || b == null)
-  ) {
-    return String(a ?? '') === String(b ?? '');
-  }
-  return stableJson(a) === stableJson(b);
-};
-
-type CategoryNode = {
-  _id?: string;
-  id?: string;
-  name: string;
-  children?: CategoryNode[];
-};
-
-const flattenCategoryTree = (nodes: CategoryNode[], level = 0): { value: string; label: string }[] => {
-  const res: { value: string; label: string }[] = [];
-  for (const n of nodes) {
-    const value = (n._id || n.id || '') as string;
-    if (value) {
-      const prefix = level > 0 ? `${'— '.repeat(level)}` : '';
-      res.push({ value, label: `${prefix}${n.name}` });
-    }
-    if (Array.isArray(n.children) && n.children.length) {
-      res.push(...flattenCategoryTree(n.children, level + 1));
-    }
-  }
-  return res;
-};
-
-const mealRefId = (v: unknown): string | undefined => {
-  if (v == null || v === '') return undefined;
-  if (typeof v === 'object' && v != null && '_id' in (v as any) && (v as any)._id != null) return String((v as any)._id);
-  return String(v);
-};
-
-const normalizeTicketIdsFromSchedule = (arr: unknown): string[] => {
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((t) =>
-      typeof t === 'object' && t != null && (t as any)._id != null ? String((t as any)._id) : String(t)
-    )
-    .filter(Boolean);
-};
-
-/** Chuẩn hoá schedule từ API (populate hoặc id thô) để đưa vào form */
-const normalizeScheduleForForm = (sched: any[] | undefined) => {
-  if (!Array.isArray(sched) || !sched.length) return [];
-  return sched.map((s, idx) => {
-    const legacy = Array.isArray(s.restaurant_ids) ? s.restaurant_ids : [];
-    let lunch = mealRefId(s.lunch_restaurant_id);
-    let dinner = mealRefId(s.dinner_restaurant_id);
-    if (!lunch && legacy[0]) lunch = mealRefId(legacy[0]);
-    if (!dinner && legacy[1]) dinner = mealRefId(legacy[1]);
-    return {
-      day: typeof s.day === 'number' ? s.day : idx + 1,
-      title: s.title ?? '',
-      activities: Array.isArray(s.activities) ? s.activities : [],
-      lunch_restaurant_id: lunch,
-      dinner_restaurant_id: dinner,
-      ticket_ids: normalizeTicketIdsFromSchedule(s.ticket_ids),
-    };
-  });
-};
-
 const TourEdit = () => {
   const { id } = useParams();
   const [form] = Form.useForm();
-  const supplierIdsRaw = Form.useWatch('suppliers', form);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
@@ -106,13 +27,11 @@ const TourEdit = () => {
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/categories/tree');
+      const res = await axios.get('http://localhost:5000/api/v1/categories');
       const data = res.data?.data?.categories || res.data?.data || res.data;
       return Array.isArray(data) ? data : []; 
     }
   });
-
-  const categoryOptions = useMemo(() => flattenCategoryTree(categories as CategoryNode[]), [categories]);
 
   const { data: providersData, isLoading: isProvidersLoading } = useQuery({
     queryKey: ['providers'],
@@ -120,118 +39,11 @@ const TourEdit = () => {
   });
   const providers = providersData?.data?.providers ?? [];
 
-  const normalizedSupplierIds = useMemo(
-    () => (Array.isArray(supplierIdsRaw) ? supplierIdsRaw : []).map(String).filter(Boolean),
-    [supplierIdsRaw]
-  );
-
-  const restaurantQueries = useQueries({
-    queries: normalizedSupplierIds.map((pid) => ({
-      queryKey: ['restaurants', pid],
-      queryFn: () => getRestaurants({ provider_id: pid }),
-      enabled: Boolean(pid),
-    })),
-  });
-
-  const restaurantsLoading = restaurantQueries.some((q) => q.isLoading);
-
-  const restaurantOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [];
-    for (let i = 0; i < restaurantQueries.length; i++) {
-      const pid = normalizedSupplierIds[i];
-      const list: IRestaurant[] = restaurantQueries[i]?.data?.data?.restaurants ?? [];
-      const pname =
-        providers.find((p: any) => String(p.id || p._id) === String(pid))?.name?.trim() || '';
-      for (const r of list) {
-        const rid = r.id || r._id;
-        if (!rid) continue;
-        opts.push({
-          value: String(rid),
-          label: pname ? `${r.name} (${pname})` : r.name,
-        });
-      }
-    }
-    const seen = new Set<string>();
-    return opts.filter((o) => {
-      if (seen.has(o.value)) return false;
-      seen.add(o.value);
-      return true;
-    });
-  }, [restaurantQueries, normalizedSupplierIds, providers]);
-
-  const ticketQueries = useQueries({
-    queries: normalizedSupplierIds.map((pid) => ({
-      queryKey: ['provider-tickets', pid],
-      queryFn: () => getProviderTickets({ provider_id: pid }),
-      enabled: Boolean(pid),
-    })),
-  });
-
-  const ticketsLoading = ticketQueries.some((q) => q.isLoading);
-
-  const ticketOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [];
-    for (let i = 0; i < ticketQueries.length; i++) {
-      const pid = normalizedSupplierIds[i];
-      const list: IProviderTicket[] = ticketQueries[i]?.data?.data?.tickets ?? [];
-      const pname =
-        providers.find((p: any) => String(p.id || p._id) === String(pid))?.name?.trim() || '';
-      for (const t of list) {
-        if ((t.status || 'active') !== 'active') continue;
-        const tid = t.id || t._id;
-        if (!tid) continue;
-        const modeLabel = t.application_mode === 'included_in_tour' ? 'Bao gồm' : 'Mua thêm';
-        opts.push({
-          value: String(tid),
-          label: `${t.name} — ${t.ticket_type} [${modeLabel}]${pname ? ` (${pname})` : ''}`,
-        });
-      }
-    }
-    const seen = new Set<string>();
-    return opts.filter((o) => {
-      if (seen.has(o.value)) return false;
-      seen.add(o.value);
-      return true;
-    });
-  }, [ticketQueries, normalizedSupplierIds, providers]);
-
-  const { data: usersList = [] } = useQuery({
-    queryKey: ['admin-users'],
-    queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/users', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      return res.data?.data ?? res.data ?? [];
-    },
-  });
-
-  const primaryGuideIdWatch = Form.useWatch('primary_guide_id', form);
-
-  const guideUserOptions = useMemo(() => {
-    const arr = Array.isArray(usersList) ? usersList : [];
-    return arr
-      .filter((u: any) => u.role === 'guide' || u.role === 'hdv')
-      .filter((u: any) => u.status !== 'inactive')
-      .map((u: any) => ({
-        value: String(u._id),
-        label: [u.name, u.email].filter(Boolean).join(' — ') || String(u._id),
-      }));
-  }, [usersList]);
-
-  const secondaryGuideOptions = useMemo(() => {
-    const p = primaryGuideIdWatch ? String(primaryGuideIdWatch) : '';
-    return guideUserOptions.filter((o) => o.value !== p);
-  }, [guideUserOptions, primaryGuideIdWatch]);
-
   const { data: tour, isLoading: isTourLoading } = useQuery({
     queryKey: ['tour', id],
     queryFn: async () => {
-      const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      const raw = res.data?.data;
-      if (raw && typeof raw === 'object' && 'tour' in raw && (raw as any).tour) return (raw as any).tour;
-      return raw ?? null;
+      const res = await axios.get(`http://localhost:5000/api/v1/tours/${id}`);
+      return res.data?.data?.tour || res.data?.data;
     },
     enabled: !!id, 
   });
@@ -243,11 +55,6 @@ const TourEdit = () => {
         ...tour,
         category_id: tour.category_id?._id || tour.category_id,
         suppliers: suppliers,
-        primary_guide_id: (tour as any).primary_guide_id?._id ?? (tour as any).primary_guide_id,
-        secondary_guide_ids: Array.isArray((tour as any).secondary_guide_ids)
-          ? (tour as any).secondary_guide_ids.map((x: any) => x?._id ?? x)
-          : [],
-        schedule: normalizeScheduleForForm(tour.schedule),
         departure_schedule: tour.departure_schedule?.map((item: any) => ({
           ...item,
           date: item.date ? dayjs(item.date) : null
@@ -271,17 +78,10 @@ const TourEdit = () => {
 
   const mutation = useMutation({
     mutationFn: async (values: any) => {
-      return await axios.put(`http://localhost:5000/api/v1/tours/${id}`, values, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      return await axios.put(`http://localhost:5000/api/v1/tours/${id}`, values);
     },
-    onSuccess: (res) => {
-      const notice = res?.data?.notice;
-      if (notice) {
-        message.warning(notice);
-      } else {
-        message.success('Cập nhật tour thành công!');
-      }
+    onSuccess: () => {
+      message.success('Cập nhật tour thành công!');
       queryClient.invalidateQueries({ queryKey: ['tours'] }); 
       queryClient.invalidateQueries({ queryKey: ['tour', id] }); 
       navigate('/admin/tours'); 
@@ -293,56 +93,14 @@ const TourEdit = () => {
   });
 
   const onFinish = (values: any) => {
-    const schedulePayload = Array.isArray(values.schedule)
-      ? values.schedule.map((s: any, idx: number) => ({
-          day: typeof s?.day === 'number' ? s.day : idx + 1,
-          title: s?.title ?? '',
-          activities: Array.isArray(s?.activities) ? s.activities : [],
-          lunch_restaurant_id: s?.lunch_restaurant_id || undefined,
-          dinner_restaurant_id: s?.dinner_restaurant_id || undefined,
-          ticket_ids: Array.isArray(s?.ticket_ids) ? s.ticket_ids.filter(Boolean) : [],
-        }))
-      : [];
-
-    // Build a minimal PATCH-like payload (only changed fields) to avoid backend rejecting updates
-    // when the tour already has bookings (backend allows only a limited set of keys then).
-    const baseTour: any = tour || {};
-    const nextSuppliers = Array.isArray(values.suppliers)
-      ? values.suppliers
-      : values.suppliers
-        ? [values.suppliers]
-        : [];
-    const nextDepartureSchedule =
-      values.departure_schedule
-        ?.map((item: any) => ({
-          ...item,
-          date: item.date ? item.date.format('YYYY-MM-DD') : null,
-        }))
-        .filter((item: any) => item.date) || [];
-
-    const payload: any = {};
-    const maybeSet = (key: string, nextValue: any, currentValue: any) => {
-      if (nextValue === undefined) return;
-      if (!isEqualLoose(nextValue, currentValue)) payload[key] = nextValue;
+    const payload = {
+      ...values,
+      suppliers: Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []),
+      departure_schedule: values.departure_schedule?.map((item: any) => ({
+        ...item,
+        date: item.date ? item.date.format('YYYY-MM-DD') : null
+      })).filter((item: any) => item.date) || []
     };
-
-    // NOTE: schedule is intentionally never sent (backend rejects it on update).
-    maybeSet('name', values.name, baseTour.name);
-    maybeSet('description', values.description, baseTour.description);
-    maybeSet(
-      'category_id',
-      values.category_id,
-      baseTour.category_id?._id || baseTour.category_id
-    );
-    maybeSet('policies', values.policies, baseTour.policies);
-    maybeSet('suppliers', nextSuppliers, baseTour.suppliers);
-    maybeSet('price', values.price, baseTour.price);
-    maybeSet('prices', values.prices, baseTour.prices);
-    maybeSet('status', values.status, baseTour.status);
-    maybeSet('duration_days', values.duration_days, baseTour.duration_days);
-    maybeSet('seasonalPrices', values.seasonalPrices, baseTour.seasonalPrices);
-    maybeSet('template_id', values.template_id, baseTour.template_id?._id || baseTour.template_id);
-    maybeSet('departure_schedule', nextDepartureSchedule, baseTour.departure_schedule);
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)
@@ -351,26 +109,12 @@ const TourEdit = () => {
       message.error('Vui lòng upload ít nhất 1 ảnh!');
       return;
     }
-    // Always keep images in sync (and it's allowed even when has booking)
     payload.images = imageUrls;
-    if (Array.isArray((payload as any).secondary_guide_ids)) {
-      const p = (payload as any).primary_guide_id ? String((payload as any).primary_guide_id) : '';
-      const secondaryIds = [
-        ...new Set((payload as any).secondary_guide_ids.map((x: unknown) => String(x))),
-      ] as string[];
-      (payload as any).secondary_guide_ids = secondaryIds.filter((id) => id.length > 0 && id !== p);
-    }
     mutation.mutate(payload);
   };
 
   if (isTourLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Spin size="large" spinning tip="Đang tải dữ liệu tour...">
-          <div style={{ minHeight: 120, minWidth: 200 }} />
-        </Spin>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen"><Spin size="large" tip="Đang tải dữ liệu tour..." /></div>;
   }
 
   return (
@@ -386,15 +130,6 @@ const TourEdit = () => {
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        onValuesChange={(changed) => {
-          if (changed.primary_guide_id !== undefined) {
-            const p = changed.primary_guide_id ? String(changed.primary_guide_id) : '';
-            const sec = form.getFieldValue('secondary_guide_ids');
-            if (Array.isArray(sec) && p) {
-              form.setFieldsValue({ secondary_guide_ids: sec.filter((id: string) => String(id) !== p) });
-            }
-          }
-        }}
       >
         <Row gutter={24}>
           <Col xs={24} lg={16}>
@@ -407,10 +142,8 @@ const TourEdit = () => {
                 <Col span={8}>
                   <Form.Item name="category_id" label="Danh mục Tour" rules={[{ required: true, message: 'Vui lòng chọn danh mục!' }]}>
                     <Select size="large" placeholder="Chọn danh mục" loading={isCategoriesLoading}>
-                      {categoryOptions.map((opt) => (
-                        <Option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </Option>
+                      {Array.isArray(categories) && categories.map((cat: any) => (
+                        <Option key={cat._id} value={cat._id}>{cat.name}</Option>
                       ))}
                     </Select>
                   </Form.Item>
@@ -434,163 +167,20 @@ const TourEdit = () => {
               <Form.Item name="description" label="Mô tả giới thiệu" rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}>
                 <TextArea rows={5} placeholder="Nhập bài viết giới thiệu..." />
               </Form.Item>
-
-              <Form.Item
-                name="primary_guide_id"
-                label="HDV chính (theo trip)"
-                tooltip="Gán trên tour; đơn đặt mặc định lấy HDV này nếu không chỉ định khác."
-              >
-                <Select
-                  size="large"
-                  showSearch
-                  allowClear
-                  placeholder="Chọn HDV chính..."
-                  options={guideUserOptions}
-                  optionFilterProp="label"
-                  notFoundContent="Chưa có tài khoản HDV"
-                />
-              </Form.Item>
-              <Form.Item
-                name="secondary_guide_ids"
-                label="HDV phụ (tuỳ chọn)"
-                tooltip="HDV phụ cũng thấy đơn và thao tác trên booking của trip này."
-              >
-                <Select
-                  mode="multiple"
-                  size="large"
-                  showSearch
-                  allowClear
-                  placeholder="Thêm HDV phụ..."
-                  options={secondaryGuideOptions}
-                  optionFilterProp="label"
-                />
-              </Form.Item>
             </Card>
 
             <Card title="Lịch trình chi tiết" className="mb-6 shadow-sm">
-              <p className="text-gray-500 text-sm mb-4">
-                Chọn <b>Nhà cung cấp</b> ở cột phải trước: nhà hàng trưa/tối và vé lấy theo NCC đó (nhãn: tên + tên NCC).
-              </p>
               <Form.List name="schedule">
                 {(fields, { add, remove }) => (
                   <>
                     {fields.map(({ key, name, ...restField }, index) => (
-                      <Card
-                        key={key}
-                        size="small"
-                        title={`Ngày ${index + 1}`}
-                        className="mb-4 bg-gray-50"
-                        extra={<MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />}
-                      >
-                        <Form.Item {...restField} name={[name, 'day']} hidden>
-                          <InputNumber />
-                        </Form.Item>
-                        <Row gutter={[16, 12]}>
-                          <Col xs={24} md={12}>
-                            <Form.Item
-                              {...restField}
-                              name={[name, 'title']}
-                              label="Tiêu đề ngày"
-                              rules={[{ required: true, message: 'Nhập tiêu đề ngày' }]}
-                            >
-                              <Input placeholder="Ví dụ: Đà Nẵng - Ngũ Hành Sơn" />
-                            </Form.Item>
-                          </Col>
-                          <Col xs={24} md={12}>
-                            <Form.Item {...restField} name={[name, 'activities']} label="Các hoạt động">
-                              <Select mode="tags" placeholder="Nhập hoạt động và nhấn Enter..." open={false} />
-                            </Form.Item>
-                          </Col>
-                          <Col xs={24} md={12}>
-                            <Form.Item
-                              {...restField}
-                              name={[name, 'lunch_restaurant_id']}
-                              label="Nhà hàng buổi trưa"
-                              tooltip="Danh sách theo NCC đã chọn. Nhãn: Tên nhà hàng (Tên NCC)."
-                            >
-                              <Select
-                                allowClear
-                                showSearch
-                                placeholder={
-                                  normalizedSupplierIds.length ? 'Chọn nhà hàng trưa' : 'Chọn ít nhất 1 nhà cung cấp (cột phải)'
-                                }
-                                disabled={!normalizedSupplierIds.length}
-                                loading={restaurantsLoading}
-                                options={restaurantOptions}
-                                optionFilterProp="label"
-                                notFoundContent={
-                                  normalizedSupplierIds.length ? 'Chưa có nhà hàng — khai báo tại chi tiết NCC' : null
-                                }
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col xs={24} md={12}>
-                            <Form.Item
-                              {...restField}
-                              name={[name, 'dinner_restaurant_id']}
-                              label="Nhà hàng buổi tối"
-                              tooltip="Danh sách theo NCC đã chọn."
-                            >
-                              <Select
-                                allowClear
-                                showSearch
-                                placeholder={
-                                  normalizedSupplierIds.length ? 'Chọn nhà hàng tối' : 'Chọn ít nhất 1 nhà cung cấp (cột phải)'
-                                }
-                                disabled={!normalizedSupplierIds.length}
-                                loading={restaurantsLoading}
-                                options={restaurantOptions}
-                                optionFilterProp="label"
-                                notFoundContent={
-                                  normalizedSupplierIds.length ? 'Chưa có nhà hàng — khai báo tại chi tiết NCC' : null
-                                }
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={24}>
-                            <Form.Item
-                              {...restField}
-                              name={[name, 'ticket_ids']}
-                              label="Vé trong ngày"
-                              tooltip="[Bao gồm] = trong giá tour; [Mua thêm] = khách chọn khi đặt (phụ phí)."
-                            >
-                              <Select
-                                mode="multiple"
-                                allowClear
-                                showSearch
-                                placeholder={
-                                  normalizedSupplierIds.length ? 'Chọn vé (có thể nhiều vé)' : 'Chọn ít nhất 1 nhà cung cấp (cột phải)'
-                                }
-                                disabled={!normalizedSupplierIds.length}
-                                loading={ticketsLoading}
-                                options={ticketOptions}
-                                optionFilterProp="label"
-                                notFoundContent={
-                                  normalizedSupplierIds.length ? 'NCC đã chọn chưa có vé — thêm tại chi tiết NCC' : null
-                                }
-                              />
-                            </Form.Item>
-                          </Col>
-                        </Row>
+                      <Card key={key} size="small" title={`Ngày ${index + 1}`} className="mb-4 bg-gray-50" extra={<MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />}>
+                        <Form.Item {...restField} name={[name, 'day']} hidden><InputNumber /></Form.Item>
+                        <Form.Item {...restField} name={[name, 'title']} label="Tiêu đề ngày" rules={[{ required: true }]}><Input placeholder="Ví dụ: Hà Nội - Sapa" /></Form.Item>
+                        <Form.Item {...restField} name={[name, 'activities']} label="Các hoạt động"><Select mode="tags" placeholder="Nhập hoạt động và nhấn Enter..." open={false} /></Form.Item>
                       </Card>
                     ))}
-                    <Button
-                      type="dashed"
-                      onClick={() =>
-                        add({
-                          day: fields.length + 1,
-                          title: '',
-                          activities: [],
-                          lunch_restaurant_id: undefined,
-                          dinner_restaurant_id: undefined,
-                          ticket_ids: [],
-                        })
-                      }
-                      block
-                      icon={<PlusOutlined />}
-                    >
-                      Thêm ngày lịch trình
-                    </Button>
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày lịch trình</Button>
                   </>
                 )}
               </Form.List>
