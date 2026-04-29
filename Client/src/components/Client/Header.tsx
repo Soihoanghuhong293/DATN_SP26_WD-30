@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout, Menu, Button, Drawer } from 'antd';
-import { SendOutlined, MenuOutlined } from '@ant-design/icons';
+import { LogoutOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom'; 
 import { useAuth } from '../../auth/AuthProvider';
 import { useSettings } from '../../settings/SettingsProvider';
@@ -161,13 +161,14 @@ const Header = () => {
             </>
           ) : (
             <Button 
-              danger 
-              size="large"
+              type="text"
+              danger
+              icon={<LogoutOutlined style={{ fontSize: 18 }} />}
               onClick={handleLogout}
-              style={{ fontWeight: 'bold', borderRadius: '8px' }}
-            >
-              Đăng xuất
-            </Button>
+              title="Đăng xuất"
+              aria-label="Đăng xuất"
+              style={{ borderRadius: '8px' }}
+            />
           )}
         </div>
 
