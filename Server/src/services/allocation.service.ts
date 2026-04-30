@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Booking from '../models/Booking';
+import Tour from '../models/Tour';
 import Vehicle from '../models/Vehicle';
 import VehicleAllocation from '../models/VehicleAllocation';
 import Room from '../models/Room';
@@ -43,6 +44,22 @@ const addDays = (date: Date, offset: number): Date => {
   d.setDate(d.getDate() + offset);
   return d;
 };
+
+const normalizeDateStr = (value: any) => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  if (raw.includes('T')) return raw.split('T')[0];
+  return raw;
+};
+
+const normalizeTripDate = (value: any) => {
+  const s = normalizeDateStr(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  return s;
+};
+
+const tripKeyOf = (tourId: string, dateStr: string) => `${tourId}:${dateStr}`;
 
 const dedupeByPlate = (rows: any[]) => {
   const seen = new Set<string>();
@@ -428,6 +445,256 @@ export const autoAllocateRoomsForBooking = async (bookingId: string): Promise<Al
   }));
 
   await mergeAllocatedServices(booking._id, { rooms: prettyRows });
+
+  return { success: true, data: prettyRows };
+};
+
+export const autoAllocateCarsForTrip = async (input: {
+  tourId: string;
+  startDate: string; // YYYY-MM-DD
+  slots: number;
+}): Promise<AllocateCarsResult> => {
+  const tourId = String(input?.tourId || '').trim();
+  const dateStr = normalizeTripDate(input?.startDate);
+  const slots = Math.max(0, Number(input?.slots || 0));
+  if (!tourId || !dateStr) return { success: false, code: 'INVALID_TRIP', message: 'tourId/startDate không hợp lệ' };
+  if (slots <= 0) return { success: false, code: 'INVALID_SLOTS', message: 'slots không hợp lệ' };
+
+  const tour: any = await Tour.findById(tourId).lean();
+  if (!tour) return { success: false, code: 'TOUR_NOT_FOUND', message: 'Không tìm thấy tour' };
+  if (String(tour?.status || '') !== 'active') {
+    return { success: false, code: 'TOUR_NOT_ACTIVE', message: 'Chỉ phân bổ khi tour đang hoạt động' };
+  }
+
+  const durationDays = Math.max(1, Number(tour?.duration_days || 1));
+  const startDate = toStartOfDay(dateStr);
+  const tripKey = tripKeyOf(tourId, dateStr);
+
+  const supplierIds: string[] = Array.isArray(tour?.suppliers) ? tour.suppliers.map((id: any) => String(id)) : [];
+
+  await VehicleAllocation.deleteMany({ trip_key: tripKey });
+
+  const allAllocations: any[] = [];
+
+  for (let dayNo = 1; dayNo <= durationDays; dayNo += 1) {
+    const serviceDate = addDays(startDate, dayNo - 1);
+
+    const vehicleFilter: any = { status: 'active' };
+    if (supplierIds.length > 0) vehicleFilter.provider_id = { $in: supplierIds };
+
+    const activeCars = await Vehicle.find(vehicleFilter).sort({ capacity: -1, plate: 1 }).lean();
+
+    const freeCars: any[] = [];
+    for (const car of activeCars) {
+      const occupied = await VehicleAllocation.findOne({
+        vehicle_id: car._id,
+        service_date: serviceDate,
+        status: { $in: ['reserved', 'confirmed'] },
+      }).lean();
+      if (occupied) continue;
+      freeCars.push(car);
+    }
+
+    let pickedCars: any[] = [];
+    const freeCarsAsc = [...freeCars].sort((a, b) => {
+      if (Number(a.capacity) !== Number(b.capacity)) return Number(a.capacity) - Number(b.capacity);
+      return String(a.plate || '').localeCompare(String(b.plate || ''));
+    });
+    const single = freeCarsAsc.find((c) => Number(c.capacity || 0) >= slots);
+    if (single) {
+      pickedCars = [single];
+    } else {
+      let covered = 0;
+      const freeCarsDesc = [...freeCars].sort((a, b) => {
+        if (Number(a.capacity) !== Number(b.capacity)) return Number(b.capacity) - Number(a.capacity);
+        return String(a.plate || '').localeCompare(String(b.plate || ''));
+      });
+      for (const car of freeCarsDesc) {
+        pickedCars.push(car);
+        covered += Number(car.capacity || 0);
+        if (covered >= slots) break;
+      }
+      if (covered < slots) {
+        await VehicleAllocation.deleteMany({ trip_key: tripKey });
+        return {
+          success: false,
+          code: 'NOT_ENOUGH_CAR',
+          message: `Không đủ xe cho ngày ${dayNo}`,
+          day_no: dayNo,
+          required: slots,
+          available: covered,
+        };
+      }
+    }
+
+    const uniqueCars = dedupeByPlate(pickedCars);
+    const insertedRows: any[] = [];
+
+    for (const car of uniqueCars) {
+      try {
+        const created = await VehicleAllocation.create({
+          tour_id: tourId,
+          trip_key: tripKey,
+          vehicle_id: car._id,
+          plate: car.plate,
+          provider_id: car.provider_id,
+          day_no: dayNo,
+          service_date: serviceDate,
+          capacity: car.capacity,
+          status: 'reserved',
+        });
+        insertedRows.push(created.toObject());
+      } catch (error: any) {
+        if (error?.code === 11000) continue;
+        throw error;
+      }
+    }
+
+    const dayCapacity = insertedRows.reduce((sum, item) => sum + Number(item.capacity || 0), 0);
+    if (dayCapacity < slots) {
+      await VehicleAllocation.deleteMany({ trip_key: tripKey });
+      return {
+        success: false,
+        code: 'NOT_ENOUGH_CAR',
+        message: `Không đủ xe cho ngày ${dayNo} (xung đột phân bổ đồng thời)`,
+        day_no: dayNo,
+        required: slots,
+        available: dayCapacity,
+      };
+    }
+
+    allAllocations.push(...insertedRows);
+  }
+
+  const prettyRows = allAllocations.map((a) => ({
+    day_no: a.day_no,
+    service_date: a.service_date,
+    plate: a.plate,
+    capacity: a.capacity,
+    status: a.status,
+    provider_id: a.provider_id,
+    vehicle_allocation_id: a._id,
+  }));
+
+  return { success: true, data: prettyRows };
+};
+
+export const autoAllocateRoomsForTrip = async (input: {
+  tourId: string;
+  startDate: string; // YYYY-MM-DD
+  slots: number;
+}): Promise<AllocateRoomsResult> => {
+  const tourId = String(input?.tourId || '').trim();
+  const dateStr = normalizeTripDate(input?.startDate);
+  const slots = Math.max(0, Number(input?.slots || 0));
+  if (!tourId || !dateStr) return { success: false, code: 'INVALID_TRIP', message: 'tourId/startDate không hợp lệ' };
+  if (slots <= 0) return { success: false, code: 'INVALID_SLOTS', message: 'slots không hợp lệ' };
+
+  const tour: any = await Tour.findById(tourId).lean();
+  if (!tour) return { success: false, code: 'TOUR_NOT_FOUND', message: 'Không tìm thấy tour' };
+  if (String(tour?.status || '') !== 'active') {
+    return { success: false, code: 'TOUR_NOT_ACTIVE', message: 'Chỉ phân bổ khi tour đang hoạt động' };
+  }
+
+  const durationDays = Math.max(1, Number(tour?.duration_days || 1));
+  const startDate = toStartOfDay(dateStr);
+  const tripKey = tripKeyOf(tourId, dateStr);
+
+  const supplierIds: string[] = Array.isArray(tour?.suppliers) ? tour.suppliers.map((id: any) => String(id)) : [];
+
+  await RoomAllocation.deleteMany({ trip_key: tripKey });
+
+  const allRoomAllocations: any[] = [];
+
+  for (let dayNo = 1; dayNo <= durationDays; dayNo += 1) {
+    const serviceDate = addDays(startDate, dayNo - 1);
+
+    const roomFilter: any = { status: 'active' };
+    if (supplierIds.length > 0) roomFilter.provider_id = { $in: supplierIds };
+
+    const activeRooms = await Room.find(roomFilter)
+      .populate('hotel_id', 'name')
+      .sort({ max_occupancy: -1, room_number: 1 })
+      .lean();
+
+    const freeRooms: any[] = [];
+    for (const room of activeRooms) {
+      const occupied = await RoomAllocation.findOne({
+        room_id: room._id,
+        service_date: serviceDate,
+        status: { $in: ['reserved', 'confirmed'] },
+      }).lean();
+      if (occupied) continue;
+      freeRooms.push(room);
+    }
+
+    const freeRoomsWithCap = freeRooms.map((r) => ({ ...r, capacity: Number(r.max_occupancy || 0) }));
+    const pickedRooms = pickOptimizedCover<any>(freeRoomsWithCap, slots);
+    const covered = pickedRooms.reduce((sum, r) => sum + Number(r.max_occupancy || r.capacity || 0), 0);
+    const totalFreeCapacity = freeRooms.reduce((sum, r) => sum + Number(r.max_occupancy || 0), 0);
+    if (covered < slots) {
+      await RoomAllocation.deleteMany({ trip_key: tripKey });
+      return {
+        success: false,
+        code: 'NOT_ENOUGH_CAPACITY',
+        message: `Không đủ sức chứa phòng cho ngày ${dayNo}`,
+        day_no: dayNo,
+        required: slots,
+        available: totalFreeCapacity,
+      };
+    }
+
+    const uniqueRooms = dedupeByRoomId(pickedRooms);
+    const insertedRows: any[] = [];
+
+    for (const room of uniqueRooms) {
+      try {
+        const created = await RoomAllocation.create({
+          tour_id: tourId,
+          trip_key: tripKey,
+          room_id: room._id,
+          hotel_id: room?.hotel_id?._id || room?.hotel_id,
+          hotel_name: room?.hotel_id?.name || '',
+          room_number: String(room?.room_number || '').trim() || '—',
+          provider_id: room?.provider_id,
+          day_no: dayNo,
+          service_date: serviceDate,
+          max_occupancy: Number(room?.max_occupancy || room?.capacity || 1),
+          status: 'reserved',
+        });
+        insertedRows.push(created.toObject());
+      } catch (error: any) {
+        if (error?.code === 11000) continue;
+        throw error;
+      }
+    }
+
+    const dayCapacity = insertedRows.reduce((sum, item) => sum + Number(item.max_occupancy || 0), 0);
+    if (dayCapacity < slots) {
+      await RoomAllocation.deleteMany({ trip_key: tripKey });
+      return {
+        success: false,
+        code: 'NOT_ENOUGH_CAPACITY',
+        message: `Không đủ sức chứa phòng cho ngày ${dayNo} (xung đột phân bổ đồng thời)`,
+        day_no: dayNo,
+        required: slots,
+        available: dayCapacity,
+      };
+    }
+
+    allRoomAllocations.push(...insertedRows);
+  }
+
+  const prettyRows = allRoomAllocations.map((a) => ({
+    day_no: a.day_no,
+    service_date: a.service_date,
+    hotel_name: a.hotel_name,
+    room_number: a.room_number,
+    max_occupancy: a.max_occupancy,
+    status: a.status,
+    provider_id: a.provider_id,
+    room_allocation_id: a._id,
+  }));
 
   return { success: true, data: prettyRows };
 };

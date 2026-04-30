@@ -7,6 +7,7 @@ export interface IPassenger extends Document {
   trip_date: string; // YYYY-MM-DD
 
   role: 'leader' | 'passenger';
+  is_leader?: boolean;
   source_guest_id?: string; // subdocument _id (nếu có)
 
   full_name: string;
@@ -27,6 +28,7 @@ const PassengerSchema: Schema = new Schema(
     trip_date: { type: String, required: true, trim: true, index: true },
 
     role: { type: String, enum: ['leader', 'passenger'], default: 'passenger', index: true },
+    is_leader: { type: Boolean, default: false, index: true },
     source_guest_id: { type: String, trim: true },
 
     full_name: { type: String, required: true, trim: true },
@@ -38,8 +40,10 @@ const PassengerSchema: Schema = new Schema(
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );
 
-// chống trùng: 1 booking chỉ sinh ra 1 leader + mỗi sub-guest chỉ 1 dòng
-PassengerSchema.index({ booking_id: 1, role: 1 }, { unique: true, partialFilterExpression: { role: 'leader' } });
+PassengerSchema.index(
+  { booking_id: 1, is_leader: 1 },
+  { unique: true, partialFilterExpression: { is_leader: true } }
+);
 PassengerSchema.index(
   { booking_id: 1, source_guest_id: 1 },
   { unique: true, partialFilterExpression: { source_guest_id: { $type: 'string' } } }

@@ -52,8 +52,8 @@ function DraggablePassenger(props: { passenger: any }) {
         <Text strong style={{ lineHeight: 1.2 }}>
           {props.passenger?.full_name || "—"}
         </Text>
-        <Tag color={props.passenger?.role === "leader" ? "purple" : "blue"} style={{ margin: 0 }}>
-          {props.passenger?.role === "leader" ? "Trưởng đoàn" : "Khách"}
+        <Tag color={props.passenger?.is_leader ? "purple" : "blue"} style={{ margin: 0 }}>
+          {props.passenger?.is_leader ? "Trưởng đoàn" : "Khách"}
         </Tag>
       </div>
       <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
@@ -97,7 +97,7 @@ function DroppableSeat(props: {
               {props.occupant?.full_name}
             </Text>
             <Text type="secondary" style={{ fontSize: 12 }} ellipsis>
-              {props.occupant?.role === "leader" ? "Trưởng đoàn" : "Khách"}
+              {props.occupant?.is_leader ? "Trưởng đoàn" : "Khách"}
             </Text>
           </div>
           <Button size="small" danger onClick={props.onRemove}>
@@ -251,7 +251,7 @@ export default function TripSeatingPage() {
           "TripVehicleId": tvId,
           "Ghế": seatCode,
           "Hành khách": occ?.full_name || "",
-          "Vai trò": occ?.role === "leader" ? "Trưởng đoàn" : occ ? "Khách" : "",
+          "Vai trò": occ?.is_leader ? "Trưởng đoàn" : occ ? "Khách" : "",
           "SĐT": occ?.phone || "",
           "BookingId": occ?.booking_id || "",
         });

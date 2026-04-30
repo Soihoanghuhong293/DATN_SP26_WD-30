@@ -1,7 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRoomAllocation extends Document {
-  booking_id: mongoose.Types.ObjectId;
+  booking_id?: mongoose.Types.ObjectId;
+  tour_id?: mongoose.Types.ObjectId;
+  trip_key?: string; // `${tourId}:${YYYY-MM-DD}`
   room_id: mongoose.Types.ObjectId;
   hotel_id: mongoose.Types.ObjectId;
   hotel_name: string;
@@ -17,7 +19,9 @@ export interface IRoomAllocation extends Document {
 
 const RoomAllocationSchema: Schema = new Schema(
   {
-    booking_id: { type: Schema.Types.ObjectId, ref: 'Booking', required: true, index: true },
+    booking_id: { type: Schema.Types.ObjectId, ref: 'Booking', index: true },
+    tour_id: { type: Schema.Types.ObjectId, ref: 'Tour', index: true },
+    trip_key: { type: String, trim: true, index: true },
     room_id: { type: Schema.Types.ObjectId, ref: 'Room', required: true, index: true },
     hotel_id: { type: Schema.Types.ObjectId, ref: 'Hotel', required: true },
     hotel_name: { type: String, required: true, trim: true },
@@ -44,5 +48,6 @@ RoomAllocationSchema.index(
 );
 
 RoomAllocationSchema.index({ booking_id: 1, day_no: 1 });
+RoomAllocationSchema.index({ trip_key: 1, day_no: 1 });
 
 export default mongoose.model<IRoomAllocation>('RoomAllocation', RoomAllocationSchema);

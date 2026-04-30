@@ -1,7 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IVehicleAllocation extends Document {
-  booking_id: mongoose.Types.ObjectId;
+  booking_id?: mongoose.Types.ObjectId;
+  tour_id?: mongoose.Types.ObjectId;
+  trip_key?: string; // `${tourId}:${YYYY-MM-DD}`
   vehicle_id: mongoose.Types.ObjectId;
   plate: string;
   provider_id?: mongoose.Types.ObjectId;
@@ -15,7 +17,9 @@ export interface IVehicleAllocation extends Document {
 
 const VehicleAllocationSchema: Schema = new Schema(
   {
-    booking_id: { type: Schema.Types.ObjectId, ref: 'Booking', required: true, index: true },
+    booking_id: { type: Schema.Types.ObjectId, ref: 'Booking', index: true },
+    tour_id: { type: Schema.Types.ObjectId, ref: 'Tour', index: true },
+    trip_key: { type: String, trim: true, index: true },
     vehicle_id: { type: Schema.Types.ObjectId, ref: 'Vehicle', required: true, index: true },
     plate: { type: String, required: true, trim: true },
     provider_id: { type: Schema.Types.ObjectId, ref: 'Provider' },
@@ -41,5 +45,6 @@ VehicleAllocationSchema.index(
 );
 
 VehicleAllocationSchema.index({ booking_id: 1, day_no: 1 });
+VehicleAllocationSchema.index({ trip_key: 1, day_no: 1 });
 
 export default mongoose.model<IVehicleAllocation>('VehicleAllocation', VehicleAllocationSchema);

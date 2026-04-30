@@ -44,19 +44,9 @@ const syncPassengersForBooking = async (booking: any) => {
   await Passenger.deleteMany({ booking_id: bookingId });
 
   const docs: any[] = [];
-  docs.push({
-    booking_id: bookingId,
-    tour_id: tourId,
-    trip_key: tripKey,
-    trip_date: dateStr,
-    role: 'leader',
-    full_name: booking?.customer_name || 'Trưởng đoàn',
-    phone: booking?.customer_phone,
-    type: 'leader',
-  });
-
   const list = booking?.passengers || booking?.guests || booking?.guest_list || [];
   if (Array.isArray(list)) {
+    const hasLeader = list.some((g: any) => g?.is_leader === true || g?.isLeader === true || g?.is_representative === true);
     list.forEach((g: any, idx: number) => {
       const subId = g?._id ? String(g._id) : `p${idx}`;
       docs.push({
@@ -65,6 +55,9 @@ const syncPassengersForBooking = async (booking: any) => {
         trip_key: tripKey,
         trip_date: dateStr,
         role: 'passenger',
+        is_leader: hasLeader
+          ? Boolean(g?.is_leader === true || g?.isLeader === true || g?.is_representative === true)
+          : idx === 0,
         source_guest_id: subId,
         full_name: g?.name || g?.full_name || `Khách ${idx + 1}`,
         gender: g?.gender,
@@ -72,6 +65,22 @@ const syncPassengersForBooking = async (booking: any) => {
         phone: g?.phone || g?.phoneNumber,
         type: g?.type,
       });
+    });
+  }
+
+  // fallback: nếu booking chưa có list khách, tạo 1 dòng để không mất dữ liệu (không auto cộng thêm ngoài groupSize)
+  if (docs.length === 0) {
+    docs.push({
+      booking_id: bookingId,
+      tour_id: tourId,
+      trip_key: tripKey,
+      trip_date: dateStr,
+      role: 'passenger',
+      is_leader: true,
+      source_guest_id: 'p0',
+      full_name: booking?.customer_name || 'Khách',
+      phone: booking?.customer_phone,
+      type: 'adult',
     });
   }
 

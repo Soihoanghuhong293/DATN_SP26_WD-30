@@ -5,14 +5,14 @@ import axios from 'axios';
 import { 
   Button, Card, Spin, Tabs, Tag, Table, 
   Typography, Space, Popconfirm, message, Breadcrumb, 
-  Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Collapse, List, Empty
+  Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Collapse, List, Empty, Radio
 } from 'antd';
 import { 
   ArrowLeftOutlined, EditOutlined, DeleteOutlined, 
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,
-  FileExcelOutlined,   PlusOutlined, UploadOutlined, ShopOutlined, CarOutlined, BookOutlined, PictureOutlined
+  FileExcelOutlined, PlusOutlined, UploadOutlined, BookOutlined, PictureOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
@@ -59,15 +59,6 @@ const BookingDetail = () => {
     }
   });
 
-  const { data: providersData } = useQuery({
-    queryKey: ['providers'],
-    queryFn: async () => {
-      const res = await axios.get('http://localhost:5000/api/v1/providers', getAuthHeader());
-      return res.data?.data?.providers || res.data?.data || [];
-    }
-  });
-  const providers = Array.isArray(providersData) ? providersData : [];
-
   const formatBirthDate = (val: any) => {
     if (!val) return null;
     const d = dayjs(val);
@@ -111,60 +102,10 @@ const BookingDetail = () => {
     return dayjs(booking.startDate).add(Math.max(0, durationDays - 1), 'day');
   }, [booking?.startDate, booking?.endDate, tourInfo]);
 
-  const tourProviders = useMemo(() => {
-    if (!tourInfo || !tourInfo.suppliers) return [];
-    return tourInfo.suppliers.map((sId: any) => {
-      const id = typeof sId === 'object' ? (sId._id || sId.id) : sId;
-      return providers.find((p: any) => p.id === id || p._id === id) || (typeof sId === 'object' ? sId : null);
-    }).filter(Boolean);
-  }, [tourInfo, providers]);
-
   const guideInfo = useMemo(() => {
     if (!booking) return null;
     return usersData?.find((u: any) => u._id === (booking.guide_id?._id || booking.guide_id)) || booking.guide_id;
   }, [booking, usersData]);
-
-  const allocatedCars = useMemo(() => {
-    const rows = booking?.allocated_services?.cars;
-    if (!Array.isArray(rows)) return [];
-
-    return rows
-      .map((row: any, index: number) => {
-        const provider =
-          providers.find((p: any) => p._id === row.provider_id || p.id === row.provider_id) || null;
-
-        return {
-          key: row.vehicle_allocation_id || `${row.day_no}-${row.plate}-${index}`,
-          providerName: provider?.name || provider?.provider_name || '',
-          ...row,
-        };
-      })
-      .sort((a: any, b: any) => {
-        if ((a.day_no || 0) !== (b.day_no || 0)) return (a.day_no || 0) - (b.day_no || 0);
-        return String(a.plate || '').localeCompare(String(b.plate || ''));
-      });
-  }, [booking, providers]);
-
-  const allocatedRooms = useMemo(() => {
-    const rows = booking?.allocated_services?.rooms;
-    if (!Array.isArray(rows)) return [];
-
-    return rows
-      .map((row: any, index: number) => {
-        const provider =
-          providers.find((p: any) => p._id === row.provider_id || p.id === row.provider_id) || null;
-
-        return {
-          key: row.room_allocation_id || `${row.day_no}-${row.hotel_name}-${row.room_number}-${index}`,
-          providerName: provider?.name || provider?.provider_name || '',
-          ...row,
-        };
-      })
-      .sort((a: any, b: any) => {
-        if ((a.day_no || 0) !== (b.day_no || 0)) return (a.day_no || 0) - (b.day_no || 0);
-        return String(a.hotel_name || '').localeCompare(String(b.hotel_name || ''));
-      });
-  }, [booking, providers]);
 
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
@@ -192,32 +133,6 @@ const BookingDetail = () => {
       navigate('/admin/bookings');
     },
     onError: () => message.error('Xóa thất bại')
-  });
-
-  const autoAllocateCarsMutation = useMutation({
-    mutationFn: async () => {
-      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-cars`, {}, getAuthHeader());
-    },
-    onSuccess: () => {
-      message.success('Đã tự động phân bổ xe thành công!');
-      queryClient.invalidateQueries({ queryKey: ['booking', id] });
-    },
-    onError: (error: any) => {
-      message.error(error?.response?.data?.message || 'Phân bổ xe thất bại!');
-    },
-  });
-
-  const autoAllocateRoomsMutation = useMutation({
-    mutationFn: async () => {
-      await axios.post(`http://localhost:5000/api/v1/bookings/${id}/auto-allocate-rooms`, {}, getAuthHeader());
-    },
-    onSuccess: () => {
-      message.success('Đã tự động phân bổ phòng thành công!');
-      queryClient.invalidateQueries({ queryKey: ['booking', id] });
-    },
-    onError: (error: any) => {
-      message.error(error?.response?.data?.message || 'Phân bổ phòng thất bại!');
-    },
   });
 
   // xuất excel
@@ -298,11 +213,36 @@ const BookingDetail = () => {
       message.error(`Đoàn đã đủ ${booking?.groupSize} khách, không thể thêm!`);
       return;
     }
-    const newGuests = [...guestList, { id: `temp-${Date.now()}`, ...values }];
+    const isFirst = guestList.length === 0;
+    const newGuests = [
+      ...guestList.map((g) => ({ ...g, is_leader: Boolean(g?.is_leader) })),
+      { id: `temp-${Date.now()}`, ...values, is_leader: isFirst },
+    ];
     setGuestList(newGuests);
     setIsAddModalOpen(false);
     form.resetFields();
     saveGuestsMutation.mutate(newGuests); 
+  };
+
+  // đảm bảo luôn có 1 trưởng đoàn mặc định (khách #1) nếu chưa ai được tick
+  useEffect(() => {
+    if (!booking?._id) return;
+    if (!Array.isArray(guestList) || guestList.length === 0) return;
+    const hasLeader = guestList.some((g: any) => g?.is_leader === true);
+    if (hasLeader) return;
+    const patched = guestList.map((g: any, idx: number) => ({ ...g, is_leader: idx === 0 }));
+    setGuestList(patched);
+    saveGuestsMutation.mutate(patched);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking?._id, guestList.length]);
+
+  const setLeader = (leaderKey: string) => {
+    const patched = guestList.map((g: any) => {
+      const key = String(g?.id || g?._id || '');
+      return { ...g, is_leader: key === leaderKey };
+    });
+    setGuestList(patched);
+    saveGuestsMutation.mutate(patched);
   };
 
   // xóa khách
@@ -606,6 +546,24 @@ const BookingDetail = () => {
               locale={{ emptyText: 'Chưa có danh sách khách hàng' }}
               columns={[
                 { title: '#', render: (_, __, i) => i + 1, width: 40 },
+                {
+                  title: 'Đại diện',
+                  width: 70,
+                  className: 'print:hidden',
+                  render: (_, record) => {
+                    const key = String(record?.id || record?._id || '');
+                    const selectedKey = String((guestList.find((g: any) => g?.is_leader === true)?.id) ||
+                      (guestList.find((g: any) => g?.is_leader === true)?._id) ||
+                      '');
+                    return (
+                      <Radio
+                        checked={key && selectedKey ? key === selectedKey : false}
+                        onChange={() => setLeader(key)}
+                        disabled={!key}
+                      />
+                    );
+                  },
+                },
                 { title: 'Họ và Tên', render: (_, record) => <Text strong>{record.name || record.full_name}</Text> },
                 { title: 'Số điện thoại', dataIndex: 'phone', render: (text) => text || '---' },
                 { title: 'Loại', dataIndex: 'type', render: (t) => <Tag>{t || 'Người lớn'}</Tag> },
@@ -624,138 +582,7 @@ const BookingDetail = () => {
             />
           </Card>
 
-          {tourProviders.length > 0 && (
-            <Card 
-              title={<Space><ShopOutlined style={{ color: '#8b5cf6' }} /> Nhà cung cấp dịch vụ</Space>} 
-              bordered={true} 
-              className="saas-card mb-6"
-            >
-              {tourProviders.map((provider: any, index: number) => (
-                <div key={provider.id || provider._id || index} style={{ marginBottom: index !== tourProviders.length - 1 ? 16 : 0, paddingBottom: index !== tourProviders.length - 1 ? 16 : 0, borderBottom: index !== tourProviders.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', marginBottom: 8 }}>
-                    <Link to={`/admin/providers/${provider.id || provider._id}`}>
-                      {provider.name || provider.provider_name || 'Tên nhà cung cấp'}
-                    </Link>
-                    {provider.status && (
-                      <Tag color={provider.status === 'active' ? 'green' : 'red'} style={{ marginLeft: 8 }}>
-                        {provider.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
-                      </Tag>
-                    )}
-                  </div>
-                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                    {(provider.phone || provider.contact_phone) && (
-                      <div><PhoneOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.phone || provider.contact_phone}</Text></div>
-                    )}
-                    {(provider.email || provider.contact_email) && (
-                      <div><MailOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.email || provider.contact_email}</Text></div>
-                    )}
-                    {(provider.address) && (
-                      <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text type="secondary">{provider.address}</Text></div>
-                    )}
-                  </Space>
-                </div>
-              ))}
-            </Card>
-          )}
-
-          <Card
-            title={<Space><CarOutlined style={{ color: '#2563eb' }} /> Phân bổ xe tự động</Space>}
-            bordered={true}
-            className="saas-card mb-6"
-            extra={(
-              <Button
-                type="primary"
-                ghost
-                size="small"
-                loading={autoAllocateCarsMutation.isPending}
-                onClick={() => autoAllocateCarsMutation.mutate()}
-              >
-                Tự động phân bổ xe
-              </Button>
-            )}
-          >
-            <Table
-              dataSource={allocatedCars}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'Chưa có dữ liệu phân bổ xe. Bấm "Tự động phân bổ xe" để chạy.' }}
-              columns={[
-                { title: 'Ngày', dataIndex: 'day_no', width: 70, render: (v) => `Day ${v || 1}` },
-                {
-                  title: 'Ngày sử dụng',
-                  dataIndex: 'service_date',
-                  render: (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '---'),
-                },
-                { title: 'Biển số', dataIndex: 'plate', render: (v) => <Text strong>{v || '---'}</Text> },
-                {
-                  title: 'Nhà cung cấp',
-                  dataIndex: 'providerName',
-                  render: (v) => v || <Text type="secondary">---</Text>,
-                },
-                { title: 'Sức chứa', dataIndex: 'capacity', render: (v) => `${v || 0} chỗ` },
-                {
-                  title: 'Trạng thái',
-                  dataIndex: 'status',
-                  render: (v) => (
-                    <Tag color={v === 'confirmed' ? 'green' : v === 'cancelled' ? 'red' : 'processing'}>
-                      {v === 'confirmed' ? 'Đã xác nhận' : v === 'cancelled' ? 'Đã hủy' : 'Đã giữ chỗ'}
-                    </Tag>
-                  ),
-                },
-              ]}
-            />
-          </Card>
-
-          <Card
-            title={<Space><HomeOutlined style={{ color: '#059669' }} /> Phân bổ khách sạn &amp; phòng</Space>}
-            bordered={true}
-            className="saas-card mb-6"
-            extra={(
-              <Space size="small" wrap>
-                <Button
-                  type="primary"
-                  ghost
-                  size="small"
-                  loading={autoAllocateRoomsMutation.isPending}
-                  onClick={() => autoAllocateRoomsMutation.mutate()}
-                >
-                  Phân bổ phòng
-                </Button>
-              </Space>
-            )}
-          >
-            <Table
-              dataSource={allocatedRooms}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'Chưa có phân bổ phòng. Khai báo khách sạn/phòng ở nhà cung cấp rồi bấm phân bổ.' }}
-              columns={[
-                { title: 'Ngày', dataIndex: 'day_no', width: 70, render: (v) => `Đêm ${v || 1}` },
-                {
-                  title: 'Ngày ở',
-                  dataIndex: 'service_date',
-                  render: (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '---'),
-                },
-                { title: 'Khách sạn', dataIndex: 'hotel_name', render: (v) => <Text strong>{v || '---'}</Text> },
-                { title: 'Số phòng', dataIndex: 'room_number', render: (v) => <Text strong>{v || '---'}</Text> },
-                {
-                  title: 'Nhà cung cấp',
-                  dataIndex: 'providerName',
-                  render: (v) => v || <Text type="secondary">---</Text>,
-                },
-                { title: 'Sức chứa', dataIndex: 'max_occupancy', render: (v) => `${v || 0} người` },
-                {
-                  title: 'Trạng thái',
-                  dataIndex: 'status',
-                  render: (v) => (
-                    <Tag color={v === 'confirmed' ? 'green' : v === 'cancelled' ? 'red' : 'processing'}>
-                      {v === 'confirmed' ? 'Đã xác nhận' : v === 'cancelled' ? 'Đã hủy' : 'Đã giữ chỗ'}
-                    </Tag>
-                  ),
-                },
-              ]}
-            />
-          </Card>
+          {/* Phân bổ xe/phòng & nhà cung cấp đã chuyển sang quản lý theo Trip */}
         </Col>
 
         {/* CỘT PHẢI */}

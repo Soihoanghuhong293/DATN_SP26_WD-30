@@ -293,7 +293,9 @@ export const getTripPassengers = async (req: Request, res: Response) => {
     const dateStr = normalizeTripDate(req.params.date);
     if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
     const tripKey = tripKeyOf(tourId, dateStr);
-    const rows = await Passenger.find({ trip_key: tripKey }).sort({ role: 1, full_name: 1 }).lean();
+    const rows = await Passenger.find({ trip_key: tripKey, role: { $ne: 'leader' } })
+      .sort({ is_leader: -1, full_name: 1 })
+      .lean();
     return res.status(200).json({ status: 'success', data: rows });
   } catch (error: any) {
     return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy passengers' });
@@ -356,7 +358,9 @@ export const getTripSeatingState = async (req: Request, res: Response) => {
     const tripKey = tripKeyOf(tourId, dateStr);
 
     const vehicles = await TripVehicle.find({ trip_key: tripKey }).sort({ created_at: 1 }).lean();
-    const passengers = await Passenger.find({ trip_key: tripKey }).sort({ role: 1, full_name: 1 }).lean();
+    const passengers = await Passenger.find({ trip_key: tripKey, role: { $ne: 'leader' } })
+      .sort({ is_leader: -1, full_name: 1 })
+      .lean();
     const allocations = await SeatingAllocation.find({ trip_key: tripKey }).lean();
 
     const seatByPassenger = new Map<string, any>();
@@ -552,15 +556,60 @@ export const getTripRoomingState = async (req: Request, res: Response) => {
     const tripKey = tripKeyOf(tourId, dateStr);
 
     const rooms = await TripRoom.find({ trip_key: tripKey }).sort({ hotel_name: 1, room_number: 1 }).lean();
-    const passengers = await Passenger.find({ trip_key: tripKey }).sort({ role: 1, full_name: 1 }).lean();
+    const passengers = await Passenger.find({ trip_key: tripKey, role: { $ne: 'leader' } })
+      .sort({ is_leader: -1, full_name: 1 })
+      .lean();
     const allocations = await RoomingAllocation.find({ trip_key: tripKey }).lean();
 
     const assignedPassengerIds = new Set<string>(allocations.map((a: any) => String(a.passenger_id)));
     const unassigned = passengers.filter((p: any) => !assignedPassengerIds.has(String(p._id)));
 
+    // Group unassigned passengers by booking_id for UI accordion
+    const bookingIds = Array.from(
+      new Set(unassigned.map((p: any) => String(p?.booking_id || '')).filter((x: string) => x))
+    );
+    const bookings = bookingIds.length
+      ? await Booking.find({ _id: { $in: bookingIds } })
+          .select('customer_name customer_phone customer_note groupSize')
+          .lean()
+      : [];
+    const bookingMap = new Map<string, any>(bookings.map((b: any) => [String(b._id), b]));
+
+    const grouped: Array<{
+      booking_id: string;
+      booking_code: string;
+      customer_name?: string;
+      customer_phone?: string;
+      note?: string;
+      groupSize?: number;
+      passengers: any[];
+    }> = [];
+
+    const bucket = new Map<string, any[]>();
+    for (const p of unassigned) {
+      const bid = String((p as any)?.booking_id || '');
+      if (!bid) continue;
+      const arr = bucket.get(bid) || [];
+      arr.push(p);
+      bucket.set(bid, arr);
+    }
+    for (const [bid, ps] of bucket.entries()) {
+      const b = bookingMap.get(bid);
+      grouped.push({
+        booking_id: bid,
+        booking_code: String(bid).slice(-6).toUpperCase(),
+        customer_name: b?.customer_name,
+        customer_phone: b?.customer_phone,
+        note: b?.customer_note,
+        groupSize: b?.groupSize,
+        passengers: ps,
+      });
+    }
+    grouped.sort((a, b) => String(b.booking_id).localeCompare(String(a.booking_id)));
+
     return res.status(200).json({
       status: 'success',
-      data: { rooms, passengers, unassigned, allocations },
+      data: { rooms, passengers, unassigned, allocations, unassigned_by_booking: grouped },
     });
   } catch (error: any) {
     return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy rooming state' });

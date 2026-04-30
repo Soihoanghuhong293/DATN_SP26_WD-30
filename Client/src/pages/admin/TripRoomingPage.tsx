@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Col,
+  Collapse,
   Divider,
   Empty,
   Form,
@@ -47,8 +48,8 @@ function DraggablePassenger(props: { passenger: any }) {
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
         <Text strong>{props.passenger?.full_name || "—"}</Text>
-        <Tag color={props.passenger?.role === "leader" ? "purple" : "blue"} style={{ margin: 0 }}>
-          {props.passenger?.role === "leader" ? "Trưởng đoàn" : "Khách"}
+        <Tag color={props.passenger?.is_leader ? "purple" : "blue"} style={{ margin: 0 }}>
+          {props.passenger?.is_leader ? "Trưởng đoàn" : "Khách"}
         </Tag>
       </div>
       <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>{props.passenger?.phone || ""}</div>
@@ -176,6 +177,7 @@ export default function TripRoomingPage() {
   const rooms = Array.isArray(state?.rooms) ? state.rooms : [];
   const passengers = Array.isArray(state?.passengers) ? state.passengers : [];
   const unassigned = Array.isArray(state?.unassigned) ? state.unassigned : [];
+  const unassignedByBooking = Array.isArray(state?.unassigned_by_booking) ? state.unassigned_by_booking : [];
   const allocations = Array.isArray(state?.allocations) ? state.allocations : [];
 
   const passengersById = useMemo(() => {
@@ -198,6 +200,25 @@ export default function TripRoomingPage() {
     return m;
   }, [allocations, passengersById]);
 
+  const unassignedByBookingFallback = useMemo(() => {
+    if (unassignedByBooking.length > 0) return unassignedByBooking;
+    const bucket = new Map<string, any[]>();
+    unassigned.forEach((p: any) => {
+      const bid = p?.booking_id ? String(p.booking_id) : "";
+      const key = bid || "unknown";
+      const arr = bucket.get(key) || [];
+      arr.push(p);
+      bucket.set(key, arr);
+    });
+    const groups = Array.from(bucket.entries()).map(([bid, ps]) => ({
+      booking_id: bid,
+      booking_code: bid && bid !== "unknown" ? bid.slice(-6).toUpperCase() : "—",
+      passengers: ps,
+    }));
+    groups.sort((a, b) => String(b.booking_id).localeCompare(String(a.booking_id)));
+    return groups;
+  }, [unassigned, unassignedByBooking]);
+
   const handleDragEnd = async (evt: DragEndEvent) => {
     const overId = evt.over?.id ? String(evt.over.id) : "";
     const activeId = evt.active?.id ? String(evt.active.id) : "";
@@ -208,6 +229,28 @@ export default function TripRoomingPage() {
     const passengerId = activeId.slice(2);
     if (!id || !date) return;
     try {
+      const passenger = passengersById.get(String(passengerId));
+      const targetOcc = occupantsByRoomId.get(String(tripRoomId)) || [];
+      const passengerBookingId = passenger?.booking_id ? String(passenger.booking_id) : "";
+      const hasDifferentBooking =
+        passengerBookingId &&
+        targetOcc.some((p: any) => String(p?.booking_id || "") && String(p.booking_id) !== passengerBookingId);
+
+      if (hasDifferentBooking) {
+        const ok = await new Promise<boolean>((resolve) => {
+          Modal.confirm({
+            title: "Cảnh báo ghép khách khác Booking",
+            content:
+              "Bạn đang ghép khách từ các Booking khác nhau vào cùng một phòng. Điều này vẫn hợp lệ (khách lẻ), nhưng hãy chắc chắn bạn muốn làm vậy.",
+            okText: "Vẫn ghép",
+            cancelText: "Hủy",
+            onOk: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
+        });
+        if (!ok) return;
+      }
+
       await axios.post(
         `${API}/tours/${id}/trips/${date}/rooming/assign`,
         { trip_room_id: tripRoomId, passenger_id: passengerId },
@@ -305,7 +348,7 @@ export default function TripRoomingPage() {
                     "Phòng": r?.room_number || "",
                     "Sức chứa": r?.capacity || 0,
                     "Hành khách": p?.full_name || "",
-                    "Vai trò": p?.role === "leader" ? "Trưởng đoàn" : "Khách",
+                    "Vai trò": p?.is_leader ? "Trưởng đoàn" : "Khách",
                     "SĐT": p?.phone || "",
                   });
                 });
@@ -372,14 +415,31 @@ export default function TripRoomingPage() {
               {unassigned.length === 0 ? (
                 <Empty description="Tất cả khách đã được xếp phòng." image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                <List
-                  dataSource={unassigned}
-                  split={false}
-                  renderItem={(p) => (
-                    <List.Item style={{ paddingInline: 0 }}>
-                      <DraggablePassenger passenger={p} />
-                    </List.Item>
-                  )}
+                <Collapse
+                  accordion
+                  bordered={false}
+                  items={unassignedByBookingFallback.map((g: any) => ({
+                    key: String(g?.booking_id),
+                    label: (
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <Text strong>
+                          Booking #{g?.booking_code || String(g?.booking_id || "").slice(-6)} • {g?.customer_name || "—"} •{" "}
+                          {g?.customer_phone || "—"}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {typeof g?.groupSize === "number" ? `Số khách: ${g.groupSize}` : ""}{" "}
+                          {g?.note ? `• Ghi chú: ${String(g.note).slice(0, 80)}` : ""}
+                        </Text>
+                      </div>
+                    ),
+                    children: (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {(Array.isArray(g?.passengers) ? g.passengers : []).map((p: any) => (
+                          <DraggablePassenger key={String(p?._id)} passenger={p} />
+                        ))}
+                      </div>
+                    ),
+                  }))}
                 />
               )}
             </Card>
