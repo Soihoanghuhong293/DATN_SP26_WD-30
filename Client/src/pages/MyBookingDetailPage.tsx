@@ -82,6 +82,8 @@ const MyBookingDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
+  const [tripInfo, setTripInfo] = useState<any>(null);
+  const [tripInfoLoading, setTripInfoLoading] = useState(false);
   const [myReview, setMyReview] = useState<any>(null);
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [guideRating, setGuideRating] = useState<number>(0);
@@ -120,6 +122,22 @@ const MyBookingDetailPage: React.FC = () => {
       }
     };
     fetchDetail();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchTripInfo = async () => {
+      if (!id) return;
+      setTripInfoLoading(true);
+      try {
+        const res = await axios.get(`${API_V1}/bookings/me/${id}/trip-info`, getAuthHeader());
+        setTripInfo(res.data?.data || null);
+      } catch {
+        setTripInfo(null);
+      } finally {
+        setTripInfoLoading(false);
+      }
+    };
+    fetchTripInfo();
   }, [id]);
 
   useEffect(() => {
@@ -480,6 +498,61 @@ const MyBookingDetailPage: React.FC = () => {
             />
           ) : (
             <Empty description="Chưa có lịch sử." />
+          )}
+        </Card>
+
+        <Card style={{ borderRadius: 12 }} title="Thông tin HDV • Xe • Khách sạn">
+          {tripInfoLoading ? (
+            <Spin />
+          ) : (
+            <>
+              {tripInfo?.availability === "pending" ? (
+                <div style={{ marginBottom: 10 }}>
+                  <Tag color="gold">{tripInfo?.message || "Thông tin HDV và Xe sẽ được cập nhật trước ngày đi 24h."}</Tag>
+                </div>
+              ) : null}
+
+              <Descriptions bordered size="small" column={1} styles={{ label: { width: 200, fontWeight: 700 } }}>
+                <Descriptions.Item label="Hướng dẫn viên">
+                  {tripInfo?.guide?.name ? (
+                    <Space direction="vertical" size={2}>
+                      <Text strong>{tripInfo.guide.name}</Text>
+                      <Text type="secondary">SĐT: {tripInfo.guide.phone || "—"}</Text>
+                    </Space>
+                  ) : (
+                    <Text type="secondary">Chưa cập nhật</Text>
+                  )}
+                </Descriptions.Item>
+                <Descriptions.Item label="Xe">
+                  {Array.isArray(tripInfo?.vehicles) && tripInfo.vehicles.length > 0 ? (
+                    <Space direction="vertical" size={2}>
+                      {tripInfo.vehicles.map((v: any) => (
+                        <div key={String(v?._id || v?.plate)}>
+                          <Text strong>{v.vehicle_label || "Ô tô"}</Text>{" "}
+                          <Text type="secondary">• Biển số: {v.plate || "—"}</Text>
+                        </div>
+                      ))}
+                    </Space>
+                  ) : (
+                    <Text type="secondary">Chưa cập nhật</Text>
+                  )}
+                </Descriptions.Item>
+                <Descriptions.Item label="Khách sạn">
+                  {Array.isArray(tripInfo?.hotels) && tripInfo.hotels.length > 0 ? (
+                    <Space direction="vertical" size={2}>
+                      {tripInfo.hotels.map((h: any) => (
+                        <div key={String(h?.hotel_id || h?.name)}>
+                          <Text strong>{h?.name || "—"}</Text>{" "}
+                          <Text type="secondary">• Địa chỉ: {h?.address || "—"}</Text>
+                        </div>
+                      ))}
+                    </Space>
+                  ) : (
+                    <Text type="secondary">Chưa cập nhật</Text>
+                  )}
+                </Descriptions.Item>
+              </Descriptions>
+            </>
           )}
         </Card>
       </Space>

@@ -43,6 +43,14 @@ export const restrictToGuide = (req: AuthRequest, res: Response, next: NextFunct
   next();
 };
 
+export const restrictToGuideOrAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const role = String(req.user?.role || '');
+  if (role !== 'admin' && role !== 'guide' && role !== 'hdv') {
+    return res.status(403).json({ message: "Chỉ Quản trị viên / Hướng dẫn viên mới có quyền thực hiện" });
+  }
+  next();
+};
+
 export const optionalProtect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     let token: string | undefined;

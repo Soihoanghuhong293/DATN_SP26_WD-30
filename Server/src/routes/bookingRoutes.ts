@@ -16,6 +16,7 @@ router.post('/:id/auto-allocate-services', protect, bookingController.autoAlloca
 
 router.get('/me', protect, bookingController.getMyBookingsForUser);
 router.get('/me/:id', protect, bookingController.getMyBookingDetailForUser);
+router.get('/me/:id/trip-info', protect, bookingController.getMyBookingTripInfoForUser);
 router.post('/me/:id/cancel-request', protect, bookingController.requestCancelForUser);
 
 // ===== ADMIN: xử lý yêu cầu hủy =====

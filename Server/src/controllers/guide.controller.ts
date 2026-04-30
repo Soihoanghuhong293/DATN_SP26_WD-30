@@ -181,6 +181,27 @@ export const getGuideById = catchAsync(async (req: Request, res: Response, next:
   });
 });
 
+// 2b. HDV: Lấy profile guide của chính mình (theo user_id)
+export const getMyGuideProfile = catchAsync(async (req: any, res: Response, next: NextFunction) => {
+  const userId = req.user?._id;
+  if (!userId) return next(new AppError('Vui lòng đăng nhập', 401));
+  const role = String(req.user?.role || '');
+  if (role !== 'guide' && role !== 'hdv' && role !== 'admin') {
+    return next(new AppError('Chỉ HDV mới có quyền xem mục này', 403));
+  }
+
+  // ensure guide doc exists for guide/hdv users
+  await ensureGuideDocsForGuideUsers();
+  await recomputeAllGuideRatings();
+
+  const guide = await Guide.findOne({ user_id: userId })
+    .populate('user_id', 'email status role')
+    .lean();
+  if (!guide) return next(new AppError('Guide not found', 404));
+
+  return res.status(200).json({ status: 'success', data: { guide } });
+});
+
 // 3. Tạo hướng dẫn viên mới (Dùng khi cần tạo thủ công, bình thường sẽ auto-sync từ User)
 export const createGuide = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
   const {

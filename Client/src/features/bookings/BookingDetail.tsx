@@ -228,9 +228,17 @@ const BookingDetail = () => {
   useEffect(() => {
     if (!booking?._id) return;
     if (!Array.isArray(guestList) || guestList.length === 0) return;
-    const hasLeader = guestList.some((g: any) => g?.is_leader === true);
-    if (hasLeader) return;
-    const patched = guestList.map((g: any, idx: number) => ({ ...g, is_leader: idx === 0 }));
+    const leaderIdx = guestList.findIndex((g: any) => g?.is_leader === true);
+    // Nếu chưa có leader -> set idx 0; nếu có nhiều leader -> giữ leader đầu tiên
+    const patched = guestList.map((g: any, idx: number) => ({
+      ...g,
+      is_leader: leaderIdx >= 0 ? idx === leaderIdx : idx === 0,
+    }));
+    const normalizedSame =
+      leaderIdx >= 0
+        ? guestList.every((g: any, idx: number) => Boolean(g?.is_leader) === (idx === leaderIdx))
+        : guestList.every((g: any, idx: number) => Boolean(g?.is_leader) === (idx === 0));
+    if (normalizedSame) return;
     setGuestList(patched);
     saveGuestsMutation.mutate(patched);
     // eslint-disable-next-line react-hooks/exhaustive-deps

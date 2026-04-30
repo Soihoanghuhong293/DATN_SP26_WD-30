@@ -28,6 +28,14 @@ const HdvDashboard = () => {
     },
   });
 
+  const { data: myGuide } = useQuery({
+    queryKey: ["hdv-guide-profile"],
+    queryFn: async () => {
+      const res = await axios.get("http://localhost:5000/api/v1/guides/me", getAuthHeader());
+      return res.data?.data?.guide || null;
+    },
+  });
+
   const upcomingBookings = bookings.filter(
     (b: any) =>
       b.status !== "cancelled" &&
@@ -47,7 +55,10 @@ const HdvDashboard = () => {
     },
     {
       title: "Đánh giá trung bình",
-      value: "—",
+      value:
+        myGuide && myGuide.rating && typeof myGuide.rating.average === "number"
+          ? Number(myGuide.rating.average.toFixed(1))
+          : "—",
       suffix: "/5",
       icon: <StarOutlined style={{ fontSize: 28, color: "#f59e0b" }} />,
     },

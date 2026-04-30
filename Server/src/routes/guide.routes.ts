@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getAllGuides,
   getGuideById,
+  getMyGuideProfile,
   createGuide,
   updateGuide,
   deleteGuide,
@@ -9,6 +10,7 @@ import {
   addTourHistory,
   getGuideStatistics,
 } from '../controllers/guide.controller.js';
+import { protect, restrictToGuide } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
@@ -20,6 +22,8 @@ router
 router
   .route('/statistics')
   .get(getGuideStatistics); // GET /api/v1/guides/statistics -> Thống kê hướng dẫn viên
+
+router.get('/me', protect, restrictToGuide, getMyGuideProfile);
 
 router
   .route('/:id')

@@ -15,6 +15,9 @@ import Vehicle from '../models/Vehicle';
 import TripRoom from '../models/TripRoom';
 import RoomingAllocation from '../models/RoomingAllocation';
 import Room from '../models/Room';
+import Hotel from '../models/Hotel';
+import User from '../models/user.model';
+import Guide from '../models/Guide';
 
 const normalizeDateStr = (value: any) => {
   if (!value) return '';
@@ -672,6 +675,137 @@ export const unassignRoom = async (req: Request, res: Response) => {
     return res.status(200).json({ status: 'success' });
   } catch (error: any) {
     return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gỡ phòng' });
+  }
+};
+
+export const getTripAssignment = async (req: AuthRequest, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const tour: any = await Tour.findById(tourId).select('name primary_guide_id secondary_guide_ids duration_days').lean();
+    if (!tour) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy tour' });
+
+    // guide info (primary). SĐT nằm trong bảng Guide (1-1 theo user_id).
+    const primaryGuideId = tour?.primary_guide_id ? String(tour.primary_guide_id) : '';
+    const guideDoc: any = primaryGuideId
+      ? await Guide.findOne({ user_id: primaryGuideId }).select('name phone email avatar user_id').lean()
+      : null;
+    const guideUser: any = primaryGuideId ? await User.findById(primaryGuideId).select('name email avatar role').lean() : null;
+    const guide = primaryGuideId
+      ? {
+          _id: primaryGuideId,
+          name: guideDoc?.name || guideUser?.name || '',
+          phone: guideDoc?.phone || (guideUser as any)?.phone || '',
+          email: guideDoc?.email || guideUser?.email || '',
+        }
+      : null;
+
+    const vehicles = await TripVehicle.find({ trip_key: tripKey }).sort({ created_at: 1 }).lean();
+    const rooms = await TripRoom.find({ trip_key: tripKey }).sort({ hotel_name: 1, room_number: 1 }).lean();
+
+    const passengers = await Passenger.find({ trip_key: tripKey, role: { $ne: 'leader' } })
+      .sort({ is_leader: -1, full_name: 1 })
+      .lean();
+    const passengerById = new Map<string, any>(passengers.map((p: any) => [String(p._id), p]));
+
+    const seating = await SeatingAllocation.find({ trip_key: tripKey }).lean();
+    const rooming = await RoomingAllocation.find({ trip_key: tripKey }).lean();
+
+    const seatingByPassenger = new Map<string, any>();
+    seating.forEach((a: any) => seatingByPassenger.set(String(a.passenger_id), a));
+
+    const vehicleById = new Map<string, any>(vehicles.map((v: any) => [String(v._id), v]));
+
+    const occupantsByRoomId = new Map<string, any[]>();
+    rooming.forEach((a: any) => {
+      const rid = String(a.trip_room_id || '');
+      const pid = String(a.passenger_id || '');
+      const p = passengerById.get(pid);
+      if (!rid || !p) return;
+      const arr = occupantsByRoomId.get(rid) || [];
+      arr.push(p);
+      occupantsByRoomId.set(rid, arr);
+    });
+
+    const hotelIds = Array.from(new Set(rooms.map((r: any) => String(r?.hotel_id || '')).filter(Boolean)));
+    const hotels = hotelIds.length ? await Hotel.find({ _id: { $in: hotelIds } }).select('name address').lean() : [];
+    const hotelMap = new Map<string, any>(hotels.map((h: any) => [String(h._id), h]));
+
+    const roomingList = rooms.map((r: any) => {
+      const occ = occupantsByRoomId.get(String(r._id)) || [];
+      const h = r?.hotel_id ? hotelMap.get(String(r.hotel_id)) : null;
+      return {
+        trip_room_id: r._id,
+        hotel_id: r?.hotel_id,
+        hotel_name: r?.hotel_name || h?.name || '',
+        hotel_address: h?.address || '',
+        room_number: r?.room_number,
+        capacity: r?.capacity,
+        occupants: occ.map((p: any) => ({
+          _id: p._id,
+          booking_id: p.booking_id,
+          full_name: p.full_name,
+          phone: p.phone,
+          is_leader: Boolean(p.is_leader),
+        })),
+      };
+    });
+
+    const passengerList = passengers.map((p: any) => {
+      const seat = seatingByPassenger.get(String(p._id));
+      const tv = seat ? vehicleById.get(String(seat.trip_vehicle_id)) : null;
+      const roomAlloc = rooming.find((a: any) => String(a.passenger_id) === String(p._id));
+      const roomDoc = roomAlloc ? rooms.find((rr: any) => String(rr._id) === String(roomAlloc.trip_room_id)) : null;
+      const h = roomDoc?.hotel_id ? hotelMap.get(String(roomDoc.hotel_id)) : null;
+      return {
+        _id: p._id,
+        booking_id: p.booking_id,
+        full_name: p.full_name,
+        phone: p.phone,
+        is_leader: Boolean(p.is_leader),
+        seat: seat
+          ? { seat_code: seat.seat_code, plate: tv?.plate || '', vehicle_label: tv?.seat_count ? `Ô tô ${tv.seat_count} chỗ` : '' }
+          : null,
+        room: roomDoc
+          ? {
+              room_number: roomDoc.room_number,
+              hotel_name: roomDoc.hotel_name || h?.name || '',
+              hotel_address: h?.address || '',
+            }
+          : null,
+      };
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        trip: { tour_id: tourId, trip_date: dateStr, trip_key: tripKey, tour_name: tour?.name || '' },
+        guide,
+        vehicles: vehicles.map((v: any) => ({
+          _id: v._id,
+          plate: v?.plate || '',
+          seat_count: v?.seat_count || 0,
+          vehicle_label: v?.seat_count ? `Ô tô ${v.seat_count} chỗ` : '',
+        })),
+        hotels: Array.from(
+          new Map(
+            roomingList
+              .filter((x: any) => x.hotel_name || x.hotel_id)
+              .map((x: any) => [
+                String(x.hotel_id || x.hotel_name),
+                { hotel_id: x.hotel_id || undefined, name: x.hotel_name || '', address: x.hotel_address || '' },
+              ])
+          ).values()
+        ),
+        rooming_list: roomingList,
+        passengers: passengerList,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy lệnh điều động' });
   }
 };
 

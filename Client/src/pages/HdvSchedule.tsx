@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { CalendarOutlined, EyeOutlined } from "@ant-design/icons";
+import { CalendarOutlined, EyeOutlined, FileTextOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import viVN from "antd/locale/vi_VN";
 import "dayjs/locale/vi";
@@ -183,6 +183,21 @@ const HdvSchedule = () => {
                   return (
                     <List.Item
                       actions={[
+                        <Tooltip key="assignment-tip" title="Xem lệnh điều động (xe/khách sạn/rooming list/danh sách khách)">
+                          <Button
+                            key="assignment"
+                            icon={<FileTextOutlined />}
+                            onClick={() => {
+                              const tourId = String(b?.tour_id?._id || "");
+                              const d = b?.startDate ? dayjs(b.startDate).format("YYYY-MM-DD") : "";
+                              if (!tourId || !d) return;
+                              navigate(`/hdv/tours/${tourId}/trips/${d}/assignment`);
+                            }}
+                            disabled={!b?.tour_id?._id || !b?.startDate}
+                          >
+                            Lệnh điều động
+                          </Button>
+                        </Tooltip>,
                         <Button
                           key="detail"
                           type="primary"
