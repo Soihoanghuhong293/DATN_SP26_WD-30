@@ -55,6 +55,8 @@ import TourTemplateList from '../features/admin/tourTemplates/TourTemplateList';
 import TourTemplateCreate from '../features/admin/tourTemplates/TourTemplateCreate';
 import TourTemplateEdit from '../features/admin/tourTemplates/TourTemplateEdit';
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
+import TripSeatingPage from '../pages/admin/TripSeatingPage';
+import TripRoomingPage from '../pages/admin/TripRoomingPage';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { PublicOnlyRoute } from '../auth/PublicOnlyRoute';
 
@@ -99,6 +101,8 @@ const AppRoutes = () => {
         <Route path="tours/create" element={<TourCreate />} />
         <Route path="tours/:id" element={<TourDetail />} />
         <Route path="tours/:id/edit" element={<TourEdit />} />
+        <Route path="tours/:id/trips/:date/seating" element={<TripSeatingPage />} />
+        <Route path="tours/:id/trips/:date/rooming" element={<TripRoomingPage />} />
 
         <Route path="tour-templates" element={<TourTemplateList />} />
         <Route path="tour-templates/create" element={<TourTemplateCreate />} />

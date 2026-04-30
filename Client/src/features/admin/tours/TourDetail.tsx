@@ -478,7 +478,25 @@ const TourDetail = () => {
                     const n = Number(v || 0);
                     return <Tag color={n <= 0 ? 'red' : n <= 5 ? 'orange' : 'green'}>{n}</Tag>;
                   }
-                }
+                },
+                {
+                  title: 'Điều hành',
+                  key: 'ops',
+                  align: 'right',
+                  render: (_: unknown, row: any) => {
+                    const d = normalizeDate(String(row?.date || ''));
+                    return (
+                      <Space size="small" wrap>
+                        <Button size="small" onClick={() => navigate(`/admin/tours/${id}/trips/${d}/seating`)}>
+                          Điều hành xe
+                        </Button>
+                        <Button size="small" onClick={() => navigate(`/admin/tours/${id}/trips/${d}/rooming`)}>
+                          Xếp phòng
+                        </Button>
+                      </Space>
+                    );
+                  },
+                },
             ]}
           />
         </Card>

@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import Booking from '../models/Booking'; 
 import Tour from '../models/Tour';
 import ProviderTicket from '../models/ProviderTicket';
-import { autoAllocateCarsForBooking, autoAllocateRoomsForBooking } from '../services/allocation.service';
 import VehicleAllocation from '../models/VehicleAllocation';
 import RoomAllocation from '../models/RoomAllocation';
+import Passenger from '../models/Passenger';
 import User from '../models/user.model';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { canSendMail } from '../services/mailer';
@@ -21,6 +21,62 @@ const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 
 };
 
 const normalizeId = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
+
+const normalizeTripDate = (value: any) => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  if (raw.includes('T')) return raw.split('T')[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return '';
+  return raw;
+};
+
+const tripKeyOf = (tourId: string, dateStr: string) => `${tourId}:${dateStr}`;
+
+const syncPassengersForBooking = async (booking: any) => {
+  const bookingId = String(booking?._id || '');
+  const tourId = String(booking?.tour_id?._id || booking?.tour_id || '');
+  const startDateStr = booking?.startDate ? new Date(booking.startDate).toISOString().split('T')[0] : '';
+  const dateStr = normalizeTripDate(startDateStr);
+  if (!bookingId || !tourId || !dateStr) return;
+  const tripKey = tripKeyOf(tourId, dateStr);
+
+  await Passenger.deleteMany({ booking_id: bookingId });
+
+  const docs: any[] = [];
+  docs.push({
+    booking_id: bookingId,
+    tour_id: tourId,
+    trip_key: tripKey,
+    trip_date: dateStr,
+    role: 'leader',
+    full_name: booking?.customer_name || 'Trưởng đoàn',
+    phone: booking?.customer_phone,
+    type: 'leader',
+  });
+
+  const list = booking?.passengers || booking?.guests || booking?.guest_list || [];
+  if (Array.isArray(list)) {
+    list.forEach((g: any, idx: number) => {
+      const subId = g?._id ? String(g._id) : `p${idx}`;
+      docs.push({
+        booking_id: bookingId,
+        tour_id: tourId,
+        trip_key: tripKey,
+        trip_date: dateStr,
+        role: 'passenger',
+        source_guest_id: subId,
+        full_name: g?.name || g?.full_name || `Khách ${idx + 1}`,
+        gender: g?.gender,
+        birth_date: g?.birthDate ? new Date(g.birthDate) : undefined,
+        phone: g?.phone || g?.phoneNumber,
+        type: g?.type,
+      });
+    });
+  }
+
+  if (docs.length > 0) await Passenger.insertMany(docs);
+};
 // chọn hdv chính và phụ
 async function guideHasAccessToBooking(guideObjectId: any, booking: any): Promise<boolean> {
   const gid = String(guideObjectId?._id ?? guideObjectId);
@@ -1250,6 +1306,12 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     }
 
     const newBooking = await Booking.create(newBookingData);
+    // Stage 1: sync passengers to separate collection for trip operation
+    try {
+      await syncPassengersForBooking(newBooking);
+    } catch {
+      // do not block booking creation
+    }
 
     // Nếu admin tạo booking và đã phân công HDV ngay -> gửi email thông báo
     try {
@@ -1332,7 +1394,6 @@ export const updateBooking = async (req: Request, res: Response) => {
 
     // cập nhật danh sách hành khác
     const incomingPassengers = req.body.passengers || req.body.guests;
-    const shouldReallocateServices = Boolean(incomingPassengers);
     if (incomingPassengers) {
       // Cảnh báo nếu số lượng lố groupSize
       if (incomingPassengers.length > booking.groupSize) {
@@ -1395,6 +1456,15 @@ export const updateBooking = async (req: Request, res: Response) => {
       },
       { new: true, runValidators: true }
     );
+
+    // Stage 1: sync passengers (Trip operation uses Passenger collection)
+    if (updatedBooking && incomingPassengers) {
+      try {
+        await syncPassengersForBooking(updatedBooking);
+      } catch {
+        // do not block update
+      }
+    }
 
     // Nếu phân công/đổi HDV -> gửi email cho HDV mới
     if (guideAssignedOrSwapped && updatedBooking) {

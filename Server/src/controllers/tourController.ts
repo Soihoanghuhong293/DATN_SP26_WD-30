@@ -3,6 +3,18 @@ import Tour from '../models/Tour';
 import Booking from '../models/Booking';
 import TourTemplate from '../models/TourTemplate';
 import type { AuthRequest } from '../middlewares/auth.middleware';
+import VehicleAllocation from '../models/VehicleAllocation';
+import RoomAllocation from '../models/RoomAllocation';
+import VehicleAssignment from '../models/VehicleAssignment';
+import RoomAssignment from '../models/RoomAssignment';
+import { autoAllocateCarsForTrip, autoAllocateRoomsForTrip } from '../services/allocation.service';
+import Passenger from '../models/Passenger';
+import TripVehicle from '../models/TripVehicle';
+import SeatingAllocation from '../models/SeatingAllocation';
+import Vehicle from '../models/Vehicle';
+import TripRoom from '../models/TripRoom';
+import RoomingAllocation from '../models/RoomingAllocation';
+import Room from '../models/Room';
 
 const normalizeDateStr = (value: any) => {
   if (!value) return '';
@@ -10,6 +22,608 @@ const normalizeDateStr = (value: any) => {
   if (!raw) return '';
   if (raw.includes('T')) return raw.split('T')[0];
   return raw;
+};
+
+const normalizeTripDate = (value: any) => {
+  const s = normalizeDateStr(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  return s;
+};
+
+const tripKeyOf = (tourId: string, dateStr: string) => `${tourId}:${dateStr}`;
+
+const tripDateRange = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-').map((x) => Number(x));
+  const start = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
+  const end = new Date(y, (m || 1) - 1, (d || 1) + 1, 0, 0, 0, 0);
+  return { start, end };
+};
+
+export const tripAutoAllocateCars = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+
+    const tour: any = await Tour.findById(tourId).lean();
+    if (!tour) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy tour' });
+    const trip = Array.isArray(tour?.departure_schedule)
+      ? tour.departure_schedule.find((x: any) => normalizeDateStr(x?.date) === dateStr)
+      : null;
+    const slots = Number(trip?.slots || 0);
+    const result = await autoAllocateCarsForTrip({ tourId, startDate: dateStr, slots });
+    if (!result.success) return res.status(400).json({ status: 'fail', ...result });
+    return res.status(200).json({ status: 'success', data: result.data });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi phân bổ xe theo trip' });
+  }
+};
+
+export const tripAutoAllocateRooms = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+
+    const tour: any = await Tour.findById(tourId).lean();
+    if (!tour) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy tour' });
+    const trip = Array.isArray(tour?.departure_schedule)
+      ? tour.departure_schedule.find((x: any) => normalizeDateStr(x?.date) === dateStr)
+      : null;
+    const slots = Number(trip?.slots || 0);
+    const result = await autoAllocateRoomsForTrip({ tourId, startDate: dateStr, slots });
+    if (!result.success) return res.status(400).json({ status: 'fail', ...result });
+    return res.status(200).json({ status: 'success', data: result.data });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi phân bổ phòng theo trip' });
+  }
+};
+
+export const getTripAllocations = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const cars = await VehicleAllocation.find({ trip_key: tripKey }).sort({ day_no: 1, plate: 1 }).lean();
+    const rooms = await RoomAllocation.find({ trip_key: tripKey })
+      .sort({ day_no: 1, hotel_name: 1, room_number: 1 })
+      .lean();
+    return res.status(200).json({ status: 'success', data: { cars, rooms } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy phân bổ theo trip' });
+  }
+};
+
+export const getTripGuests = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+    const { start, end } = tripDateRange(dateStr);
+    const bookings = await Booking.find({
+      tour_id: tourId,
+      status: { $ne: 'cancelled' },
+      startDate: { $gte: start, $lt: end },
+    })
+      .sort({ created_at: -1 })
+      .lean();
+
+    const guests = bookings.flatMap((booking: any) => {
+      const bookingId = String(booking?._id || '');
+      const out: any[] = [];
+      out.push({
+        guest_key: `${bookingId}:leader`,
+        booking_id: bookingId,
+        kind: 'leader',
+        name: booking?.customer_name || 'Trưởng đoàn',
+        phone: booking?.customer_phone,
+        type: 'leader',
+      });
+      const list = booking?.passengers || booking?.guests || booking?.guest_list || [];
+      if (Array.isArray(list)) {
+        list.forEach((g: any, idx: number) => {
+          const subId = g?._id ? String(g._id) : `p${idx}`;
+          out.push({
+            guest_key: `${bookingId}:${subId}`,
+            booking_id: bookingId,
+            kind: 'passenger',
+            name: g?.name || g?.full_name || `Khách ${idx + 1}`,
+            phone: g?.phone || g?.phoneNumber,
+            type: g?.type,
+          });
+        });
+      }
+      return out;
+    });
+
+    return res.status(200).json({ status: 'success', data: guests });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy danh sách khách theo trip' });
+  }
+};
+
+export const getTripVehicleAssignments = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const rows = await VehicleAssignment.find({ trip_key: tripKey }).sort({ day_no: 1, guest_key: 1 }).lean();
+    return res.status(200).json({ status: 'success', data: rows });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy vehicle assignments' });
+  }
+};
+
+export const upsertTripVehicleAssignment = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const { guest_key, day_no, vehicle_allocation_id, seat_number } = req.body || {};
+    const guestKey = String(guest_key || '').trim();
+    const dayNo = Math.max(1, Number(day_no || 1));
+    const vehicleAllocId = String(vehicle_allocation_id || '').trim();
+    const seat = String(seat_number || '').trim();
+    if (!guestKey || !vehicleAllocId || !seat) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu guest_key / vehicle_allocation_id / seat_number' });
+    }
+    const alloc = await VehicleAllocation.findOne({ _id: vehicleAllocId, trip_key: tripKey, day_no: dayNo }).lean();
+    if (!alloc) return res.status(400).json({ status: 'fail', message: 'Xe allocation không hợp lệ' });
+    const [bookingId] = guestKey.split(':');
+    const doc = await VehicleAssignment.findOneAndUpdate(
+      { trip_key: tripKey, day_no: dayNo, guest_key: guestKey },
+      {
+        $set: {
+          trip_key: tripKey,
+          tour_id: tourId,
+          trip_date: dateStr,
+          booking_id: bookingId || undefined,
+          guest_key: guestKey,
+          day_no: dayNo,
+          vehicle_allocation_id: vehicleAllocId,
+          seat_number: seat,
+        },
+      },
+      { new: true, upsert: true }
+    ).lean();
+    return res.status(200).json({ status: 'success', data: doc });
+  } catch (error: any) {
+    if (error?.code === 11000) return res.status(409).json({ status: 'fail', message: 'Trùng ghế hoặc guest đã được gán' });
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gán ghế' });
+  }
+};
+
+export const deleteTripVehicleAssignment = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const guestKey = String(req.params.guestKey || '').trim();
+    const dayNo = Math.max(1, Number(req.params.dayNo || 1));
+    await VehicleAssignment.deleteOne({ trip_key: tripKey, guest_key: guestKey, day_no: dayNo });
+    return res.status(200).json({ status: 'success' });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi xoá vehicle assignment' });
+  }
+};
+
+export const getTripRoomAssignments = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const rows = await RoomAssignment.find({ trip_key: tripKey }).sort({ day_no: 1, guest_key: 1 }).lean();
+    return res.status(200).json({ status: 'success', data: rows });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy room assignments' });
+  }
+};
+
+export const upsertTripRoomAssignment = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const { guest_key, day_no, room_allocation_id, slot_no } = req.body || {};
+    const guestKey = String(guest_key || '').trim();
+    const dayNo = Math.max(1, Number(day_no || 1));
+    const roomAllocId = String(room_allocation_id || '').trim();
+    const slotNo = Math.max(1, Number(slot_no || 1));
+    if (!guestKey || !roomAllocId) return res.status(400).json({ status: 'fail', message: 'Thiếu guest_key / room_allocation_id' });
+    const alloc: any = await RoomAllocation.findOne({ _id: roomAllocId, trip_key: tripKey, day_no: dayNo }).lean();
+    if (!alloc) return res.status(400).json({ status: 'fail', message: 'Room allocation không hợp lệ' });
+    const maxOcc = Math.max(1, Number(alloc?.max_occupancy || 1));
+    if (slotNo > maxOcc) return res.status(400).json({ status: 'fail', message: `slot_no vượt sức chứa phòng (${maxOcc})` });
+    const [bookingId] = guestKey.split(':');
+    const doc = await RoomAssignment.findOneAndUpdate(
+      { trip_key: tripKey, day_no: dayNo, guest_key: guestKey },
+      {
+        $set: {
+          trip_key: tripKey,
+          tour_id: tourId,
+          trip_date: dateStr,
+          booking_id: bookingId || undefined,
+          guest_key: guestKey,
+          day_no: dayNo,
+          room_allocation_id: roomAllocId,
+          slot_no: slotNo,
+        },
+      },
+      { new: true, upsert: true }
+    ).lean();
+    return res.status(200).json({ status: 'success', data: doc });
+  } catch (error: any) {
+    if (error?.code === 11000) return res.status(409).json({ status: 'fail', message: 'Trùng slot hoặc guest đã được gán' });
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gán phòng' });
+  }
+};
+
+export const deleteTripRoomAssignment = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const guestKey = String(req.params.guestKey || '').trim();
+    const dayNo = Math.max(1, Number(req.params.dayNo || 1));
+    await RoomAssignment.deleteOne({ trip_key: tripKey, guest_key: guestKey, day_no: dayNo });
+    return res.status(200).json({ status: 'success' });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi xoá room assignment' });
+  }
+};
+
+export const getTripPassengers = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const rows = await Passenger.find({ trip_key: tripKey }).sort({ role: 1, full_name: 1 }).lean();
+    return res.status(200).json({ status: 'success', data: rows });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy passengers' });
+  }
+};
+
+export const getTripVehicles = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const rows = await TripVehicle.find({ trip_key: tripKey }).sort({ created_at: 1 }).lean();
+    return res.status(200).json({ status: 'success', data: rows });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy trip vehicles' });
+  }
+};
+
+export const addTripVehicle = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const vehicleId = String(req.body?.vehicle_id || '').trim();
+    const seatCountRaw = Math.max(1, Number(req.body?.seat_count || 45));
+    if (!vehicleId) return res.status(400).json({ status: 'fail', message: 'Thiếu vehicle_id' });
+    const vehicle: any = await Vehicle.findById(vehicleId).lean();
+    if (!vehicle) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy xe' });
+    const cap = Math.max(1, Number(vehicle?.capacity || 1));
+    if (seatCountRaw > cap) {
+      return res.status(400).json({
+        status: 'fail',
+        message: `Số ghế của trip (${seatCountRaw}) không được vượt quá sức chứa xe (${cap}).`,
+      });
+    }
+    const seatCount = seatCountRaw;
+
+    const created = await TripVehicle.create({
+      tour_id: tourId,
+      trip_key: tripKey,
+      trip_date: dateStr,
+      vehicle_id: vehicleId,
+      plate: vehicle.plate,
+      seat_count: seatCount,
+    });
+    return res.status(201).json({ status: 'success', data: created });
+  } catch (error: any) {
+    if (error?.code === 11000) return res.status(409).json({ status: 'fail', message: 'Xe đã tồn tại trong trip' });
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi thêm xe vào trip' });
+  }
+};
+
+export const getTripSeatingState = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const vehicles = await TripVehicle.find({ trip_key: tripKey }).sort({ created_at: 1 }).lean();
+    const passengers = await Passenger.find({ trip_key: tripKey }).sort({ role: 1, full_name: 1 }).lean();
+    const allocations = await SeatingAllocation.find({ trip_key: tripKey }).lean();
+
+    const seatByPassenger = new Map<string, any>();
+    const seatByCode = new Map<string, any>(); // `${tripVehicleId}:${seat_code}`
+    for (const a of allocations) {
+      seatByPassenger.set(String(a.passenger_id), a);
+      seatByCode.set(`${String(a.trip_vehicle_id)}:${String(a.seat_code)}`, a);
+    }
+
+    const seatedPassengerIds = new Set<string>(allocations.map((a: any) => String(a.passenger_id)));
+    const unseated = passengers.filter((p: any) => !seatedPassengerIds.has(String(p._id)));
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        vehicles,
+        passengers,
+        unseated,
+        allocations,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy seating state' });
+  }
+};
+
+export const assignSeat = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const tripVehicleId = String(req.body?.trip_vehicle_id || '').trim();
+    const passengerId = String(req.body?.passenger_id || '').trim();
+    const seatCode = String(req.body?.seat_code || '').trim();
+    if (!tripVehicleId || !passengerId || !seatCode) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu trip_vehicle_id / passenger_id / seat_code' });
+    }
+
+    const tv: any = await TripVehicle.findOne({ _id: tripVehicleId, trip_key: tripKey }).lean();
+    if (!tv) return res.status(400).json({ status: 'fail', message: 'TripVehicle không hợp lệ' });
+
+    const p: any = await Passenger.findOne({ _id: passengerId, trip_key: tripKey }).lean();
+    if (!p) return res.status(400).json({ status: 'fail', message: 'Passenger không thuộc trip này' });
+
+    const doc = await SeatingAllocation.findOneAndUpdate(
+      { trip_key: tripKey, passenger_id: passengerId },
+      {
+        $set: {
+          tour_id: tourId,
+          trip_key: tripKey,
+          trip_date: dateStr,
+          trip_vehicle_id: tripVehicleId,
+          passenger_id: passengerId,
+          seat_code: seatCode,
+        },
+      },
+      { new: true, upsert: true }
+    ).lean();
+
+    return res.status(200).json({ status: 'success', data: doc });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ status: 'fail', message: 'Ghế đã có người hoặc passenger đã có ghế' });
+    }
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gán ghế' });
+  }
+};
+
+export const unassignSeat = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const passengerId = String(req.params.passengerId || '').trim();
+    await SeatingAllocation.deleteOne({ trip_key: tripKey, passenger_id: passengerId });
+    return res.status(200).json({ status: 'success' });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gỡ ghế' });
+  }
+};
+
+export const getTripRooms = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const rows = await TripRoom.find({ trip_key: tripKey }).sort({ hotel_name: 1, room_number: 1 }).lean();
+    return res.status(200).json({ status: 'success', data: rows });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy trip rooms' });
+  }
+};
+
+export const addTripRoom = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const roomId = String(req.body?.room_id || '').trim();
+    const capacityRaw = req.body?.capacity;
+    if (!roomId) return res.status(400).json({ status: 'fail', message: 'Thiếu room_id' });
+
+    const room: any = await Room.findById(roomId).populate('hotel_id', 'name').lean();
+    if (!room) return res.status(404).json({ status: 'fail', message: 'Không tìm thấy phòng' });
+
+    const maxOcc = Math.max(1, Number(room?.max_occupancy || 1));
+    const cap = capacityRaw === undefined ? maxOcc : Math.max(1, Number(capacityRaw || 1));
+    if (cap > maxOcc) {
+      return res.status(400).json({
+        status: 'fail',
+        message: `Sức chứa phòng trong trip (${cap}) không được vượt quá sức chứa phòng gốc (${maxOcc}).`,
+      });
+    }
+
+    const created = await TripRoom.create({
+      tour_id: tourId,
+      trip_key: tripKey,
+      trip_date: dateStr,
+      room_id: roomId,
+      hotel_id: room?.hotel_id?._id || room?.hotel_id,
+      hotel_name: room?.hotel_id?.name || room?.hotel_name || '',
+      room_number: String(room?.room_number || '').trim() || '—',
+      capacity: cap,
+    });
+
+    return res.status(201).json({ status: 'success', data: created });
+  } catch (error: any) {
+    if (error?.code === 11000) return res.status(409).json({ status: 'fail', message: 'Phòng đã tồn tại trong trip' });
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi thêm phòng vào trip' });
+  }
+};
+
+export const bulkAddTripRoomsByHotel = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const hotelId = String(req.body?.hotel_id || '').trim();
+    if (!hotelId) return res.status(400).json({ status: 'fail', message: 'Thiếu hotel_id' });
+
+    const rooms = await Room.find({ hotel_id: hotelId, status: 'active' })
+      .populate('hotel_id', 'name')
+      .sort({ room_number: 1 })
+      .lean();
+    if (!rooms.length) {
+      return res.status(200).json({ status: 'success', data: { inserted: 0, skipped: 0, message: 'Khách sạn chưa có phòng active' } });
+    }
+
+    const docs = rooms.map((room: any) => {
+      const maxOcc = Math.max(1, Number(room?.max_occupancy || 1));
+      return {
+        tour_id: tourId,
+        trip_key: tripKey,
+        trip_date: dateStr,
+        room_id: room._id,
+        hotel_id: room?.hotel_id?._id || room?.hotel_id,
+        hotel_name: room?.hotel_id?.name || '',
+        room_number: String(room?.room_number || '').trim() || '—',
+        capacity: maxOcc,
+      };
+    });
+
+    let inserted = 0;
+    let skipped = 0;
+    try {
+      const result = await TripRoom.insertMany(docs, { ordered: false });
+      inserted = Array.isArray(result) ? result.length : 0;
+    } catch (e: any) {
+      const writeErrors = Array.isArray(e?.writeErrors) ? e.writeErrors : [];
+      // nhiều lỗi là duplicate key 
+      skipped = writeErrors.length;
+      inserted = Math.max(0, docs.length - skipped);
+    }
+
+    return res.status(201).json({ status: 'success', data: { inserted, skipped } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi thêm phòng theo khách sạn' });
+  }
+};
+
+export const getTripRoomingState = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const rooms = await TripRoom.find({ trip_key: tripKey }).sort({ hotel_name: 1, room_number: 1 }).lean();
+    const passengers = await Passenger.find({ trip_key: tripKey }).sort({ role: 1, full_name: 1 }).lean();
+    const allocations = await RoomingAllocation.find({ trip_key: tripKey }).lean();
+
+    const assignedPassengerIds = new Set<string>(allocations.map((a: any) => String(a.passenger_id)));
+    const unassigned = passengers.filter((p: any) => !assignedPassengerIds.has(String(p._id)));
+
+    return res.status(200).json({
+      status: 'success',
+      data: { rooms, passengers, unassigned, allocations },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy rooming state' });
+  }
+};
+
+export const assignRoom = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const tripRoomId = String(req.body?.trip_room_id || '').trim();
+    const passengerId = String(req.body?.passenger_id || '').trim();
+    if (!tripRoomId || !passengerId) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu trip_room_id / passenger_id' });
+    }
+
+    const room: any = await TripRoom.findOne({ _id: tripRoomId, trip_key: tripKey }).lean();
+    if (!room) return res.status(400).json({ status: 'fail', message: 'TripRoom không hợp lệ' });
+    const passenger: any = await Passenger.findOne({ _id: passengerId, trip_key: tripKey }).lean();
+    if (!passenger) return res.status(400).json({ status: 'fail', message: 'Passenger không thuộc trip này' });
+
+    const currentCount = await RoomingAllocation.countDocuments({ trip_key: tripKey, trip_room_id: tripRoomId });
+    const cap = Math.max(1, Number(room?.capacity || 1));
+    if (currentCount >= cap) {
+      return res.status(400).json({ status: 'fail', message: `Phòng đã đủ chỗ (${cap}).` });
+    }
+
+    const doc = await RoomingAllocation.findOneAndUpdate(
+      { trip_key: tripKey, passenger_id: passengerId },
+      {
+        $set: {
+          tour_id: tourId,
+          trip_key: tripKey,
+          trip_date: dateStr,
+          trip_room_id: tripRoomId,
+          passenger_id: passengerId,
+        },
+      },
+      { new: true, upsert: true }
+    ).lean();
+
+    return res.status(200).json({ status: 'success', data: doc });
+  } catch (error: any) {
+    if (error?.code === 11000) return res.status(409).json({ status: 'fail', message: 'Khách đã có phòng hoặc trùng mapping' });
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gán phòng' });
+  }
+};
+
+export const unassignRoom = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date' });
+    const tripKey = tripKeyOf(tourId, dateStr);
+    const passengerId = String(req.params.passengerId || '').trim();
+    await RoomingAllocation.deleteOne({ trip_key: tripKey, passenger_id: passengerId });
+    return res.status(200).json({ status: 'success' });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi gỡ phòng' });
+  }
 };
 
 export const getAllTours = async (req: Request, res: Response) => {
