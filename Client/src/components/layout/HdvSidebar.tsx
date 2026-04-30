@@ -4,72 +4,87 @@ import {
   CalendarOutlined,
   CarOutlined,
   UserOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { getMe } from "../../services/account";
+import "./AdminSidebar.css";
 
-const HdvSidebar = () => {
+type Props = {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+};
+
+const HdvSidebar = ({ collapsed, onToggleCollapse }: Props) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
-  const email = auth.email || "HDV";
+  const [profile, setProfile] = useState<{ email?: string; name?: string; avatarUrl?: string } | null>(null);
+  const email = profile?.email || auth.email || "HDV";
+  const displayName = profile?.name || "Hướng dẫn viên";
 
   const handleLogout = () => {
     auth.logout();
     navigate("/login");
   };
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!auth.token) return;
+        const me = await getMe();
+        if (mounted) setProfile({ email: me.email, name: me.name, avatarUrl: me.avatarUrl });
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [auth.token]);
+
+  const menuItems = useMemo(
+    () => [
+      { key: "/hdv", icon: <DashboardOutlined />, label: <Link to="/hdv">Tổng quan</Link> },
+      { key: "/hdv/tours", icon: <CarOutlined />, label: <Link to="/hdv/tours">Tour của tôi</Link> },
+      { key: "/hdv/schedule", icon: <CalendarOutlined />, label: <Link to="/hdv/schedule">Lịch làm việc</Link> },
+      { key: "/hdv/settings", icon: <SettingOutlined />, label: <Link to="/hdv/settings">Cài đặt</Link> },
+    ],
+    []
+  );
+
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", position: "sticky", top: 0 }}>
-      <div style={{ padding: 24, display: "flex", gap: 12, alignItems: "center" }}>
-        <Avatar size={40} style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+    <div className="admin-sider">
+      <div className="admin-sider__brand">
+        <Avatar size={40} className="admin-sider__avatar" src={profile?.avatarUrl}>
           <UserOutlined />
         </Avatar>
-        <div style={{ flex: 1, overflow: "hidden" }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Hướng dẫn viên</div>
-          <div style={{ fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {email}
-          </div>
+        <div className="admin-sider__brandText">
+          <div className="admin-sider__brandTitle">{displayName}</div>
+          <div className="admin-sider__brandSub">{email}</div>
         </div>
       </div>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[pathname]}
-        style={{ border: "none", flex: 1, overflowY: "auto", overflowX: "hidden" }}
-        items={[
-          {
-            key: "/hdv",
-            icon: <DashboardOutlined />,
-            label: <Link to="/hdv">Tổng quan</Link>,
-          },
-          {
-            key: "/hdv/tours",
-            icon: <CarOutlined />,
-            label: <Link to="/hdv/tours">Tour của tôi</Link>,
-          },
-          {
-            key: "/hdv/schedule",
-            icon: <CalendarOutlined />,
-            label: <Link to="/hdv/schedule">Lịch làm việc</Link>,
-          },
-        ]}
-      />
+      <div className="admin-sider__menuScroll">
+        <Menu mode="inline" selectedKeys={[pathname]} className="admin-sider__menu" items={menuItems} />
+      </div>
 
-      <div style={{ padding: 16, borderTop: "1px solid #f0f0f0" }}>
-        <Menu
-          mode="inline"
-          selectedKeys={[]}
-          style={{ border: "none" }}
-          items={[
-            {
-              key: "logout",
-              icon: <UserOutlined />,
-              label: "Đăng xuất",
-              onClick: handleLogout,
-            },
-          ]}
-        />
+      <div className="admin-sider__footer">
+        <button type="button" className="admin-sider__collapseBtn" onClick={onToggleCollapse}>
+          {collapsed ? <RightOutlined /> : <LeftOutlined />}
+          <span className="admin-sider__collapseText">{collapsed ? "Mở rộng" : "Thu gọn"}</span>
+        </button>
+
+        <button type="button" className="admin-sider__logoutBtn" onClick={handleLogout}>
+          <LogoutOutlined />
+          <span className="admin-sider__logoutText">Đăng xuất</span>
+        </button>
       </div>
     </div>
   );
