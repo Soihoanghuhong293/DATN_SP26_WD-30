@@ -388,7 +388,7 @@ const BookingCreate = () => {
         layout="vertical"
         onFinish={onFinish}
         onValuesChange={handleValuesChange}
-        initialValues={{ status: 'confirmed', paymentMethod: 'offline' }}
+        initialValues={{ paymentMethod: 'offline' }}
       >
         <Row gutter={24}>
           <Col xs={24} lg={16}>
@@ -531,20 +531,6 @@ const BookingCreate = () => {
                   size="large" readOnly
                   formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                 />
-              </Form.Item>
-            </Card>
-
-            <Card title={<><SettingOutlined className="text-yellow-500 mr-2" /> Điều hành</>} className="mb-6 shadow-sm border-t-4 border-t-yellow-500">
-              
-              <Form.Item name="status" label="Trạng thái đơn">
-                <Select size="large">
-                  <Option value="pending">Chờ duyệt</Option>
-                  <Option value="confirmed">Đã xác nhận</Option>
-                  <Option value="paid">Đã thanh toán</Option>
-                  <Option value="deposit">Đã cọc</Option>
-                  <Option value="refunded">Hoàn tiền</Option>
-                  <Option value="cancelled">Đã hủy</Option>
-                </Select>
               </Form.Item>
             </Card>
 

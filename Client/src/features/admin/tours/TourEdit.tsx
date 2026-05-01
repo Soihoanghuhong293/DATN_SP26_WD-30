@@ -17,12 +17,26 @@ const { Title } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
+const getAuthHeaders = () => ({
+  Authorization: `Bearer ${localStorage.getItem('token') || localStorage.getItem('admin_token') || ''}`,
+});
+
+const normalizeDate = (dateVal?: string) => {
+  if (!dateVal) return '';
+  const raw = String(dateVal).trim();
+  if (!raw) return '';
+  if (raw.includes('T')) return raw.split('T')[0];
+  const d = dayjs(raw);
+  return d.isValid() ? d.format('YYYY-MM-DD') : '';
+};
+
 const TourEdit = () => {
   const { id } = useParams();
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imageFileList, setImageFileList] = useState<any[]>([]);
+  const [lockDeparture, setLockDeparture] = useState(false);
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories'],
@@ -74,6 +88,38 @@ const TourEdit = () => {
     }
   }, [tour, form]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (!id || !tour) return;
+        const ds = Array.isArray((tour as any)?.departure_schedule) ? ((tour as any).departure_schedule as any[]) : [];
+        const dates = ds.map((x: any) => normalizeDate(x?.date)).filter(Boolean);
+        if (dates.length === 0) {
+          setLockDeparture(false);
+          return;
+        }
+        const pairs = await Promise.all(
+          dates.map(async (d: string) => {
+            const r = await axios.get(`http://localhost:5000/api/v1/tours/${id}/trips/${d}/status`, {
+              headers: getAuthHeaders(),
+              params: { _t: Date.now() },
+            });
+            return String(r.data?.data?.status || '').toUpperCase();
+          })
+        );
+        const locked = pairs.some((st) => st === 'CLOSED' || st === 'COMPLETED');
+        if (!cancelled) setLockDeparture(locked);
+      } catch {
+        if (!cancelled) setLockDeparture(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, tour]);
+
   const uploadEndpoint = useMemo(() => 'http://localhost:5000/api/v1/uploads/images', []);
 
   const mutation = useMutation({
@@ -93,23 +139,21 @@ const TourEdit = () => {
   });
 
   const onFinish = (values: any) => {
-    const payload = {
-      ...values,
-      suppliers: Array.isArray(values.suppliers) ? values.suppliers : (values.suppliers ? [values.suppliers] : []),
-      departure_schedule: values.departure_schedule?.map((item: any) => ({
-        ...item,
-        date: item.date ? item.date.format('YYYY-MM-DD') : null
-      })).filter((item: any) => item.date) || []
+    const payload: any = {
+      price: values.price,
+      prices: Array.isArray(values.prices) ? values.prices : [],
     };
+    if (!lockDeparture) {
+      payload.departure_schedule =
+        values.departure_schedule?.map((item: any) => ({
+          date: item.date ? item.date.format('YYYY-MM-DD') : null,
+          slots: Number(item.slots || 0),
+        })).filter((item: any) => item.date) || [];
+    }
     const imageUrls = imageFileList
       .filter((f) => f.status === 'done' && (f.url || f.response?.data?.url))
       .map((f) => f.url || f.response?.data?.url)
       .filter(Boolean);
-    if (imageUrls.length === 0) {
-      message.error('Vui lòng upload ít nhất 1 ảnh!');
-      return;
-    }
-    payload.images = imageUrls;
     mutation.mutate(payload);
   };
 
@@ -135,13 +179,13 @@ const TourEdit = () => {
           <Col xs={24} lg={16}>
             <Card title="Thông tin cơ bản" className="mb-6 shadow-sm">
               <Form.Item name="name" label="Tên Tour" rules={[{ required: true, message: 'Vui lòng nhập tên tour!' }]}>
-                <Input placeholder="Ví dụ: Tour Đà Nẵng - Hội An 3 Ngày 2 Đêm" size="large" />
+                <Input placeholder="Ví dụ: Tour Đà Nẵng - Hội An 3 Ngày 2 Đêm" size="large" disabled />
               </Form.Item>
 
               <Row gutter={16}>
                 <Col span={8}>
                   <Form.Item name="category_id" label="Danh mục Tour" rules={[{ required: true, message: 'Vui lòng chọn danh mục!' }]}>
-                    <Select size="large" placeholder="Chọn danh mục" loading={isCategoriesLoading}>
+                    <Select size="large" placeholder="Chọn danh mục" loading={isCategoriesLoading} disabled>
                       {Array.isArray(categories) && categories.map((cat: any) => (
                         <Option key={cat._id} value={cat._id}>{cat.name}</Option>
                       ))}
@@ -150,22 +194,13 @@ const TourEdit = () => {
                 </Col>
                 <Col span={8}>
                   <Form.Item name="duration_days" label="Thời lượng (Ngày)" rules={[{ required: true }]}>
-                    <InputNumber min={1} className="w-full" size="large" />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item name="status" label="Trạng thái">
-                    <Select size="large">
-                      <Option value="active">Đang hoạt động</Option>
-                      <Option value="draft">Bản nháp</Option>
-                      <Option value="hidden">Tạm ẩn</Option>
-                    </Select>
+                    <InputNumber min={1} className="w-full" size="large" disabled />
                   </Form.Item>
                 </Col>
               </Row>
 
               <Form.Item name="description" label="Mô tả giới thiệu" rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}>
-                <TextArea rows={5} placeholder="Nhập bài viết giới thiệu..." />
+                <TextArea rows={5} placeholder="Nhập bài viết giới thiệu..." disabled />
               </Form.Item>
             </Card>
 
@@ -174,13 +209,13 @@ const TourEdit = () => {
                 {(fields, { add, remove }) => (
                   <>
                     {fields.map(({ key, name, ...restField }, index) => (
-                      <Card key={key} size="small" title={`Ngày ${index + 1}`} className="mb-4 bg-gray-50" extra={<MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />}>
+                      <Card key={key} size="small" title={`Ngày ${index + 1}`} className="mb-4 bg-gray-50">
                         <Form.Item {...restField} name={[name, 'day']} hidden><InputNumber /></Form.Item>
-                        <Form.Item {...restField} name={[name, 'title']} label="Tiêu đề ngày" rules={[{ required: true }]}><Input placeholder="Ví dụ: Hà Nội - Sapa" /></Form.Item>
-                        <Form.Item {...restField} name={[name, 'activities']} label="Các hoạt động"><Select mode="tags" placeholder="Nhập hoạt động và nhấn Enter..." open={false} /></Form.Item>
+                        <Form.Item {...restField} name={[name, 'title']} label="Tiêu đề ngày" rules={[{ required: true }]}><Input placeholder="Ví dụ: Hà Nội - Sapa" disabled /></Form.Item>
+                        <Form.Item {...restField} name={[name, 'activities']} label="Các hoạt động"><Select mode="tags" placeholder="Nhập hoạt động và nhấn Enter..." open={false} disabled /></Form.Item>
                       </Card>
                     ))}
-                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày lịch trình</Button>
+                    <Button type="dashed" disabled block icon={<PlusOutlined />}>Thêm ngày lịch trình</Button>
                   </>
                 )}
               </Form.List>
@@ -188,7 +223,7 @@ const TourEdit = () => {
 
             <Card title="Lịch khởi hành & Số chỗ" className="mb-6 shadow-sm">
               <Form.List name="departure_schedule">
-                {(fields, { add, remove }) => (
+                {(fields, { remove }) => (
                   <>
                     {fields.map(({ key, name, ...restField }) => (
                       <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
@@ -197,19 +232,25 @@ const TourEdit = () => {
                           name={[name, 'date']}
                           rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}
                         >
-                          <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" />
+                          <DatePicker format="DD/MM/YYYY" placeholder="Ngày khởi hành" disabled={lockDeparture} />
                         </Form.Item>
                         <Form.Item
                           {...restField}
                           name={[name, 'slots']}
                           rules={[{ required: true, message: 'Vui lòng nhập số chỗ!' }]}
                         >
-                          <InputNumber min={1} placeholder="Số chỗ" />
+                          <InputNumber min={1} placeholder="Số chỗ" disabled={lockDeparture} />
                         </Form.Item>
-                        <MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />
+                        <MinusCircleOutlined
+                          onClick={() => !lockDeparture && remove(name)}
+                          className="text-red-500"
+                          style={{ opacity: 0.4, pointerEvents: 'none' }}
+                        />
                       </Space>
                     ))}
-                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm ngày khởi hành</Button>
+                    <Button type="dashed" disabled block icon={<PlusOutlined />}>
+                      Không hỗ trợ thêm ngày khởi hành
+                    </Button>
                   </>
                 )}
               </Form.List>
@@ -247,6 +288,7 @@ const TourEdit = () => {
                   listType="picture-card"
                   fileList={imageFileList}
                   accept="image/*"
+                  disabled
                   beforeUpload={(file) => {
                     const isImage = file.type?.startsWith('image/');
                     if (!isImage) {
@@ -279,6 +321,7 @@ const TourEdit = () => {
                     }
                   }}
                   onChange={({ fileList }) => {
+                    return;
                     const normalized = fileList.map((f: any) => {
                       const url = f.url || f.response?.data?.url || f.response?.url;
                       return url ? { ...f, url } : f;
@@ -286,6 +329,7 @@ const TourEdit = () => {
                     setImageFileList(normalized);
                   }}
                   onRemove={(file) => {
+                    return false;
                     const next = imageFileList.filter((f) => f.uid !== (file as any).uid);
                     setImageFileList(next);
                     return true;
@@ -296,7 +340,7 @@ const TourEdit = () => {
                 <div className="text-xs text-gray-500 mt-2">Tối đa 8 ảnh, mỗi ảnh &lt; 10MB.</div>
               </Form.Item>
               <Form.Item name="policies" label="Chính sách">
-                 <Select mode="tags" placeholder="Vé máy bay khứ hồi..." open={false} />
+                 <Select mode="tags" placeholder="Vé máy bay khứ hồi..." open={false} disabled />
               </Form.Item>
               <Form.Item name="suppliers" label="Nhà cung cấp">
                  <Select
@@ -307,6 +351,7 @@ const TourEdit = () => {
                    notFoundContent={isProvidersLoading ? <Spin size="small" /> : 'Chưa có nhà cung cấp nào'}
                    optionFilterProp="label"
                    options={providers.map((p: any) => ({ value: p.id || p._id, label: p.name }))}
+                   disabled
                  />
               </Form.Item>
             </Card>

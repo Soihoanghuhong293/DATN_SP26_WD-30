@@ -16,6 +16,7 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 import { canSendMail } from '../services/mailer';
 import { sendGuideAssignmentEmail } from '../services/guideAssignmentEmail';
 import { sendGuideUnassignmentEmail } from '../services/guideUnassignmentEmail';
+import TourTrip, { TripStatus } from '../models/TourTrip';
 
 const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
   pending: 'unpaid',
@@ -1291,7 +1292,12 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
     }
 
-    if ((tour as any).status !== 'active') {
+    // Gate theo tour.status chỉ áp dụng cho khách (role=user).
+    // Admin/nhân sự nội bộ vẫn có thể tạo booking (ví dụ: đặt hộ), còn điều kiện mở bán
+    // được kiểm soát theo Trip status (OPENING) ở bước dưới.
+    const authRole = String((req as any)?.user?.role || '');
+    const isPublicUser = authRole === 'user';
+    if (isPublicUser && (tour as any).status !== 'active') {
       return res.status(400).json({
         status: 'fail',
         message: 'Tour không mở bán hoặc đang tạm dừng. Chỉ tour đang hoạt động mới được đặt.',
@@ -1321,6 +1327,25 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     }
 
     const totalSlotsForDate = scheduleForDate.slots ?? 0;
+
+    // Trip status gate (4-state model): chỉ cho booking khi OPENING
+    const tripDateStr = startDateStr;
+    const tripKey = tripKeyOf(String(tour_id), tripDateStr);
+    const tripDoc =
+      (await TourTrip.findOne({ trip_key: tripKey }).select('status').lean()) ||
+      (await TourTrip.create({
+        tour_id,
+        trip_key: tripKey,
+        trip_date: tripDateStr,
+        status: 'DRAFT' as TripStatus,
+      }));
+    const st = String((tripDoc as any)?.status || '').toUpperCase();
+    if (st && st !== 'OPENING') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Chuyến đi hiện không mở bán (status != OPENING). Vui lòng chọn ngày khác hoặc liên hệ quản trị viên.',
+      });
+    }
 
     // Tính tổng groupSize của các booking không bị hủy cho cùng tour + ngày
     const existingBookings = await Booking.find({
@@ -1417,14 +1442,19 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     const tourOnlyTotal = Number(normalizedTotalPrice ?? 0);
     const finalTotalPrice = tourOnlyTotal + optionalTicketsAddon;
 
+    const isAdminCreator = Boolean(authRole) && !isPublicUser;
+
     const incomingStatus = req.body?.status;
     const normalizedPaymentStatus =
       req.body?.payment_status ||
       (typeof incomingStatus === 'string' ? LEGACY_PAYMENT_STATUS_MAP[incomingStatus] : undefined) ||
       'unpaid';
 
-    const normalizedBookingStatus =
-      incomingStatus === 'cancelled'
+    // Admin tạo booking: mặc định "chờ xác nhận" (chưa nhập hành khách, có thể chưa thanh toán)
+    // Khách tự đặt: giữ hành vi hiện tại (mặc định confirmed)
+    const normalizedBookingStatus = isAdminCreator
+      ? 'pending'
+      : incomingStatus === 'cancelled'
         ? 'cancelled'
         : incomingStatus === 'pending' || incomingStatus === 'confirmed'
           ? incomingStatus
@@ -1460,6 +1490,10 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
     if (authUser && String((authUser as any).role) === 'user') {
       newBookingData.user_id = (authUser as any)._id;
     }
+    if (authUser && (authUser as any)._id) {
+      newBookingData.created_by_user_id = (authUser as any)._id;
+    }
+    newBookingData.created_by_type = isAdminCreator ? 'admin' : 'customer';
 
     // tự động tạo lịch sử đầu tiên
     const initialStatus = newBookingData.status || 'confirmed';
@@ -1566,6 +1600,20 @@ export const updateBooking = async (req: Request, res: Response) => {
     const updateData: any = { ...req.body };
     const logsToAdd: any[] = [];
 
+    const computeCustomerInfoStatus = (passengers: any[], groupSizeVal: any) => {
+      const list = Array.isArray(passengers) ? passengers : [];
+      if (list.length === 0) return 'MISSING';
+      const expected = Math.max(0, Number(groupSizeVal || 0));
+      const hasRequired = (p: any) => {
+        const name = String(p?.name || p?.full_name || p?.fullName || '').trim();
+        const phone = String(p?.phone || p?.customer_phone || p?.customerPhone || '').trim();
+        return Boolean(name) && Boolean(phone);
+      };
+      const allFilled = list.every(hasRequired);
+      if (expected > 0 && list.length < expected) return 'PARTIAL';
+      return allFilled ? 'COMPLETED' : 'PARTIAL';
+    };
+
     // cập nhật danh sách hành khác
     const incomingPassengers = req.body.passengers || req.body.guests;
     if (incomingPassengers) {
@@ -1579,6 +1627,8 @@ export const updateBooking = async (req: Request, res: Response) => {
 
       updateData.passengers = incomingPassengers; 
       delete updateData.guests; 
+
+      updateData.customer_info_status = computeCustomerInfoStatus(incomingPassengers, booking.groupSize);
 
       // Thêm log lịch sử
       logsToAdd.push({
@@ -1607,6 +1657,32 @@ export const updateBooking = async (req: Request, res: Response) => {
       (req.body.status && ['deposit', 'paid', 'refunded'].includes(req.body.status) ? req.body.status : undefined);
 
     if (nextPaymentStatus && nextPaymentStatus !== currentPaymentStatus) {
+      // Chỉ cho phép cập nhật thủ công payment_status với booking do admin tạo.
+      // Booking khách tự đặt sẽ được cập nhật tự động qua SePay webhook / gateway.
+      if (String((booking as any)?.created_by_type || '') !== 'admin') {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Không thể cập nhật trạng thái thanh toán thủ công cho booking do khách hàng đặt.',
+        });
+      }
+
+      // Validate chuyển trạng thái thanh toán (không cho đổi ngược về)
+      const allowed: Record<string, string[]> = {
+        unpaid: ['deposit', 'paid'],
+        deposit: ['paid', 'refunded'],
+        paid: ['refunded'],
+        refunded: [],
+      };
+      const next = String(nextPaymentStatus);
+      const cur = String(currentPaymentStatus);
+      const ok = (allowed[cur] || []).includes(next);
+      if (!ok) {
+        return res.status(400).json({
+          status: 'fail',
+          message: `Không thể đổi trạng thái thanh toán từ '${cur}' sang '${next}'.`,
+        });
+      }
+
       updateData.payment_status = nextPaymentStatus;
       if (['deposit', 'paid', 'refunded'].includes(updateData.status)) {
         delete updateData.status;
@@ -1787,6 +1863,20 @@ export const updateBooking = async (req: Request, res: Response) => {
 export const deleteBooking = async (req: Request, res: Response) => {
   try {
     const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    const booking: any = await Booking.findById(bookingId).select('payment_status status');
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const resolvedPayment = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
+    if (resolvedPayment !== 'unpaid') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Chỉ được xóa booking khi chưa thanh toán/đặt cọc (payment_status = unpaid).',
+      });
+    }
+
     await VehicleAllocation.deleteMany({ booking_id: bookingId });
     await RoomAllocation.deleteMany({ booking_id: bookingId });
     await Booking.findByIdAndDelete(bookingId);

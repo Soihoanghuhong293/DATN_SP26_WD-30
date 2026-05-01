@@ -26,15 +26,13 @@ interface IBooking {
   endDate?: string;
   groupSize: number;
   status: "pending" | "confirmed" | "paid" | "cancelled";
+  tour_stage?: "scheduled" | "in_progress" | "completed";
 }
 
-const statusMap: Record<string, { color: string; label: string }> = {
-  pending: { color: "orange", label: "Chờ duyệt" },
-  confirmed: { color: "blue", label: "Đã xác nhận" },
-  paid: { color: "green", label: "Đã thanh toán" },
-  deposit: { color: "purple", label: "Đã cọc" },
-  cancelled: { color: "red", label: "Đã hủy" },
-  refunded: { color: "gray", label: "Hoàn tiền" },
+const stageMap: Record<string, { color: string; label: string }> = {
+  scheduled: { color: "blue", label: "Sắp khởi hành" },
+  in_progress: { color: "gold", label: "Đang diễn ra" },
+  completed: { color: "default", label: "Kết thúc" },
 };
 
 const HdvTours = () => {
@@ -42,13 +40,13 @@ const HdvTours = () => {
   type FilterState = {
     search: string;
     dateRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
-    status?: string;
+    tour_stage?: string;
   };
 
   const emptyFilters = (): FilterState => ({
     search: "",
     dateRange: [null, null],
-    status: undefined,
+    tour_stage: undefined,
   });
 
   const [draft, setDraft] = useState<FilterState>(() => emptyFilters());
@@ -71,7 +69,7 @@ const HdvTours = () => {
     const q = applied.search.trim().toLowerCase();
     const [from, to] = applied.dateRange ?? [null, null];
     return bookings.filter((b) => {
-      if (applied.status && b.status !== applied.status) return false;
+      if (applied.tour_stage && (b.tour_stage || "scheduled") !== applied.tour_stage) return false;
       if (q) {
         const tourName = (b.tour_id?.name || "").toLowerCase();
         const customer = (b.customer_name || "").toLowerCase();
@@ -144,11 +142,12 @@ const HdvTours = () => {
           : "—",
     },
     {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => {
-        const s = statusMap[status] || { color: "default", label: status };
+      title: "Giai đoạn",
+      dataIndex: "tour_stage",
+      key: "tour_stage",
+      render: (_stage: string, record: IBooking) => {
+        const stage = record.tour_stage || "scheduled";
+        const s = stageMap[stage] || { color: "default", label: stage };
         return <Tag color={s.color}>{s.label}</Tag>;
       },
     },
@@ -206,17 +205,16 @@ const HdvTours = () => {
             </div>
 
             <div className="hdv-bookings-filterbar-item">
-              <div className="hdv-bookings-filterbar-label">Trạng thái</div>
+              <div className="hdv-bookings-filterbar-label">Giai đoạn</div>
               <Select
                 allowClear
                 placeholder="Tất cả"
-                value={draft.status}
-                onChange={(v) => setDraft((p: FilterState) => ({ ...p, status: v }))}
+                value={draft.tour_stage}
+                onChange={(v) => setDraft((p: FilterState) => ({ ...p, tour_stage: v }))}
                 options={[
-                  { value: "pending", label: "Chờ duyệt" },
-                  { value: "confirmed", label: "Đã xác nhận" },
-                  { value: "paid", label: "Đã thanh toán" },
-                  { value: "cancelled", label: "Đã hủy" },
+                  { value: "scheduled", label: "Sắp khởi hành" },
+                  { value: "in_progress", label: "Đang diễn ra" },
+                  { value: "completed", label: "Kết thúc" },
                 ]}
               />
             </div>

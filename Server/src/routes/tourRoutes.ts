@@ -1,6 +1,6 @@
 import express from 'express';
 import * as tourController from '../controllers/tourController';
-import { optionalProtect, protect, restrictToAdmin, restrictToGuideOrAdmin } from '../middlewares/auth.middleware';
+import { optionalProtect, protect, restrictToAdmin, restrictToGuide, restrictToGuideOrAdmin } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
@@ -50,6 +50,12 @@ router.post('/:id/trips/:date/trip-rooms/bulk-by-hotel', protect, restrictToAdmi
 router.get('/:id/trips/:date/rooming', protect, restrictToAdmin, tourController.getTripRoomingState);
 router.post('/:id/trips/:date/rooming/assign', protect, restrictToAdmin, tourController.assignRoom);
 router.delete('/:id/trips/:date/rooming/unassign/:passengerId', protect, restrictToAdmin, tourController.unassignRoom);
+
+// Trip status (4-state)
+router.get('/:id/trips/:date/status', protect, restrictToGuideOrAdmin, tourController.getTripStatusByTourAndDate);
+router.patch('/:id/trips/:date/status', protect, restrictToAdmin, tourController.updateTripStatusByTourAndDate);
+router.post('/:id/trips/:date/start', protect, restrictToGuide, tourController.guideStartTrip);
+router.post('/:id/trips/:date/end', protect, restrictToGuide, tourController.guideEndTrip);
 
 // HDV/Admin: lệnh điều động (tổng hợp xe/khách sạn/rooming/seating/danh sách khách)
 router.get('/:id/trips/:date/assignment', protect, restrictToGuideOrAdmin, tourController.getTripAssignment);

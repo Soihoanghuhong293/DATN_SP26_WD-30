@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { App, Button, Card, Descriptions, Divider, Empty, Space, Spin, Table, Tag, Typography, Tabs } from "antd";
+import { App, Button, Card, Descriptions, Divider, Empty, Space, Spin, Table, Tag, Tooltip, Typography, Tabs } from "antd";
 import { ArrowLeftOutlined, ReloadOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -17,6 +17,9 @@ export default function HdvTripAssignmentPage() {
   const { id, date } = useParams<{ id: string; date: string }>();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [tripStatus, setTripStatus] = useState<string>('');
+  const [starting, setStarting] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   const refresh = async () => {
     if (!id || !date) return;
@@ -24,6 +27,12 @@ export default function HdvTripAssignmentPage() {
     try {
       const res = await axios.get(`${API}/tours/${id}/trips/${date}/assignment`, { headers: getAuthHeaders() });
       setData(res.data?.data || null);
+      try {
+        const st = await axios.get(`${API}/tours/${id}/trips/${date}/status`, { headers: getAuthHeaders() });
+        setTripStatus(String(st.data?.data?.status || ''));
+      } catch {
+        setTripStatus('');
+      }
     } catch (e: any) {
       message.error(e?.response?.data?.message || "Không tải được lệnh điều động.");
       setData(null);
@@ -93,6 +102,38 @@ export default function HdvTripAssignmentPage() {
   const vehicles = Array.isArray(data?.vehicles) ? data.vehicles : [];
   const hotels = Array.isArray(data?.hotels) ? data.hotels : [];
   const roomingList: any[] = Array.isArray(data?.rooming_list) ? data.rooming_list : [];
+  const unpaidBookingCount = Number((data as any)?.unpaid_booking_count || 0);
+  const stUpper = String(tripStatus || '').toUpperCase();
+  const canStart = stUpper === 'OPENING' && unpaidBookingCount <= 0;
+  const canEnd = stUpper === 'CLOSED';
+
+  const startTrip = async () => {
+    if (!id || !date) return;
+    setStarting(true);
+    try {
+      await axios.post(`${API}/tours/${id}/trips/${date}/start`, {}, { headers: getAuthHeaders() });
+      message.success('Đã bắt đầu chuyến đi');
+      await refresh();
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || 'Không bắt đầu được');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const endTrip = async () => {
+    if (!id || !date) return;
+    setEnding(true);
+    try {
+      await axios.post(`${API}/tours/${id}/trips/${date}/end`, {}, { headers: getAuthHeaders() });
+      message.success('Đã kết thúc chuyến đi');
+      await refresh();
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || 'Không kết thúc được');
+    } finally {
+      setEnding(false);
+    }
+  };
 
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
@@ -112,6 +153,22 @@ export default function HdvTripAssignmentPage() {
             </Button>
             <Button icon={<ReloadOutlined />} onClick={refresh}>
               Tải lại
+            </Button>
+            <Tooltip
+              title={
+                stUpper !== 'OPENING'
+                  ? 'Chỉ được bắt đầu khi trạng thái là Mở bán (OPENING).'
+                  : unpaidBookingCount > 0
+                    ? `Không thể bắt đầu vì còn ${unpaidBookingCount} booking chưa thanh toán đủ.`
+                    : undefined
+              }
+            >
+              <Button type="primary" loading={starting} disabled={!canStart} onClick={startTrip}>
+                Bắt đầu
+              </Button>
+            </Tooltip>
+            <Button danger loading={ending} disabled={!canEnd} onClick={endTrip}>
+              Kết thúc
             </Button>
           </Space>
         </div>

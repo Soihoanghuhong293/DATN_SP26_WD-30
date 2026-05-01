@@ -23,6 +23,7 @@ interface IBooking {
   _id: string;
   tour_id?: { _id: string; name: string };
   user_id?: { _id: string; name: string; email: string };
+  created_by_type?: 'admin' | 'customer';
 
   customer_name?: string;
   customer_phone?: string;
@@ -51,6 +52,7 @@ type FilterState = {
   status?: IBooking['status'];
   payment_status?: NonNullable<IBooking['payment_status']>;
   tour_stage?: NonNullable<IBooking['tour_stage']>;
+  created_by_type?: NonNullable<IBooking['created_by_type']>;
 };
 
 const emptyFilters = (): FilterState => ({
@@ -59,6 +61,7 @@ const emptyFilters = (): FilterState => ({
   status: undefined,
   payment_status: undefined,
   tour_stage: undefined,
+  created_by_type: undefined,
 });
 
 const BookingList = () => {
@@ -130,6 +133,8 @@ const BookingList = () => {
 
       if (applied.tour_stage && (b.tour_stage || 'scheduled') !== applied.tour_stage) return false;
 
+      if (applied.created_by_type && (b.created_by_type || 'customer') !== applied.created_by_type) return false;
+
       if (from || to) {
         if (!b.startDate) return false;
         const d = dayjs(b.startDate);
@@ -145,7 +150,7 @@ const BookingList = () => {
     const tags: { key: keyof FilterState; label: string }[] = [];
     if (applied.search?.trim()) tags.push({ key: 'search', label: `Từ khóa: ${applied.search.trim()}` });
     if (applied.status) {
-      const map: Record<IBooking['status'], string> = { pending: 'Chờ duyệt', confirmed: 'Đã xác nhận', cancelled: 'Đã hủy' };
+      const map: Record<IBooking['status'], string> = { pending: 'Chờ xác nhận', confirmed: 'Đã xác nhận', cancelled: 'Đã hủy' };
       tags.push({ key: 'status', label: `Trạng thái: ${map[applied.status]}` });
     }
     if (applied.payment_status) {
@@ -158,6 +163,10 @@ const BookingList = () => {
         completed: 'Đã kết thúc',
       };
       tags.push({ key: 'tour_stage', label: `Giai đoạn: ${map[applied.tour_stage]}` });
+    }
+    if (applied.created_by_type) {
+      const map: Record<NonNullable<IBooking['created_by_type']>, string> = { admin: 'Admin', customer: 'Khách hàng' };
+      tags.push({ key: 'created_by_type', label: `Người tạo: ${map[applied.created_by_type]}` });
     }
     if (applied.dateRange?.[0] || applied.dateRange?.[1]) {
       const [f, t] = applied.dateRange;
@@ -186,11 +195,14 @@ const BookingList = () => {
       render: (_: any, record: IBooking) => {
         const name = record.customer_name || record.user_id?.name || 'Khách vãng lai';
         const contact = record.customer_phone || record.user_id?.email || 'Chưa có';
+        const createdBy = (record.created_by_type || 'customer') === 'admin' ? 'Admin' : 'Khách hàng';
 
         return (
           <div className="booking-list-customer">
             <div className="booking-list-customer-name">{name}</div>
-            <div className="booking-list-customer-sub">{contact}</div>
+            <div className="booking-list-customer-sub">
+              {contact} · <span style={{ fontWeight: 600 }}>{createdBy}</span>
+            </div>
           </div>
         );
       },
@@ -297,7 +309,7 @@ const BookingList = () => {
         return (
           <span className="booking-list-status booking-list-status--inactive">
             <span className="booking-list-dot" style={{ background: '#f59e0b' }} />
-            Chờ duyệt
+            Chờ xác nhận
           </span>
         );
       },
@@ -390,7 +402,7 @@ const BookingList = () => {
                   value={draft.status}
                   onChange={(v) => setDraft((p) => ({ ...p, status: v }))}
                   options={[
-                    { value: 'pending', label: 'Chờ duyệt' },
+                    { value: 'pending', label: 'Chờ xác nhận' },
                     { value: 'confirmed', label: 'Đã xác nhận' },
                     { value: 'cancelled', label: 'Đã hủy' },
                   ]}
@@ -426,6 +438,21 @@ const BookingList = () => {
                     { value: 'scheduled', label: 'Chưa diễn ra' },
                     { value: 'in_progress', label: 'Đang diễn ra' },
                     { value: 'completed', label: 'Đã kết thúc' },
+                  ]}
+                />
+              </div>
+
+              <div className="booking-filterbar-item">
+                <div className="booking-filterbar-label">Người tạo</div>
+                <Select
+                  allowClear
+                  size="middle"
+                  placeholder="Admin/Khách"
+                  value={draft.created_by_type}
+                  onChange={(v) => setDraft((p) => ({ ...p, created_by_type: v }))}
+                  options={[
+                    { value: 'admin', label: 'Admin' },
+                    { value: 'customer', label: 'Khách hàng' },
                   ]}
                 />
               </div>

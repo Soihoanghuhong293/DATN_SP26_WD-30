@@ -158,6 +158,7 @@ const TourCreate = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(undefined);
   const [rawTourName, setRawTourName] = useState<string>('');
   const [selectedDepartureDate, setSelectedDepartureDate] = useState<any>(null);
+  const templateLocked = Boolean(selectedTemplateId);
 
   const { data: categoryRes, isLoading: isCategoriesLoading } = useQuery({
     queryKey: ['categories', { tree: true }],
@@ -321,6 +322,8 @@ const TourCreate = () => {
       }
     }
 
+    if (templateLocked) return;
+
     if (changedValues.duration_days !== undefined) {
       const duration = changedValues.duration_days || 1;
       const currentSchedule = form.getFieldValue('schedule') || [];
@@ -437,6 +440,8 @@ const TourCreate = () => {
     // Xoá field phụ trợ chỉ dùng cho form
     delete finalValues.departure_date;
     delete finalValues.departure_slots;
+    // Không cho client set tour.status (tour luôn draft, mở bán theo Trip status)
+    delete finalValues.status;
 
     mutation.mutate(finalValues);
   };
@@ -475,7 +480,6 @@ const TourCreate = () => {
           onFinish={onFinish}
           onValuesChange={handleValuesChange} 
           initialValues={{ 
-            status: 'draft', 
             duration_days: 1,
             schedule: [
               {
@@ -521,6 +525,7 @@ const TourCreate = () => {
                     placeholder="Ví dụ: Khám phá Hà Giang 3N2Đ..."
                     size="large"
                     className="rounded-lg"
+                    disabled={templateLocked}
                     onChange={(e) => {
                       const v = e.target.value || '';
                       // nếu đang hiển thị tên có ngày, admin sửa lại sẽ cập nhật rawName theo phần trước dấu (
@@ -533,7 +538,7 @@ const TourCreate = () => {
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item name="category_id" label={<span className="font-medium text-gray-600">Danh mục</span>} rules={[{ required: true }]}>
-                      <Select size="large" placeholder="Chọn danh mục..." loading={isCategoriesLoading} className="rounded-lg">
+                      <Select size="large" placeholder="Chọn danh mục..." loading={isCategoriesLoading} className="rounded-lg" disabled={templateLocked}>
                         {categoryOptions.map((opt) => (
                           <Option key={opt.value} value={opt.value}>
                             {opt.label}
@@ -544,13 +549,13 @@ const TourCreate = () => {
                   </Col>
                   <Col span={12}>
                     <Form.Item name="duration_days" label={<span className="font-medium text-gray-600">Thời lượng (Ngày)</span>} rules={[{ required: true }]}>
-                      <InputNumber min={1} className="w-full rounded-lg" size="large" />
+                      <InputNumber min={1} className="w-full rounded-lg" size="large" disabled={templateLocked} />
                     </Form.Item>
                   </Col>
                 </Row>
 
                 <Form.Item name="description" label={<span className="font-medium text-gray-600">Mô tả chi tiết</span>}>
-                  <TextArea rows={4} placeholder="Viết giới thiệu về điểm nổi bật..." className="rounded-lg" />
+                  <TextArea rows={4} placeholder="Viết giới thiệu về điểm nổi bật..." className="rounded-lg" disabled={templateLocked} />
                 </Form.Item>
               </Card>
 
@@ -593,6 +598,7 @@ const TourCreate = () => {
                                     placeholder="VD: Đà Nẵng - Bán đảo Sơn Trà"
                                     className="rounded-lg"
                                     size="middle"
+                                    disabled={templateLocked}
                                   />
                                 </Form.Item>
                               </Col>
@@ -611,6 +617,7 @@ const TourCreate = () => {
                                     className="rounded-lg"
                                     size="middle"
                                     maxTagCount="responsive"
+                                    disabled={templateLocked}
                                   />
                                 </Form.Item>
                               </Col>
@@ -632,6 +639,7 @@ const TourCreate = () => {
                                     options={restaurantOptions}
                                     optionFilterProp="label"
                                     notFoundContent="Chưa có nhà hàng — khai báo tại Nhà cung cấp"
+                                    disabled={templateLocked}
                                   />
                                 </Form.Item>
                               </Col>
@@ -653,6 +661,7 @@ const TourCreate = () => {
                                     options={restaurantOptions}
                                     optionFilterProp="label"
                                     notFoundContent="Chưa có nhà hàng — khai báo tại Nhà cung cấp"
+                                    disabled={templateLocked}
                                   />
                                 </Form.Item>
                               </Col>
@@ -676,6 +685,7 @@ const TourCreate = () => {
                                     optionFilterProp="label"
                                     notFoundContent="Chưa có vé — thêm tại Nhà cung cấp"
                                     maxTagCount="responsive"
+                                    disabled={templateLocked}
                                   />
                                 </Form.Item>
                               </Col>
@@ -793,17 +803,6 @@ const TourCreate = () => {
 
             <Col xs={24} lg={8}>
               <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
-                <div className="text-lg font-semibold text-gray-800 mb-4">Thiết lập chung</div>
-                <Form.Item name="status" label={<span className="font-medium text-gray-600">Trạng thái</span>} style={{ marginBottom: 0 }}>
-                  <Select size="large" className="rounded-lg">
-                    <Option value="active">Đang hoạt động</Option>
-                    <Option value="draft">Bản nháp</Option>
-                    <Option value="hidden">Tạm ẩn</Option>
-                  </Select>
-                </Form.Item>
-              </Card>
-
-              <Card className="modern-card rounded-2xl shadow-sm border border-gray-100 mb-6" bordered={false}>
                 <div className="text-lg font-semibold text-gray-800 mb-4">Giá bán mặc định</div>
                 <Form.Item name="price" label={<span className="font-medium text-gray-600">Giá gốc (VNĐ) </span>} rules={[{ required: true }]}>
                   <InputNumber 
@@ -859,6 +858,7 @@ const TourCreate = () => {
                     listType="picture-card"
                     fileList={imageFileList}
                     accept="image/*"
+                    disabled={templateLocked}
                     beforeUpload={(file) => {
                       const isImage = file.type?.startsWith('image/');
                       if (!isImage) {
@@ -891,6 +891,7 @@ const TourCreate = () => {
                       }
                     }}
                     onChange={({ fileList }) => {
+                      if (templateLocked) return;
                       const normalized = fileList.map((f: any) => {
                         const url = f.url || f.response?.data?.url || f.response?.url;
                         return url ? { ...f, url } : f;
@@ -898,6 +899,7 @@ const TourCreate = () => {
                       setImageFileList(normalized);
                     }}
                     onRemove={(file) => {
+                      if (templateLocked) return false;
                       const next = imageFileList.filter((f) => f.uid !== (file as any).uid);
                       setImageFileList(next);
                       return true;
@@ -908,7 +910,7 @@ const TourCreate = () => {
                   {/* <div className="text-xs text-gray-500 mt-2">Tối đa 8 ảnh, mỗi ảnh &lt; 10MB.</div> */}
                 </Form.Item>
                 <Form.Item name="policies" label={<span className="font-medium text-gray-600">Chính sách </span>} style={{marginBottom: 0}}>
-                   <Select mode="tags" placeholder="Ví dụ: Xe đưa đón..." open={false} className="rounded-lg" />
+                   <Select mode="tags" placeholder="Ví dụ: Xe đưa đón..." open={false} className="rounded-lg" disabled={templateLocked} />
                 </Form.Item>
               </Card>
             </Col>

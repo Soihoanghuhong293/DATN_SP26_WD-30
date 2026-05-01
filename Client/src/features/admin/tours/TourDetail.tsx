@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { getProviders } from '../../../services/api';
 import { 
   Button, Card, Descriptions, Spin, Tabs, Tag, 
   Image, Table, Typography, Space, Popconfirm, message, 
@@ -17,12 +16,8 @@ import {
   ClockCircleOutlined,
   UsergroupAddOutlined,
   HomeOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-  ShopOutlined,
   PhoneOutlined,
   MailOutlined,
-  SwapOutlined,
   PlusOutlined,
   MinusCircleOutlined,
   FileTextOutlined,
@@ -32,6 +27,8 @@ import {
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
+
+type TripStatus = 'DRAFT' | 'OPENING' | 'CLOSED' | 'COMPLETED';
 
 const getAuthHeaders = () => ({
   Authorization: `Bearer ${
@@ -58,6 +55,35 @@ const normalizeDate = (dateVal: string) => {
 
   const d = dayjs(raw);
   return d.isValid() ? d.format('YYYY-MM-DD') : '';
+};
+
+const tripStatusLabel = (st?: TripStatus | string) => {
+  const s = String(st || '').toUpperCase();
+  if (s === 'DRAFT') return 'Bản nháp';
+  if (s === 'OPENING') return 'Mở bán';
+  if (s === 'CLOSED') return 'Đang chạy';
+  if (s === 'COMPLETED') return 'Hoàn thành';
+  return '—';
+};
+
+const tripStatusColor = (st?: TripStatus | string) => {
+  const s = String(st || '').toUpperCase();
+  if (s === 'OPENING') return 'green';
+  if (s === 'CLOSED') return 'gold';
+  if (s === 'COMPLETED') return 'default';
+  return 'blue'; // DRAFT
+};
+
+const UI_COLORS = {
+  label: '#475569', // slate-600
+  muted: '#64748b', // slate-500
+  body: '#0f172a', // slate-900
+};
+
+const cardTitleStyle: React.CSSProperties = {
+  fontWeight: 700,
+  fontSize: 16,
+  color: UI_COLORS.body,
 };
 
 function priceTierAmount(p: any): number {
@@ -154,12 +180,14 @@ const TourDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [changeProviderModalOpen, setChangeProviderModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
   const [scheduleForm] = Form.useForm();
   const [bookedSlotsByDate, setBookedSlotsByDate] = useState<Record<string, number>>({});
   const [loadingBookedSlots, setLoadingBookedSlots] = useState(false);
+  const [tripStatusByDate, setTripStatusByDate] = useState<Record<string, TripStatus>>({});
+  const [headerTripStatus, setHeaderTripStatus] = useState<TripStatus>('DRAFT');
+  const [nearestTripDate, setNearestTripDate] = useState<string>('');
+  const [loadingTripStatus, setLoadingTripStatus] = useState(false);
 
   // 1. API GET DATA
   const { data: tour, isLoading } = useQuery({
@@ -177,32 +205,38 @@ const TourDetail = () => {
     enabled: !!id,
   });
 
-  const { data: providersData } = useQuery({
-    queryKey: ['providers'],
-    queryFn: () => getProviders({}),
-  });
-  const providers = providersData?.data?.providers ?? [];
-
-  const tourProviders = tour?.suppliers?.map((sId: string) => providers.find((p: any) => p.id === sId || p._id === sId)).filter(Boolean) || [];
-
-  const changeProviderMutation = useMutation({
-    mutationFn: async (providerIds: string[]) => {
-      await axios.put(`http://localhost:5000/api/v1/tours/${id}`, {
-        suppliers: providerIds,
-      }, { headers: getAuthHeaders() });
+  const { data: allHolidayPricings = [], isLoading: loadingHolidayPricings } = useQuery({
+    queryKey: ['holiday-pricings'],
+    queryFn: async () => {
+      const res = await axios.get('http://localhost:5000/api/v1/holiday-pricings', {
+        headers: getAuthHeaders(),
+      });
+      return Array.isArray(res.data?.data) ? res.data.data : [];
     },
-    onSuccess: () => {
-      message.success('Đã cập nhật nhà cung cấp');
-      queryClient.invalidateQueries({ queryKey: ['tour', id] });
-      setChangeProviderModalOpen(false);
-      setSelectedProviderIds([]);
-    },
-    onError: () => message.error('Cập nhật nhà cung cấp thất bại'),
+    enabled: !!tour?._id,
   });
 
-  const handleChangeProvider = () => {
-    changeProviderMutation.mutate(selectedProviderIds);
-  };
+  const holidayPricingsForTour = useMemo(() => {
+    if (!tour?._id) return [];
+    const tid = String(tour._id);
+    const list = Array.isArray(allHolidayPricings) ? allHolidayPricings : [];
+    return list
+      .filter((r: any) => {
+        const raw = r?.tour_id;
+        if (raw == null || raw === '') return true;
+        const oid = typeof raw === 'object' && raw?._id != null ? String(raw._id) : String(raw);
+        return oid === tid;
+      })
+      .sort((a: any, b: any) => {
+        const pa = Number(a?.priority ?? 0);
+        const pb = Number(b?.priority ?? 0);
+        if (pb !== pa) return pb - pa;
+        return new Date(b?.start_date || 0).getTime() - new Date(a?.start_date || 0).getTime();
+      });
+  }, [allHolidayPricings, tour?._id]);
+
+  const guidePrimary = (tour as any)?.primary_guide_id;
+  const guideSecondaries = Array.isArray((tour as any)?.secondary_guide_ids) ? (tour as any).secondary_guide_ids : [];
 
   const updateScheduleMutation = useMutation({
     mutationFn: async (schedule: any[]) => {
@@ -302,9 +336,86 @@ const TourDetail = () => {
       const slots = Number(row?.slots ?? 0);
       const booked = Number(bookedSlotsByDate[dateStr] || 0);
       const remaining = Number.isFinite(slots) ? Math.max(slots - booked, 0) : 0;
-      return { ...row, _dateKey: dateStr, _booked: booked, _remaining: remaining };
+      const st = tripStatusByDate[dateStr];
+      return { ...row, _dateKey: dateStr, _booked: booked, _remaining: remaining, _tripStatus: st };
     });
-  }, [tour, bookedSlotsByDate]);
+  }, [tour, bookedSlotsByDate, tripStatusByDate]);
+
+  useEffect(() => {
+    const ds = Array.isArray((tour as any)?.departure_schedule) ? ((tour as any).departure_schedule as any[]) : [];
+    const dates = ds.map((row: any) => normalizeDate(String(row?.date || ''))).filter((d: string) => !!d);
+    if (dates.length === 0) {
+      setNearestTripDate('');
+      setHeaderTripStatus('DRAFT');
+      return;
+    }
+    const today = dayjs().format('YYYY-MM-DD');
+    const sorted = [...new Set(dates)].sort();
+    const upcoming = sorted.find((d) => d >= today);
+    setNearestTripDate(upcoming || sorted[0]);
+  }, [tour]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tourId = String((tour as any)?._id || (tour as any)?.id || id || '');
+    const ds = Array.isArray((tour as any)?.departure_schedule) ? ((tour as any).departure_schedule as any[]) : [];
+    const dates = ds.map((row: any) => normalizeDate(String(row?.date || ''))).filter((d: string) => !!d);
+
+    const run = async () => {
+      if (!tourId || dates.length === 0) return;
+      try {
+        setLoadingTripStatus(true);
+        const unique = [...new Set(dates)];
+        const pairs = await Promise.all(
+          unique.map(async (d) => {
+            const r = await axios.get(`http://localhost:5000/api/v1/tours/${tourId}/trips/${d}/status`, {
+              headers: getAuthHeaders(),
+              params: { _t: Date.now() },
+            });
+            const st = String(r.data?.data?.status || '').toUpperCase() as TripStatus;
+            return [d, st] as const;
+          })
+        );
+        const map: Record<string, TripStatus> = {};
+        for (const [d, st] of pairs) map[d] = st;
+        if (!cancelled) setTripStatusByDate(map);
+      } catch {
+        if (!cancelled) setTripStatusByDate({});
+      } finally {
+        if (!cancelled) setLoadingTripStatus(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [tour, id]);
+
+  useEffect(() => {
+    if (!nearestTripDate) return;
+    const st = tripStatusByDate[nearestTripDate];
+    if (st) setHeaderTripStatus(st);
+  }, [nearestTripDate, tripStatusByDate]);
+
+  const updateHeaderTripStatus = async (nextRaw: string) => {
+    const tourId = String((tour as any)?._id || (tour as any)?.id || id || '');
+    const d = String(nearestTripDate || '');
+    if (!tourId || !d) return;
+    const next = String(nextRaw || '').toUpperCase() as TripStatus;
+    try {
+      await axios.patch(
+        `http://localhost:5000/api/v1/tours/${tourId}/trips/${d}/status`,
+        { status: next },
+        { headers: getAuthHeaders() }
+      );
+      message.success('Đã cập nhật trạng thái chuyến đi');
+      setTripStatusByDate((prev) => ({ ...prev, [d]: next }));
+      setHeaderTripStatus(next);
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || 'Cập nhật trạng thái thất bại');
+    }
+  };
 
   if (isLoading) return (
     <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -320,13 +431,13 @@ const TourDetail = () => {
 
   const OverviewTab = () => (
     <>
-      <Card title="Mô tả & giới thiệu tour" bordered className="saas-card" style={{ marginBottom: 24 }}>
+      <Card title={<span style={cardTitleStyle}>Mô tả & giới thiệu tour</span>} bordered className="saas-card" style={{ marginBottom: 24 }}>
         <div style={{ whiteSpace: 'pre-line', lineHeight: 1.75, color: '#374151', fontSize: 15 }}>
           {tour.description?.trim() ? tour.description : 'Chưa có mô tả cho tour này.'}
         </div>
       </Card>
 
-      <Card title="Thư viện ảnh" bordered className="saas-card" style={{ marginBottom: 24 }}>
+      <Card title={<span style={cardTitleStyle}>Thư viện ảnh</span>} bordered className="saas-card" style={{ marginBottom: 24 }}>
         {tour.images?.length ? (
           <Image.PreviewGroup>
             <div
@@ -351,8 +462,13 @@ const TourDetail = () => {
         )}
       </Card>
 
-      <Card title="Thông tin nhanh" bordered className="saas-card" style={{ marginBottom: 24 }}>
-        <Descriptions column={{ xs: 1, sm: 2, md: 3 }} size="small" bordered>
+      <Card title={<span style={cardTitleStyle}>Thông tin nhanh</span>} bordered className="saas-card" style={{ marginBottom: 24 }}>
+        <Descriptions
+          column={{ xs: 1, sm: 2, md: 3 }}
+          size="small"
+          bordered
+          styles={{ label: { color: UI_COLORS.label, fontWeight: 600 } }}
+        >
           <Descriptions.Item label="Giá niêm yết">{formatMoney(Number(tour.price || 0))}</Descriptions.Item>
           <Descriptions.Item label="Thời lượng">{tour.duration_days ?? '—'} ngày</Descriptions.Item>
           <Descriptions.Item label="Danh mục">{tour.category_id?.name || '—'}</Descriptions.Item>
@@ -379,75 +495,9 @@ const TourDetail = () => {
         </Descriptions>
       </Card>
 
-      <Row gutter={24}>
-        <Col xs={24} lg={14}>
-          <Card title="Bảng giá theo đối tượng" bordered className="saas-card" style={{ marginBottom: 24 }}>
-            {Array.isArray(tour.prices) && tour.prices.length > 0 ? (
-              <Table
-                dataSource={tour.prices}
-                pagination={false}
-                rowKey={(row: any, i) => String(row?.name || i)}
-                size="small"
-                columns={[
-                  { title: 'Đối tượng', dataIndex: 'name', key: 'name', render: (t: string) => <Text strong>{t}</Text> },
-                  {
-                    title: 'Giá',
-                    key: 'amount',
-                    align: 'right',
-                    render: (_: unknown, row: any) => <Text>{formatMoney(priceTierAmount(row))}</Text>,
-                  },
-                ]}
-              />
-            ) : (
-              <Text type="secondary">Chưa cấu hình bậc giá chi tiết — chỉ có giá niêm yết.</Text>
-            )}
-          </Card>
-
-          <Card title="Điều khoản & chính sách" bordered className="saas-card">
-            {Array.isArray(tour.policies) && tour.policies.length > 0 ? (
-              <ul style={{ paddingLeft: 20, color: '#374151', margin: 0 }}>
-                {tour.policies.map((pol: string, i: number) => (
-                  <li key={i} style={{ marginBottom: 8 }}>
-                    {pol}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Text type="secondary">Chưa nhập chính sách.</Text>
-            )}
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={10}>
-        <Card bordered={true} className="saas-card mb-6" style={{ backgroundColor: '#f9fafb' }}>
-            <div style={{ marginBottom: 20 }}>
-                <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '1px' }}>GIÁ CƠ BẢN</Text>
-                <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>
-                    {formatMoney(Number(tour.price || 0))}
-                </div>
-            </div>
-            
-            <Divider style={{ margin: '16px 0' }} />
-
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space><ClockCircleOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Thời lượng</Text></Space>
-                    <Text strong>{tour.duration_days} ngày</Text>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space><UsergroupAddOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Khách tối đa</Text></Space>
-                    <Text strong>
-                      {maxGuestsFromDepartureSchedule(tour.departure_schedule)?.compact ?? '—'}
-                    </Text>
-                </div>
-                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space><EnvironmentOutlined style={{ color: '#6b7280' }} /> <Text type="secondary">Danh mục</Text></Space>
-                    <Tag color="blue" style={{ margin: 0 }}>{tour.category_id?.name || '—'}</Tag>
-                </div>
-            </Space>
-        </Card>
-
-        <Card 
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={16}>
+          <Card 
           title={
             <Space>
               <CalendarOutlined />
@@ -456,7 +506,8 @@ const TourDetail = () => {
           }
           extra={<Button size="small" icon={<EditOutlined />} onClick={handleOpenScheduleModal}>Chỉnh sửa</Button>}
           bordered={true} 
-          className="saas-card mb-6"
+          className="saas-card"
+          style={{ height: '100%' }}
         >
           <Table
             loading={loadingBookedSlots}
@@ -467,6 +518,12 @@ const TourDetail = () => {
             locale={{ emptyText: 'Chưa có lịch khởi hành cụ thể.' }}
             columns={[
                 { title: 'Ngày', dataIndex: 'date', key: 'date', render: (date: string) => <Text strong>{date ? dayjs(date).format('DD/MM/YYYY') : '—'}</Text> },
+                {
+                  title: 'Trạng thái chuyến',
+                  dataIndex: '_tripStatus',
+                  key: '_tripStatus',
+                  render: (st: TripStatus) => <Tag color={tripStatusColor(st)}>{tripStatusLabel(st)}</Tag>,
+                },
                 { title: 'Số chỗ', dataIndex: 'slots', key: 'slots', align: 'right', render: (slots: number) => <Tag color="blue">{slots}</Tag> },
                 { title: 'Đã đặt', dataIndex: '_booked', key: '_booked', align: 'right', render: (v: number) => <Tag color="gold">{Number(v || 0)}</Tag> },
                 {
@@ -485,12 +542,23 @@ const TourDetail = () => {
                   align: 'right',
                   render: (_: unknown, row: any) => {
                     const d = normalizeDate(String(row?.date || ''));
+                    const st = String(row?._tripStatus || '').toUpperCase();
+                    const canOperate = st === 'CLOSED' || st === 'COMPLETED';
                     return (
                       <Space size="small" wrap>
-                        <Button size="small" onClick={() => navigate(`/admin/tours/${id}/trips/${d}/seating`)}>
+                        <Button
+                          size="small"
+                          type="primary"
+                          disabled={!canOperate}
+                          onClick={() => navigate(`/admin/tours/${id}/trips/${d}/seating`)}
+                        >
                           Điều hành xe
                         </Button>
-                        <Button size="small" onClick={() => navigate(`/admin/tours/${id}/trips/${d}/rooming`)}>
+                        <Button
+                          size="small"
+                          disabled={!canOperate}
+                          onClick={() => navigate(`/admin/tours/${id}/trips/${d}/rooming`)}
+                        >
                           Xếp phòng
                         </Button>
                       </Space>
@@ -499,100 +567,66 @@ const TourDetail = () => {
                 },
             ]}
           />
-        </Card>
+          </Card>
+        </Col>
 
-        <Card 
+        <Col xs={24} md={8}>
+          <Card
           title={
             <Space>
-              <ShopOutlined />
-              <span>Nhà cung cấp</span>
-              <Button 
-                type="link" 
-                size="small" 
-                icon={<SwapOutlined />} 
-                onClick={() => {
-                  setSelectedProviderIds(tour?.suppliers || []);
-                  setChangeProviderModalOpen(true);
-                }}
-              >
-                Thay đổi/Thêm
-              </Button>
+              <UsergroupAddOutlined />
+              <span>Hướng dẫn viên</span>
             </Space>
           }
-          size="small" 
-          bordered={true} 
-          className="saas-card mb-6"
+          size="small"
+          bordered
+          className="saas-card"
+          style={{ height: '100%' }}
         >
-          {tourProviders.length > 0 ? (
-            tourProviders.map((provider: any, index: number) => (
-            <div key={provider.id || provider._id} style={{ marginBottom: index !== tourProviders.length - 1 ? 16 : 0, paddingBottom: index !== tourProviders.length - 1 ? 16 : 0, borderBottom: index !== tourProviders.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-              <div style={{ marginBottom: 12 }}>
-                <Link to={`/admin/providers/${provider.id || provider._id}`} style={{ fontWeight: 600, fontSize: 15 }}>
-                  {provider.name}
-                </Link>
-                {provider.status && (
-                  <Tag color={provider.status === 'active' ? 'green' : 'red'} style={{ marginLeft: 8 }}>
-                    {provider.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
-                  </Tag>
-                )}
-              </div>
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                {provider.phone && (
-                  <div><PhoneOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.phone}</Text></div>
-                )}
-                {provider.email && (
-                  <div><MailOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text>{provider.email}</Text></div>
-                )}
-                {provider.address && (
-                  <div><EnvironmentOutlined style={{ color: '#6b7280', marginRight: 8 }} /><Text type="secondary">{provider.address}</Text></div>
-                )}
-              </Space>
-              <div style={{ marginTop: 12 }}>
-                <Link to={`/admin/providers/${provider.id || provider._id}`}>
-                  <Button type="link" size="small">Xem chi tiết nhà cung cấp →</Button>
-                </Link>
-              </div>
-            </div>
-            ))
-          ) : tour?.suppliers?.length > 0 ? (
-            <Spin size="small" spinning tip="Đang tải thông tin NCC...">
-              <div style={{ minHeight: 48 }} />
-            </Spin>
-          ) : (
+          <Space direction="vertical" size={10} style={{ width: '100%' }}>
             <div>
-              <Text type="secondary">Chưa chọn nhà cung cấp</Text>
-              <div style={{ marginTop: 8 }}>
-                <Button type="primary" size="small" onClick={() => setChangeProviderModalOpen(true)}>
-                  Chọn nhà cung cấp
-                </Button>
+              <Text style={{ color: UI_COLORS.label, fontWeight: 600 }}>HDV chính</Text>
+              <div style={{ marginTop: 4 }}>
+                {guidePrimary?.name ? (
+                  <Space direction="vertical" size={2}>
+                    <Text strong>{guidePrimary.name}</Text>
+                    <Text type="secondary" style={{ fontSize: 12, color: UI_COLORS.muted }}>
+                      {guidePrimary.phone ? `SĐT: ${guidePrimary.phone}` : guidePrimary.email ? `Email: ${guidePrimary.email}` : '—'}
+                    </Text>
+                  </Space>
+                ) : (
+                  <Text type="secondary" style={{ fontStyle: 'italic', color: UI_COLORS.muted }}>
+                    Chưa gán
+                  </Text>
+                )}
               </div>
             </div>
-          )}
-        </Card>
 
-        <Card title="Trạng thái" size="small" bordered={true} className="saas-card">
-             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {tour.status === 'active' ? (
-                    <CheckCircleOutlined style={{ fontSize: 24, color: '#10b981' }} />
+            <div>
+              <Text style={{ color: UI_COLORS.label, fontWeight: 600 }}>HDV phụ</Text>
+              <div style={{ marginTop: 6 }}>
+                {guideSecondaries.length ? (
+                  <Space direction="vertical" size={6}>
+                    {guideSecondaries.map((g: any) => (
+                      <div key={String(g?._id || g?.id || g?.email || Math.random())}>
+                        <Text strong>{g?.name || '—'}</Text>
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12, color: UI_COLORS.muted }}>
+                          {g?.phone ? g.phone : g?.email ? g.email : '—'}
+                        </Text>
+                      </div>
+                    ))}
+                  </Space>
                 ) : (
-                    <StopOutlined style={{ fontSize: 24, color: '#f59e0b' }} />
+                  <Text type="secondary" style={{ fontStyle: 'italic', color: UI_COLORS.muted }}>
+                    Không có
+                  </Text>
                 )}
-                <div>
-                    <div style={{ fontWeight: 600 }}>
-                      {tour.status === 'active' ? 'Đang hoạt động' : tour.status === 'hidden' ? 'Đã ẩn' : 'Bản nháp'}
-                    </div>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {tour.status === 'active'
-                          ? 'Tour hiển thị công khai (theo API).'
-                          : tour.status === 'hidden'
-                            ? 'Tour ẩn khỏi danh sách công khai.'
-                            : 'Chỉ admin thấy khi ở trạng thái nháp.'}
-                    </Text>
-                </div>
-             </div>
-        </Card>
-      </Col>
-    </Row>
+              </div>
+            </div>
+          </Space>
+          </Card>
+        </Col>
+      </Row>
     </>
   );
 
@@ -741,7 +775,6 @@ const TourDetail = () => {
   };
 
   const PolicyTab = () => {
-    const seasonal = Array.isArray((tour as any).seasonalPrices) ? (tour as any).seasonalPrices : [];
     return (
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={12}>
@@ -783,36 +816,86 @@ const TourDetail = () => {
           </Card>
         </Col>
         <Col span={24}>
-          <Card title="Giá theo khoảng thời gian (seasonalPrices)" bordered className="saas-card">
-            {seasonal.length > 0 ? (
-              seasonal.map((block: any, idx: number) => (
-                <div key={idx} style={{ marginBottom: idx < seasonal.length - 1 ? 24 : 0 }}>
-                  <Text strong>{block.title || `Gói ${idx + 1}`}</Text>
-                  <div style={{ marginTop: 8, marginBottom: 8 }}>
-                    <Text type="secondary">
-                      {block.startDate ? dayjs(block.startDate).format('DD/MM/YYYY') : '—'} —{' '}
-                      {block.endDate ? dayjs(block.endDate).format('DD/MM/YYYY') : '—'}
-                    </Text>
-                  </div>
-                  <Table
-                    dataSource={block.prices || []}
-                    pagination={false}
-                    size="small"
-                    rowKey={(row: any, i) => String(row?.name ?? i)}
-                    columns={[
-                      { title: 'Đối tượng', dataIndex: 'name', key: 'name' },
-                      {
-                        title: 'Giá',
-                        key: 'amount',
-                        align: 'right',
-                        render: (_: unknown, row: any) => formatMoney(priceTierAmount(row)),
-                      },
-                    ]}
-                  />
-                </div>
-              ))
+          <Card
+            title="Giá ngày lễ (holiday-pricings)"
+            bordered
+            className="saas-card"
+            extra={
+              <Link to="/admin/holiday-pricing">
+                <Button type="link" size="small" style={{ padding: 0 }}>
+                  Quản lý giá ngày lễ
+                </Button>
+              </Link>
+            }
+          >
+            {loadingHolidayPricings ? (
+              <div style={{ padding: 24, textAlign: 'center' }}>
+                <Spin />
+              </div>
+            ) : holidayPricingsForTour.length > 0 ? (
+              <Table
+                dataSource={holidayPricingsForTour}
+                pagination={false}
+                size="small"
+                rowKey={(r: any) => String(r?._id ?? r?.id)}
+                columns={[
+                  { title: 'Tên kỳ / đợt', dataIndex: 'name', key: 'name', render: (t: string) => <Text strong>{t || '—'}</Text> },
+                  {
+                    title: 'Từ — đến',
+                    key: 'range',
+                    render: (_: unknown, r: any) => (
+                      <Text type="secondary">
+                        {r.start_date ? dayjs(r.start_date).format('DD/MM/YYYY') : '—'} —{' '}
+                        {r.end_date ? dayjs(r.end_date).format('DD/MM/YYYY') : '—'}
+                      </Text>
+                    ),
+                  },
+                  {
+                    title: 'Phạm vi',
+                    key: 'scope',
+                    width: 140,
+                    render: (_: unknown, r: any) =>
+                      r.tour_id ? (
+                        <Tag color="blue">Riêng tour này</Tag>
+                      ) : (
+                        <Tag>Toàn hệ thống</Tag>
+                      ),
+                  },
+                  {
+                    title: 'Cách tính',
+                    key: 'calc',
+                    render: (_: unknown, r: any) => {
+                      const fp = r.fixed_price;
+                      if (fp !== undefined && fp !== null && fp !== '' && Number.isFinite(Number(fp))) {
+                        return <Text>Giá cố định: {formatMoney(Number(fp))}</Text>;
+                      }
+                      return (
+                        <Text>
+                          Hệ số ×{Number(r.price_multiplier ?? 1)} <Text type="secondary">(nhân giá cơ sở)</Text>
+                        </Text>
+                      );
+                    },
+                  },
+                  {
+                    title: 'Ưu tiên',
+                    dataIndex: 'priority',
+                    key: 'priority',
+                    width: 88,
+                    align: 'center',
+                  },
+                ]}
+              />
             ) : (
-              <Text type="secondary">Chưa cấu hình giá theo mùa.</Text>
+              <Empty
+                description="Chưa có cấu hình giá ngày lễ áp dụng cho tour này (hoặc chung toàn hệ thống)."
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              >
+                <Link to="/admin/holiday-pricing/create">
+                  <Button type="primary" size="small">
+                    Thêm giá ngày lễ
+                  </Button>
+                </Link>
+              </Empty>
             )}
           </Card>
         </Col>
@@ -874,16 +957,26 @@ const TourDetail = () => {
                     <Space size="small">
                         <Text type="secondary">ID: {tour._id}</Text>
                         <Divider type="vertical" />
-                        <Tag
-                          color={tour.status === 'active' ? 'success' : tour.status === 'hidden' ? 'default' : 'warning'}
-                          bordered={false}
-                        >
-                          {tour.status === 'active'
-                            ? 'Đang hoạt động'
-                            : tour.status === 'hidden'
-                              ? 'Đã ẩn'
-                              : 'Bản nháp'}
+                        <Tag color={tripStatusColor(headerTripStatus)} bordered={false}>
+                          Trip: {tripStatusLabel(headerTripStatus)}
                         </Tag>
+                        <Select
+                          size="small"
+                          style={{ minWidth: 140 }}
+                          value={headerTripStatus}
+                          onChange={updateHeaderTripStatus}
+                          loading={loadingTripStatus}
+                          disabled={!nearestTripDate || headerTripStatus !== 'DRAFT'}
+                          options={[
+                            { value: 'DRAFT', label: 'DRAFT (Bản nháp)' },
+                            { value: 'OPENING', label: 'OPENING (Mở bán)' },
+                          ]}
+                        />
+                        {nearestTripDate ? (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            Áp dụng cho đợt: {dayjs(nearestTripDate).format('DD/MM/YYYY')}
+                          </Text>
+                        ) : null}
                     </Space>
                 </div>
             </div>
@@ -926,44 +1019,6 @@ const TourDetail = () => {
                 }
             ]} 
         />
-
-        {/* Modal Thay đổi nhà cung cấp */}
-        <Modal
-          title="Thay đổi nhà cung cấp"
-          open={changeProviderModalOpen}
-          onOk={handleChangeProvider}
-          onCancel={() => {
-            setChangeProviderModalOpen(false);
-            setSelectedProviderIds([]);
-          }}
-          okText="Cập nhật"
-          cancelText="Huỷ"
-          confirmLoading={changeProviderMutation.isPending}
-          destroyOnClose
-        >
-          <div style={{ marginBottom: 16 }}>
-            <Text type="secondary">Chọn nhà cung cấp cho tour này:</Text>
-          </div>
-          <Select
-            mode="multiple"
-            style={{ width: '100%' }}
-            placeholder="Chọn nhà cung cấp"
-            value={selectedProviderIds}
-            onChange={setSelectedProviderIds}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={providers.map((p: any) => ({
-              value: p.id || p._id,
-              label: `${p.name}${p.phone ? ' - ' + p.phone : ''}`,
-            }))}
-          />
-          <div style={{ marginTop: 12 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Bỏ chọn để gỡ nhà cung cấp khỏi tour
-            </Text>
-          </div>
-        </Modal>
 
         <Modal
             title="Chỉnh sửa Lịch khởi hành"

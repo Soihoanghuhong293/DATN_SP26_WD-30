@@ -18,6 +18,7 @@ import Room from '../models/Room';
 import Hotel from '../models/Hotel';
 import User from '../models/user.model';
 import Guide from '../models/Guide';
+import TourTrip, { TripStatus } from '../models/TourTrip';
 
 const normalizeDateStr = (value: any) => {
   if (!value) return '';
@@ -34,6 +35,131 @@ const normalizeTripDate = (value: any) => {
 };
 
 const tripKeyOf = (tourId: string, dateStr: string) => `${tourId}:${dateStr}`;
+
+const TRIP_STATUSES: TripStatus[] = ['DRAFT', 'OPENING', 'CLOSED', 'COMPLETED'];
+
+const canTransitionTripStatus = (from: TripStatus, to: TripStatus) => {
+  if (from === to) return true;
+  if (from === 'COMPLETED') return false; // completed = read-only
+  if (from === 'DRAFT') return to === 'OPENING';
+  if (from === 'OPENING') return to === 'DRAFT' || to === 'CLOSED';
+  if (from === 'CLOSED') return to === 'OPENING' || to === 'COMPLETED';
+  return false;
+};
+
+const ensureTripDoc = async (tourId: string, dateStr: string) => {
+  const trip_key = tripKeyOf(tourId, dateStr);
+  const doc = await TourTrip.findOneAndUpdate(
+    { trip_key },
+    { $setOnInsert: { tour_id: tourId, trip_key, trip_date: dateStr, status: 'DRAFT' as TripStatus } },
+    { upsert: true, new: true }
+  );
+  return doc;
+};
+
+export const getTripStatusByTourAndDate = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+
+    const trip = await ensureTripDoc(tourId, dateStr);
+    return res.status(200).json({ status: 'success', data: { status: trip.status, trip_key: trip.trip_key } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lấy trạng thái chuyến đi' });
+  }
+};
+
+export const updateTripStatusByTourAndDate = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    const nextRaw = String(req.body?.status || '').toUpperCase().trim();
+    const next = TRIP_STATUSES.includes(nextRaw as TripStatus) ? (nextRaw as TripStatus) : null;
+
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+    if (!next) {
+      return res.status(400).json({ status: 'fail', message: 'Trạng thái không hợp lệ' });
+    }
+
+    const trip = await ensureTripDoc(tourId, dateStr);
+    const prev = trip.status as TripStatus;
+
+    // Admin rule (per requirement): only allow DRAFT -> OPENING
+    if (!(prev === 'DRAFT' && next === 'OPENING')) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Admin chỉ được chuyển trạng thái từ DRAFT sang OPENING.',
+      });
+    }
+
+    trip.status = 'OPENING';
+    await trip.save();
+    return res.status(200).json({ status: 'success', data: { status: trip.status } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi cập nhật trạng thái chuyến đi' });
+  }
+};
+
+export const guideStartTrip = async (req: AuthRequest, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+    // Không cho HDV bắt đầu nếu còn booking chưa thanh toán đủ
+    const unpaidCount = await Booking.countDocuments({
+      tour_id: tourId,
+      status: { $ne: 'cancelled' },
+      startDate: {
+        $gte: new Date(`${dateStr}T00:00:00.000Z`),
+        $lte: new Date(`${dateStr}T23:59:59.999Z`),
+      },
+      $or: [{ payment_status: { $exists: false } }, { payment_status: { $ne: 'paid' } }],
+    });
+    if (unpaidCount > 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: `Không thể bắt đầu chuyến đi vì còn ${unpaidCount} booking chưa thanh toán đủ. Vui lòng yêu cầu điều hành xác nhận thanh toán trước khi bắt đầu.`,
+      });
+    }
+    const trip = await ensureTripDoc(tourId, dateStr);
+    const prev = trip.status as TripStatus;
+    if (prev !== 'OPENING') {
+      return res.status(400).json({ status: 'fail', message: 'Chỉ được Bắt đầu khi trạng thái là OPENING.' });
+    }
+    trip.status = 'CLOSED'; // display = "Đang chạy"
+    await trip.save();
+    return res.status(200).json({ status: 'success', data: { status: trip.status } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi bắt đầu chuyến đi' });
+  }
+};
+
+export const guideEndTrip = async (req: AuthRequest, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    if (!tourId || !dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId hoặc date (YYYY-MM-DD)' });
+    }
+    const trip = await ensureTripDoc(tourId, dateStr);
+    const prev = trip.status as TripStatus;
+    if (prev !== 'CLOSED') {
+      return res.status(400).json({ status: 'fail', message: 'Chỉ được Kết thúc khi trạng thái là Đang chạy.' });
+    }
+    trip.status = 'COMPLETED';
+    await trip.save();
+    return res.status(200).json({ status: 'success', data: { status: trip.status } });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi kết thúc chuyến đi' });
+  }
+};
 
 const tripDateRange = (dateStr: string) => {
   const [y, m, d] = dateStr.split('-').map((x) => Number(x));
@@ -779,6 +905,16 @@ export const getTripAssignment = async (req: AuthRequest, res: Response) => {
       };
     });
 
+    const unpaid_booking_count = await Booking.countDocuments({
+      tour_id: tourId,
+      status: { $ne: 'cancelled' },
+      startDate: {
+        $gte: new Date(`${dateStr}T00:00:00.000Z`),
+        $lte: new Date(`${dateStr}T23:59:59.999Z`),
+      },
+      $or: [{ payment_status: { $exists: false } }, { payment_status: { $ne: 'paid' } }],
+    });
+
     return res.status(200).json({
       status: 'success',
       data: {
@@ -802,6 +938,7 @@ export const getTripAssignment = async (req: AuthRequest, res: Response) => {
         ),
         rooming_list: roomingList,
         passengers: passengerList,
+        unpaid_booking_count,
       },
     });
   } catch (error: any) {
@@ -827,18 +964,28 @@ export const getAllTours = async (req: Request, res: Response) => {
     const limitNum = Math.max(1, Number(limit) || 12);
     const skip = (pageNum - 1) * limitNum;
 
-    const normalizedStatus = status === 'inactive' ? 'hidden' : status;
     const isAdmin = (req as AuthRequest).user?.role === 'admin';
 
     const escapeRegExp = (value: string) =>
       value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const filter: Record<string, any> = {};
-    // Khách & API công khai: chỉ thấy tour đang hoạt động (không cho lọc draft/hidden qua query).
+    // Khách & API công khai: chỉ thấy tour có ít nhất 1 trip OPENING.
+    // Admin: không filter theo tour.status nữa (status tour cũ sẽ bị ẩn ở UI).
     if (!isAdmin) {
-      filter.status = 'active';
-    } else if (normalizedStatus && normalizedStatus.trim() !== '') {
-      filter.status = normalizedStatus;
+      const openTrips = await TourTrip.find({ status: 'OPENING' }).select('tour_id').lean();
+      const tourIds = [...new Set(openTrips.map((t: any) => String(t?.tour_id || '')).filter(Boolean))];
+      if (tourIds.length === 0) {
+        return res.status(200).json({
+          status: 'success',
+          results: 0,
+          total: 0,
+          page: pageNum,
+          limit: limitNum,
+          data: [],
+        });
+      }
+      filter._id = { $in: tourIds };
     }
     if (category_id && category_id.trim() !== '') {
       filter.category_id = category_id;
@@ -917,8 +1064,9 @@ export const getTour = async (req: Request, res: Response) => {
     if (!tour) return res.status(404).json({ message: 'Không tìm thấy tour' });
 
     const isAdmin = (req as AuthRequest).user?.role === 'admin';
-    if (!isAdmin && tour.status !== 'active') {
-      return res.status(404).json({ message: 'Không tìm thấy tour' });
+    if (!isAdmin) {
+      const hasOpeningTrip = await TourTrip.exists({ tour_id: tour._id, status: 'OPENING' });
+      if (!hasOpeningTrip) return res.status(404).json({ message: 'Không tìm thấy tour' });
     }
 
     res.status(200).json({
@@ -978,6 +1126,8 @@ export const createTour = async (req: Request, res: Response) => {
       return res.status(400).json({ status: 'fail', message: 'Số chỗ phải lớn hơn 0' });
     }
     payload.departure_schedule = [{ date: dateStr, slots }];
+    // Tour mới tạo luôn là "Bản nháp"
+    payload.status = 'draft';
 
     // check trùng ngày cho cùng tên tour 
     if (payload.name) {
@@ -994,6 +1144,17 @@ export const createTour = async (req: Request, res: Response) => {
     }
 
     const newTour = await Tour.create(payload);
+
+    // tạo TourTrip mặc định DRAFT cho lịch khởi hành
+    const tourId = String((newTour as any)?._id || '');
+    if (tourId && dateStr) {
+      const trip_key = tripKeyOf(tourId, dateStr);
+      await TourTrip.findOneAndUpdate(
+        { trip_key },
+        { $setOnInsert: { tour_id: tourId, trip_key, trip_date: dateStr, status: 'DRAFT' as TripStatus } },
+        { upsert: true, new: true }
+      );
+    }
 
     res.status(201).json({
       status: 'success',
@@ -1018,35 +1179,24 @@ export const updateTour = async (req: Request, res: Response) => {
     }
 
 
-    // không cho sửa itinerary
-    if (req.body?.schedule) {
-      return res.status(400).json({ status: 'fail', message: 'Không được sửa itinerary (schedule)' });
-    }
-
-    // Nếu tour đã có booking: chỉ cho phép cập nhật một số trường "an toàn"
-    // (ví dụ: lịch khởi hành để mở thêm ngày mới, nhà cung cấp, trạng thái hiển thị, ảnh, chính sách).
-    // Không cho phép chỉnh sửa các trường ảnh hưởng trực tiếp tới booking hiện hữu (giá, thời lượng, danh mục, mô tả...).
-    const hasBooking = await Booking.exists({ tour_id: req.params.id, status: { $ne: 'cancelled' } });
-
-    // Đã có booking: chỉ cho phần “nội dung hiển thị / trạng thái bán” để tránh phá lịch trình & giá đã chốt với khách.
-    if (hasBooking) {
-      const allowedWhenHasBooking = new Set([
-        'departure_schedule',
-        'suppliers',
-        'status',
-        'images',
-        'policies',
-        'primary_guide_id',
-        'secondary_guide_ids',
-      ]);
-      const incomingKeys = Object.keys(req.body || {}).filter((k) => req.body?.[k] !== undefined);
-      const invalid = incomingKeys.filter((k) => !allowedWhenHasBooking.has(k));
-      if (invalid.length > 0) {
-        return res.status(409).json({
-          status: 'fail',
-          message: `Tour đã có booking, không thể chỉnh sửa các trường: ${invalid.join(', ')}`,
-        });
-      }
+    // Rule mới:
+    // - chỉ cho sửa: price, departure_schedule
+    // - nếu tour đang chạy (CLOSED) hoặc đã kết thúc (COMPLETED) thì KHÓA luôn departure_schedule + slots
+    const incomingKeys = Object.keys(req.body || {}).filter((k) => req.body?.[k] !== undefined);
+    const hasRunningTrip = await TourTrip.exists({
+      tour_id: tour._id,
+      status: { $in: ['CLOSED', 'COMPLETED'] },
+    });
+    const allowedKeys = new Set<string>(['price', 'prices', 'departure_schedule']);
+    if (hasRunningTrip) allowedKeys.delete('departure_schedule');
+    const invalid = incomingKeys.filter((k) => !allowedKeys.has(k));
+    if (invalid.length > 0) {
+      return res.status(409).json({
+        status: 'fail',
+        message: hasRunningTrip
+          ? `Tour đang chạy/đã kết thúc, chỉ được cập nhật: price. Trường không hợp lệ: ${invalid.join(', ')}`
+          : `Chỉ được cập nhật: price, departure_schedule. Trường không hợp lệ: ${invalid.join(', ')}`,
+      });
     }
 
     // validate template tồn tại (nếu có)
@@ -1058,6 +1208,23 @@ export const updateTour = async (req: Request, res: Response) => {
     // validate giá > 0 (nếu update price)
     if (req.body?.price !== undefined && Number(req.body.price) <= 0) {
       return res.status(400).json({ status: 'fail', message: 'Giá tour phải lớn hơn 0' });
+    }
+
+    // validate giá chi tiết (prices) nếu có
+    if (req.body?.prices !== undefined) {
+      const arr = Array.isArray(req.body.prices) ? req.body.prices : [];
+      const normalizedPrices = arr
+        .map((p: any) => ({ name: String(p?.name || '').trim(), price: Number(p?.price || 0) }))
+        .filter((p: any) => p.name);
+      if (normalizedPrices.length === 0) {
+        return res.status(400).json({ status: 'fail', message: 'Bảng giá chi tiết (prices) không hợp lệ' });
+      }
+      for (const p of normalizedPrices) {
+        if (!Number.isFinite(p.price) || p.price < 0) {
+          return res.status(400).json({ status: 'fail', message: 'Giá trong bảng giá chi tiết phải >= 0' });
+        }
+      }
+      (tour as any).prices = normalizedPrices;
     }
 
     // validate & cập nhật lịch khởi hành (nhiều ngày)
@@ -1107,36 +1274,24 @@ export const updateTour = async (req: Request, res: Response) => {
         return res.status(400).json({ status: 'fail', message: 'Có ngày khởi hành bị trùng với instance khác' });
       }
 
+      // upsert TourTrip DRAFT cho các ngày mới (nếu chưa có)
+      const tourId = String((tour as any)?._id || '');
+      if (tourId) {
+        await Promise.all(
+          normalized.map(async (item: any) => {
+            const trip_key = tripKeyOf(tourId, item.date);
+            await TourTrip.findOneAndUpdate(
+              { trip_key },
+              { $setOnInsert: { tour_id: tourId, trip_key, trip_date: item.date, status: 'DRAFT' as TripStatus } },
+              { upsert: true, new: true }
+            );
+          })
+        );
+      }
+
       (tour as any).departure_schedule = normalized;
     }
-
-    // apply other fields (allow-list)
-    if (req.body?.primary_guide_id && Array.isArray(req.body?.secondary_guide_ids)) {
-      const p = String(req.body.primary_guide_id);
-      const secIds = [...new Set(req.body.secondary_guide_ids.map((x: any) => String(x)))] as string[];
-      req.body.secondary_guide_ids = secIds.filter((id) => id.length > 0 && id !== p);
-    }
-
-    const allowed = [
-      'name',
-      'description',
-      'category_id',
-      'images',
-      'policies',
-      'suppliers',
-      'price',
-      'prices',
-      'status',
-      'duration_days',
-      'seasonalPrices',
-      'template_id',
-      'schedule',
-      'primary_guide_id',
-      'secondary_guide_ids',
-    ];
-    for (const key of allowed) {
-      if (req.body[key] !== undefined) (tour as any)[key] = req.body[key];
-    }
+    if (req.body?.price !== undefined) (tour as any).price = Number(req.body.price);
 
     await tour.save(); // đảm bảo slug unique chạy khi name đổi
 

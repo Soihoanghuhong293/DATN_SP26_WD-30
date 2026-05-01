@@ -278,3 +278,50 @@
   }
 }
 
+/* Trip status column — pill badges (list tour) */
+.tour-list-trip-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.tour-list-trip-status--draft {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.tour-list-trip-status--opening {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.tour-list-trip-status--closed {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.tour-list-trip-status--completed {
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.tour-list-trip-status--unknown {
+  color: #94a3b8;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  font-weight: 500;
+}
+

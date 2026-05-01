@@ -122,6 +122,20 @@ const BookingDetail = () => {
     }
   });
 
+  const updatePaymentMutation = useMutation({
+    mutationFn: async (next: 'unpaid' | 'deposit' | 'paid' | 'refunded') => {
+      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { payment_status: next }, getAuthHeader());
+    },
+    onSuccess: () => {
+      message.success('Đã cập nhật trạng thái thanh toán');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || 'Cập nhật thanh toán thất bại!');
+      queryClient.invalidateQueries({ queryKey: ['booking', id] });
+    }
+  });
+
   // xóa booking
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -266,7 +280,7 @@ const BookingDetail = () => {
   const renderStatus = (status: string) => {
     switch (status) {
       case 'confirmed': return <Tag color="success" bordered={false}>Đã xác nhận</Tag>;
-      case 'pending': return <Tag color="warning" bordered={false}>Chờ duyệt</Tag>;
+      case 'pending': return <Tag color="warning" bordered={false}>Chờ xác nhận</Tag>;
       case 'cancelled': return <Tag color="error" bordered={false}>Đã hủy</Tag>;
       default: return <Tag bordered={false}>{status || 'Chưa rõ'}</Tag>;
     }
@@ -577,7 +591,6 @@ const BookingDetail = () => {
                 { title: 'Loại', dataIndex: 'type', render: (t) => <Tag>{t || 'Người lớn'}</Tag> },
                 { title: 'Giới tính', dataIndex: 'gender', render: (g) => <span>{formatGender(g) || '---'}</span> },
                 { title: 'Ngày sinh', render: (_, record) => formatBirthDate(record.birthDate) || '---' },
-                { title: 'Phòng', dataIndex: ['room_name', 'room'] },
                 { 
                   title: '', width: 50, className: 'print:hidden',
                   render: (_, record) => (
@@ -604,6 +617,44 @@ const BookingDetail = () => {
                   <div style={{ marginTop: 8 }}>
                     {renderPaymentStatus(booking.payment_status, booking.status)}
                   </div>
+                  {String((booking as any)?.created_by_type || '') === 'admin' ? (
+                    <div style={{ marginTop: 10 }}>
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                        Cập nhật thanh toán (chỉ booking admin tạo)
+                      </Text>
+                      <Select
+                        size="middle"
+                        style={{ width: '100%' }}
+                        value={(booking.payment_status as any) || 'unpaid'}
+                        onChange={(v) => updatePaymentMutation.mutate(v)}
+                        loading={updatePaymentMutation.isPending}
+                        options={(() => {
+                          const cur = String((booking as any)?.payment_status || 'unpaid');
+                          if (cur === 'unpaid') {
+                            return [
+                              { value: 'unpaid', label: 'Chưa thanh toán' },
+                              { value: 'deposit', label: 'Đã đặt cọc' },
+                              { value: 'paid', label: 'Đã thanh toán đủ' },
+                            ];
+                          }
+                          if (cur === 'deposit') {
+                            return [
+                              { value: 'deposit', label: 'Đã đặt cọc' },
+                              { value: 'paid', label: 'Đã thanh toán đủ' },
+                              { value: 'refunded', label: 'Đã hoàn tiền' },
+                            ];
+                          }
+                          if (cur === 'paid') {
+                            return [
+                              { value: 'paid', label: 'Đã thanh toán đủ' },
+                              { value: 'refunded', label: 'Đã hoàn tiền' },
+                            ];
+                          }
+                          return [{ value: 'refunded', label: 'Đã hoàn tiền' }];
+                        })()}
+                      />
+                    </div>
+                  ) : null}
               </div>
               
               <Divider style={{ margin: '16px 0' }} />

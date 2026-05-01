@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   App as AntdApp,
@@ -18,18 +18,55 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, TagsOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import AdminPageHeader from '../../../components/admin/AdminPageHeader';
 import AdminListCard from '../../../components/admin/AdminListCard';
 import dayjs from 'dayjs';
 import { deleteTour, getCategories, getGuides, getTours } from '../../../services/api';
 import type { IGuide } from '../../../types/guide.types';
-import type { ICategory, ITour, TourStatus } from '../../../types/tour.types';
+import type { ICategory, ITour } from '../../../types/tour.types';
 import './TourList.css';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const getTourId = (t: ITour) => t._id || t.id;
+
+type TripStatus = 'DRAFT' | 'OPENING' | 'CLOSED' | 'COMPLETED';
+
+const getAuthHeaders = () => ({
+  Authorization: `Bearer ${
+    localStorage.getItem('token') || localStorage.getItem('admin_token') || ''
+  }`,
+});
+
+const normalizeDate = (dateVal?: string) => {
+  if (!dateVal) return '';
+  const raw = String(dateVal).trim();
+  if (!raw) return '';
+  if (raw.includes('T')) return raw.split('T')[0];
+  const d = dayjs(raw);
+  return d.isValid() ? d.format('YYYY-MM-DD') : '';
+};
+
+const tripStatusLabel = (st?: TripStatus | string) => {
+  const s = String(st || '').toUpperCase();
+  if (s === 'DRAFT') return 'Bản nháp';
+  if (s === 'OPENING') return 'Mở bán';
+  if (s === 'CLOSED') return 'Đang chạy';
+  if (s === 'COMPLETED') return 'Hoàn thành';
+  return '—';
+};
+
+const nearestTripDateOfTour = (t: ITour): string => {
+  const ds = Array.isArray((t as any)?.departure_schedule) ? ((t as any).departure_schedule as any[]) : [];
+  const dates = ds.map((row: any) => normalizeDate(row?.date)).filter((d: string) => !!d);
+  if (dates.length === 0) return '';
+  const today = dayjs().format('YYYY-MM-DD');
+  const sorted = [...new Set(dates)].sort();
+  const upcoming = sorted.find((d) => d >= today);
+  return upcoming || sorted[0];
+};
 
 const formatDateTime = (value?: string) => {
   if (!value) return '—';
@@ -38,13 +75,7 @@ const formatDateTime = (value?: string) => {
   return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(d);
 };
 
-const statusLabel = (status?: TourStatus | string) => {
-  if (status === 'active') return 'Hoạt động';
-  if (status === 'inactive') return 'Không hoạt động';
-  return 'Bản nháp';
-};
-
-type TourAdminStatusFilter = 'active' | 'inactive' | 'departed' | 'full';
+type TourAdminStatusFilter = 'departed' | 'full';
 type SeatFilter = 'available' | 'near_full' | 'full';
 
 type FilterState = {
@@ -52,6 +83,7 @@ type FilterState = {
   departureRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
   categoryId?: string;
   status?: TourAdminStatusFilter;
+  tripStatus?: TripStatus;
   priceMin?: number;
   priceMax?: number;
   seats?: SeatFilter;
@@ -63,6 +95,7 @@ const emptyFilters = (): FilterState => ({
   departureRange: [null, null],
   categoryId: undefined,
   status: undefined,
+  tripStatus: undefined,
   priceMin: undefined,
   priceMax: undefined,
   seats: undefined,
@@ -86,9 +119,6 @@ const TourList = () => {
     queryFn: () => getGuides({ limit: 200 }),
   });
 
-  const apiStatus: TourStatus | undefined =
-    applied.status === 'active' || applied.status === 'inactive' ? applied.status : undefined;
-
   const departureStartISO =
     applied.departureRange?.[0] ? applied.departureRange[0].startOf('day').toISOString() : undefined;
 
@@ -97,7 +127,6 @@ const TourList = () => {
     queryFn: () =>
       getTours({
         search: applied.search || undefined,
-        status: apiStatus,
         category_id: applied.categoryId,
         minPrice: applied.priceMin,
         maxPrice: applied.priceMax,
@@ -106,6 +135,37 @@ const TourList = () => {
   });
 
   const tours = (data?.data ?? []) as ITour[];
+  const [tripStatusByTourId, setTripStatusByTourId] = useState<Record<string, TripStatus>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const pairs = await Promise.all(
+          tours.map(async (t) => {
+            const tourId = String(getTourId(t) || '');
+            const d = nearestTripDateOfTour(t);
+            if (!tourId || !d) return [tourId, 'DRAFT' as TripStatus] as const;
+            const r = await axios.get(`http://localhost:5000/api/v1/tours/${tourId}/trips/${d}/status`, {
+              headers: getAuthHeaders(),
+              params: { _t: Date.now() },
+            });
+            const st = String(r.data?.data?.status || '').toUpperCase() as TripStatus;
+            return [tourId, st] as const;
+          })
+        );
+        const map: Record<string, TripStatus> = {};
+        for (const [tid, st] of pairs) if (tid) map[tid] = st;
+        if (!cancelled) setTripStatusByTourId(map);
+      } catch {
+        if (!cancelled) setTripStatusByTourId({});
+      }
+    };
+    if (tours.length > 0) run();
+    return () => {
+      cancelled = true;
+    };
+  }, [tours]);
 
   const categoryOptions = useMemo(() => {
     const categories = ((categoriesResp as any)?.data?.categories ?? []) as ICategory[];
@@ -118,7 +178,7 @@ const TourList = () => {
   }, [guidesResp]);
 
   const filteredData = useMemo(() => {
-    const { search, departureRange, status, seats, guideId } = applied;
+    const { search, departureRange, status, tripStatus, seats, guideId } = applied;
     const [from, to] = departureRange ?? [null, null];
     const lower = (search || '').trim().toLowerCase();
 
@@ -152,6 +212,13 @@ const TourList = () => {
         }
       }
 
+      if (tripStatus) {
+        const tourId = String(getTourId(t) || '');
+        const st = tripStatusByTourId[tourId];
+        if (!st) return false;
+        if (String(st).toUpperCase() !== String(tripStatus).toUpperCase()) return false;
+      }
+
       if (seats) {
         const slots = Number((t as any)?.slots ?? (t as any)?.totalSlots ?? NaN);
         const remaining = Number((t as any)?.slotsRemaining ?? (t as any)?.remainingSlots ?? NaN);
@@ -178,7 +245,7 @@ const TourList = () => {
 
       return true;
     });
-  }, [applied, tours]);
+  }, [applied, tours, tripStatusByTourId]);
 
   const appliedTags = useMemo(() => {
     const tags: { key: keyof FilterState; label: string }[] = [];
@@ -189,12 +256,19 @@ const TourList = () => {
     }
     if (applied.status) {
       const map: Record<TourAdminStatusFilter, string> = {
-        active: 'Hoạt động',
-        inactive: 'Không hoạt động',
         departed: 'Đã khởi hành',
         full: 'Hết chỗ',
       };
-      tags.push({ key: 'status', label: `Trạng thái: ${map[applied.status]}` });
+      tags.push({ key: 'status', label: `Lọc: ${map[applied.status]}` });
+    }
+    if (applied.tripStatus) {
+      const map: Record<TripStatus, string> = {
+        DRAFT: 'DRAFT',
+        OPENING: 'OPENING',
+        CLOSED: 'CLOSED',
+        COMPLETED: 'COMPLETED',
+      };
+      tags.push({ key: 'tripStatus', label: `Trạng thái chuyến: ${map[applied.tripStatus]}` });
     }
     if (applied.priceMin != null || applied.priceMax != null) {
       const min = applied.priceMin != null ? `${applied.priceMin.toLocaleString('vi-VN')}đ` : '—';
@@ -287,20 +361,16 @@ const TourList = () => {
       },
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 160,
-      render: (status) => {
-        const s = String(status || 'draft') as TourStatus | string;
-        const active = s === 'active';
-        const inactive = s === 'inactive';
-        const cls = active ? 'tour-list-status--active' : inactive ? 'tour-list-status--inactive' : 'tour-list-status--draft';
-        const dot = active ? '#10b981' : inactive ? '#94a3b8' : '#94a3b8';
+      title: 'Trạng thái chuyến',
+      key: 'trip_status',
+      width: 140,
+      render: (_: unknown, record) => {
+        const tourId = String(getTourId(record) || '');
+        const st = tripStatusByTourId[tourId];
+        const code = st ? String(st).toLowerCase() : 'unknown';
         return (
-          <span className={`tour-list-status ${cls}`}>
-            <span style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />
-            {statusLabel(s)}
+          <span className={`tour-list-trip-status tour-list-trip-status--${code}`}>
+            {tripStatusLabel(st)}
           </span>
         );
       },
@@ -371,7 +441,7 @@ const TourList = () => {
         );
       },
     },
-  ], [deleteMutation, navigate]);
+  ], [deleteMutation, navigate, tripStatusByTourId]);
 
   return (
     <div className="tour-list-page">
@@ -435,19 +505,34 @@ const TourList = () => {
               </div>
 
               <div className="tour-filterbar-item">
-                <div className="tour-filterbar-label">Trạng thái</div>
+                <div className="tour-filterbar-label">Khác</div>
                 <Select
                   allowClear
                   size="middle"
-                  placeholder="Trạng thái"
+                  placeholder="Chọn"
                   options={[
-                    { value: 'active', label: 'Hoạt động' },
-                    { value: 'inactive', label: 'Không hoạt động' },
                     { value: 'departed', label: 'Đã khởi hành' },
                     { value: 'full', label: 'Hết chỗ' },
                   ]}
                   value={draft.status}
                   onChange={(v) => setDraft((p) => ({ ...p, status: v }))}
+                />
+              </div>
+
+              <div className="tour-filterbar-item">
+                <div className="tour-filterbar-label">Trạng thái chuyến</div>
+                <Select
+                  allowClear
+                  size="middle"
+                  placeholder="Chọn trạng thái chuyến"
+                  options={[
+                    { value: 'DRAFT', label: 'DRAFT (Bản nháp)' },
+                    { value: 'OPENING', label: 'OPENING (Mở bán)' },
+                    { value: 'CLOSED', label: 'CLOSED (Đang chạy)' },
+                    { value: 'COMPLETED', label: 'COMPLETED (Hoàn thành)' },
+                  ]}
+                  value={draft.tripStatus}
+                  onChange={(v) => setDraft((p) => ({ ...p, tripStatus: v }))}
                 />
               </div>
 

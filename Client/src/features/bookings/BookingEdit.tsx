@@ -367,7 +367,7 @@ const BookingEdit = () => {
                 extra={<span className="text-xs text-gray-500 italic mt-1 inline-block">Hệ thống làm mờ các trạng thái sai quy trình.</span>}
               >
                 <Select size="large">
-                  <Option value="pending" disabled={!allowedStatuses.includes('pending')}>Chờ duyệt</Option>
+                  <Option value="pending" disabled={!allowedStatuses.includes('pending')}>Chờ xác nhận</Option>
                   <Option value="confirmed" disabled={!allowedStatuses.includes('confirmed')}>Đã xác nhận</Option>
                   <Option value="deposit" disabled={!allowedStatuses.includes('deposit')}>Đã cọc</Option>
                   <Option value="paid" disabled={!allowedStatuses.includes('paid')}>Đã thanh toán</Option>

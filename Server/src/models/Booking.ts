@@ -5,6 +5,11 @@ export interface IBooking extends Document {
   user_id?: mongoose.Types.ObjectId;
   guide_id?: mongoose.Types.ObjectId;
 
+  /** Nguồn tạo booking: admin (tạo hộ) hoặc customer (khách tự đặt) */
+  created_by_type?: "admin" | "customer";
+  /** User tạo booking (admin/nhân sự) nếu có auth */
+  created_by_user_id?: mongoose.Types.ObjectId;
+
   customer_name: string;
   customer_phone: string;
   customer_email?: string;
@@ -26,6 +31,9 @@ export interface IBooking extends Document {
 
   status: "pending" | "confirmed" | "cancelled";
   payment_status?: "unpaid" | "deposit" | "paid" | "refunded";
+
+  /** Trạng thái nhập thông tin hành khách */
+  customer_info_status?: "MISSING" | "PARTIAL" | "COMPLETED";
 
   tour_stage?: "scheduled" | "in_progress" | "completed";
 
@@ -130,6 +138,12 @@ const BookingSchema: Schema = new Schema(
       default: "unpaid",
     },
 
+    customer_info_status: {
+      type: String,
+      enum: ["MISSING", "PARTIAL", "COMPLETED"],
+      default: "MISSING",
+    },
+
     tour_stage: {
       type: String,
       enum: ["scheduled", "in_progress", "completed"],
@@ -182,6 +196,13 @@ const BookingSchema: Schema = new Schema(
     deposit_amount: { type: Number, default: 0 },
     paid_amount: { type: Number, default: 0 },
     remaining_amount: { type: Number, default: 0 },
+
+    created_by_type: {
+      type: String,
+      enum: ["admin", "customer"],
+      default: "customer",
+    },
+    created_by_user_id: { type: Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
