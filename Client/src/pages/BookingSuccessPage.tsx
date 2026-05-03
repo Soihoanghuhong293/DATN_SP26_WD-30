@@ -21,6 +21,7 @@ import {
 } from 'antd';
 import { ArrowLeftOutlined, CalendarOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { tourImagePlaceholder } from '../constants/tourImagePlaceholder';
 
 const { Title, Text } = Typography;
 
@@ -347,11 +348,11 @@ const BookingSuccessPage = () => {
 
             <div style={{ display: 'flex', gap: 12 }}>
               <img
-                src={tourImage || 'https://via.placeholder.com/120x80?text=Tour'}
+                src={tourImage || tourImagePlaceholder(120, 80)}
                 alt={tourName || 'tour'}
                 style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 10 }}
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = 'https://via.placeholder.com/120x80?text=Tour';
+                  (e.currentTarget as HTMLImageElement).src = tourImagePlaceholder(120, 80);
                 }}
               />
               <div style={{ flex: 1, minWidth: 0 }}>

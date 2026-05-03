@@ -80,6 +80,17 @@ const BookingList = () => {
 
   const resolvePaymentStatus = (record: IBooking) => resolveEffectivePayment(record);
 
+  const getBookingStatusClass = (record: IBooking) => {
+    if (record.status === 'cancelled') return 'cancelled';
+    const stage = String(record.tour_stage || 'scheduled').trim().toLowerCase();
+    if (stage === 'completed') return 'completed';
+    if (stage === 'in_progress') return 'in_progress';
+    const resolved = resolvePaymentStatus(record);
+    if (resolved !== 'unpaid') return resolved;
+    if (record.status === 'confirmed') return 'confirmed';
+    return 'pending';
+  };
+
   // ✅ GET LIST
   const { data: bookings, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['bookings', applied],
@@ -249,59 +260,24 @@ const BookingList = () => {
     {
       title: 'Trạng thái',
       key: 'status',
-      width: 150,
+      width: 180,
       render: (_: any, record: IBooking) => {
-        if (record.status === 'cancelled') {
-          return (
-            <span className="booking-list-status booking-list-status--inactive">
-              <span className="booking-list-dot" style={{ background: '#94a3b8' }} />
-              Đã hủy
-            </span>
-          );
-        }
+        const statusKey = getBookingStatusClass(record);
+        const labelMap: Record<string, string> = {
+          cancelled: 'Đã hủy',
+          completed: 'Đã kết thúc',
+          in_progress: 'Đang diễn ra',
+          paid: 'Đã thanh toán đủ',
+          deposit: 'Đã đặt cọc',
+          confirmed: 'Đã xác nhận',
+          pending: 'Chờ xác nhận',
+          refunded: 'Đã hoàn tiền',
+        };
 
-        const stage = record.tour_stage || 'scheduled';
-        if (stage === 'completed') {
-          return (
-            <span className="booking-list-status booking-list-status--active">
-              <span className="booking-list-dot" style={{ background: '#10b981' }} />
-              Đã kết thúc
-            </span>
-          );
-        }
-        if (stage === 'in_progress') {
-          return (
-            <span className="booking-list-status booking-list-status--active">
-              <span className="booking-list-dot" style={{ background: '#0ea5e9' }} />
-              Đang diễn ra
-            </span>
-          );
-        }
-
-        const resolved = resolvePaymentStatus(record);
-        if (resolved !== 'unpaid') {
-          const current = paymentStatusMap[resolved];
-          return (
-            <span className="booking-list-status booking-list-status--active">
-              <span className="booking-list-dot" style={{ background: resolved === 'paid' ? '#10b981' : '#a855f7' }} />
-              {current.text}
-            </span>
-          );
-        }
-
-        if (record.status === 'confirmed') {
-          return (
-            <span className="booking-list-status booking-list-status--active">
-              <span className="booking-list-dot" style={{ background: '#2563eb' }} />
-              Đã xác nhận
-            </span>
-          );
-        }
-        
         return (
-          <span className="booking-list-status booking-list-status--inactive">
-            <span className="booking-list-dot" style={{ background: '#f59e0b' }} />
-            Chờ xác nhận
+          <span className={`booking-list-status booking-list-status--${statusKey}`}>
+            <span className="booking-list-dot" />
+            {labelMap[statusKey] || 'Không xác định'}
           </span>
         );
       },
@@ -314,7 +290,7 @@ const BookingList = () => {
       fixed: 'right',
       render: (_: any, record: IBooking) => {
         const rowDeleting = deleteMutation.isPending && deleteMutation.variables === record._id;
-        const stage = String(record.tour_stage || 'scheduled');
+        const stage = String(record.tour_stage || 'scheduled').trim().toLowerCase();
         const deleteBlockedByStage = stage === 'in_progress' || stage === 'completed';
         const deleteBlockedByPayment = !canAdminDeleteBookingRecord(record);
         const deleteDisabled = deleteBlockedByStage || deleteBlockedByPayment;
@@ -345,7 +321,6 @@ const BookingList = () => {
                     icon={<DeleteOutlined />}
                     loading={rowDeleting}
                     disabled={deleteDisabled}
-                    onClick={(e) => e.stopPropagation()}
                   />
                 </span>
               </Tooltip>
@@ -537,7 +512,7 @@ const BookingList = () => {
           scroll={{ x: 1000 }}
           onRow={(record: IBooking) => ({
             onClick: (e) => {
-              if ((e.target as HTMLElement).closest('.booking-list-actions, .ant-popover, .ant-popconfirm')) {
+              if ((e.target as HTMLElement).closest('.booking-list-actions, .ant-popover, .ant-popconfirm, .ant-btn, button, input, textarea, select')) {
                 return;
               }
               navigate(`/admin/bookings/${record._id}`);

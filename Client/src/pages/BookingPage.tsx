@@ -28,6 +28,7 @@ import { getTour } from "../services/api";
 import type { ITour } from "../types/tour.types";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import "./styles/DepartureCalendar.css";
+import { tourImagePlaceholder } from "../constants/tourImagePlaceholder";
 
 type PassengerGender = "male" | "female" | "other";
 
@@ -558,8 +559,10 @@ const BookingPage: React.FC = () => {
         navigate(`/tours/${(tour as any)?.id || id}`);
       }
     } catch (error: any) {
-      console.error("Lỗi đặt tour:", error);
-      message.error(error?.response?.data?.message || "Lỗi khi đặt tour!");
+      const data = error?.response?.data;
+      console.error("Lỗi đặt tour:", data || error);
+      const msg = typeof data?.message === "string" ? data.message : "Lỗi khi đặt tour!";
+      message.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -1141,11 +1144,11 @@ const BookingPage: React.FC = () => {
 
             <div style={{ display: "flex", gap: 12 }}>
               <img
-                src={(tour as any)?.images?.[0] || "https://via.placeholder.com/120x80?text=Tour"}
+                src={(tour as any)?.images?.[0] || tourImagePlaceholder(120, 80)}
                 alt={(tour as any)?.name || "tour"}
                 style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 10 }}
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "https://via.placeholder.com/120x80?text=Tour";
+                  (e.currentTarget as HTMLImageElement).src = tourImagePlaceholder(120, 80);
                 }}
               />
               <div style={{ flex: 1 }}>

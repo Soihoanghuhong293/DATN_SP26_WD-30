@@ -75,6 +75,13 @@
   color: white;
 }
 
+.badge-opening {
+  background: #10b981;
+  color: white;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
 .badge-hidden {
   background: #6b7280;
   color: white;

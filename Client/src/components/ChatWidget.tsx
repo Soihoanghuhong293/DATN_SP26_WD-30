@@ -5,6 +5,7 @@ import type { ITour } from '../types/tour.types';
 import { getTours } from '../services/api';
 import { sendChatMessage, submitContactMessage } from '../services/chat';
 import './ChatWidget.css';
+import { tourImagePlaceholder } from '../constants/tourImagePlaceholder';
 
 type ChatMode = 'ai' | 'contact';
 
@@ -460,11 +461,10 @@ const ChatWidget = () => {
                             <Link key={t.id} to={`/tours/${t.id}`} className="chat-tour-card">
                               <img
                                 className="chat-tour-card-img"
-                                src={t.images?.[0] || 'https://via.placeholder.com/300x200?text=Tour'}
+                                src={t.images?.[0] || tourImagePlaceholder(300, 200)}
                                 alt={t.name}
                                 onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src =
-                                    'https://via.placeholder.com/300x200?text=Tour';
+                                  (e.currentTarget as HTMLImageElement).src = tourImagePlaceholder(300, 200);
                                 }}
                               />
                               <div className="chat-tour-card-body">

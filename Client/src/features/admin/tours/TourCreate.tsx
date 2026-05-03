@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { getCategoryTree, getProviders, getRestaurants, getProviderTickets } from '../../../services/api';
+
+const API_V1 = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:5000/api/v1';
 import type { IRestaurant, IProviderTicket } from '../../../types/provider.types';
 import { 
   Form, Input, InputNumber, Button, Card, Row, Col, 
@@ -261,9 +264,29 @@ const TourCreate = () => {
 
   const primaryGuideIdWatch = Form.useWatch('primary_guide_id', form);
   const departureDateWatch = Form.useWatch('departure_date', form);
+  const durationDaysWatch = Form.useWatch('duration_days', form);
   const hasDepartureDate = Boolean(departureDateWatch);
+  const selectedDepartureDateStr = departureDateWatch ? departureDateWatch.format('YYYY-MM-DD') : null;
+  const selectedDurationDays = Number(durationDaysWatch || 1);
 
-  const guideUserOptions = useMemo(() => {
+  const availableGuidesQuery = useQuery({
+    queryKey: ['available-guides', selectedDepartureDateStr, selectedDurationDays],
+    queryFn: async () => {
+      if (!selectedDepartureDateStr) return [];
+      const res = await axios.get(`${API_V1}/tours/available-guides`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        params: {
+          date: selectedDepartureDateStr,
+          duration: selectedDurationDays,
+        },
+      });
+      return res.data?.data || [];
+    },
+    enabled: Boolean(selectedDepartureDateStr),
+  });
+  const availableGuidesData = availableGuidesQuery.data || [];
+
+  const allGuideUserOptions = useMemo(() => {
     const arr = Array.isArray(usersList) ? usersList : [];
     return arr
       .filter((u: any) => u.role === 'guide' || u.role === 'hdv')
@@ -274,10 +297,36 @@ const TourCreate = () => {
       }));
   }, [usersList]);
 
+  const availableGuideIds = useMemo(() => {
+    return new Set(Array.isArray(availableGuidesData) ? availableGuidesData.map((g: any) => String(g._id)) : []);
+  }, [availableGuidesData]);
+
+  const guideUserOptions = useMemo(() => {
+    if (!selectedDepartureDateStr || !availableGuidesQuery.isSuccess) {
+      return allGuideUserOptions;
+    }
+    return allGuideUserOptions.filter((option) => availableGuideIds.has(option.value));
+  }, [allGuideUserOptions, availableGuideIds, selectedDepartureDateStr, availableGuidesQuery.isSuccess]);
+
   const secondaryGuideOptions = useMemo(() => {
     const p = primaryGuideIdWatch ? String(primaryGuideIdWatch) : '';
     return guideUserOptions.filter((o) => o.value !== p);
   }, [guideUserOptions, primaryGuideIdWatch]);
+
+  useEffect(() => {
+    if (!selectedDepartureDateStr || !availableGuidesQuery.isSuccess) return;
+    const currentPrimary = form.getFieldValue('primary_guide_id');
+    if (currentPrimary && !availableGuideIds.has(String(currentPrimary))) {
+      form.setFieldsValue({ primary_guide_id: undefined });
+    }
+    const currentSecondary = form.getFieldValue('secondary_guide_ids') || [];
+    const filteredSecondary = (Array.isArray(currentSecondary) ? currentSecondary : []).filter((id: any) =>
+      availableGuideIds.has(String(id))
+    );
+    if (filteredSecondary.length !== (currentSecondary?.length || 0)) {
+      form.setFieldsValue({ secondary_guide_ids: filteredSecondary });
+    }
+  }, [selectedDepartureDateStr, selectedDurationDays, availableGuideIds, availableGuidesQuery.isSuccess]);
 
   const mutation = useMutation({
     mutationFn: async (values: any) => {
@@ -706,13 +755,25 @@ const TourCreate = () => {
                       <Form.Item
                         name="departure_date"
                         label={<span className="font-medium text-gray-600">Ngày khởi hành</span>}
-                        rules={[{ required: true, message: 'Chọn ngày khởi hành!' }]}
+                        rules={[
+                          { required: true, message: 'Chọn ngày khởi hành!' },
+                          {
+                            validator: async (_, value) => {
+                              if (!value) return Promise.resolve();
+                              if (value.startOf('day').isBefore(dayjs().startOf('day'))) {
+                                return Promise.reject(new Error('Ngày khởi hành phải từ hôm nay trở đi.'));
+                              }
+                              return Promise.resolve();
+                            },
+                          },
+                        ]}
                         style={{ marginBottom: 0 }}
                       >
                         <DatePicker
                           format="DD/MM/YYYY"
                           placeholder="Chọn 1 ngày khởi hành"
                           className="w-full"
+                          disabledDate={(current) => current && current.startOf('day').isBefore(dayjs().startOf('day'))}
                           onChange={(v) => {
                             setSelectedDepartureDate(v);
                             if (!v) {
@@ -760,6 +821,9 @@ const TourCreate = () => {
                         }
                         if (value && !hasDepartureDate) {
                           throw new Error('Vui lòng chọn ngày khởi hành trước khi gán HDV.');
+                        }
+                        if (value && selectedDepartureDateStr && availableGuidesQuery.isSuccess && !availableGuideIds.has(String(value))) {
+                          throw new Error('HDV này đã có lịch trong khoảng ngày đã chọn.');
                         }
                       },
                     },

@@ -18,7 +18,6 @@ const FeaturedTours = () => {
         const data = await getTours({
           page: 1,
           limit: 6,
-          status: 'active',
         });
         if (data?.data && Array.isArray(data.data)) {
           setTours(data.data);

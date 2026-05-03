@@ -60,6 +60,29 @@ const normalizeTripDate = (value: any) => {
   return raw;
 };
 
+/** Chuẩn YYYY-MM-DD để so khớp ngày khởi hành / departure_schedule (ISO, DD/MM/YYYY, Mongo Date…). */
+const toYyyyMmDd = (value: any): string => {
+  if (value == null || value === '') return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().split('T')[0];
+  }
+  const raw = String(value).trim();
+  if (!raw) return '';
+  const nt = normalizeTripDate(raw);
+  if (nt) return nt;
+  if (raw.includes('T')) return raw.split('T')[0];
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const dd = slash[1].padStart(2, '0');
+    const mm = slash[2].padStart(2, '0');
+    const yyyy = slash[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return '';
+};
+
 const tripKeyOf = (tourId: string, dateStr: string) => `${tourId}:${dateStr}`;
 
 const syncPassengersForBooking = async (booking: any) => {
@@ -1402,30 +1425,31 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ status: 'fail', message: 'Tour không tồn tại' });
     }
 
-    // Gate theo tour.status chỉ áp dụng cho khách (role=user).
-    // Admin/nhân sự nội bộ vẫn có thể tạo booking (ví dụ: đặt hộ), còn điều kiện mở bán
-    // được kiểm soát theo Trip status (OPENING) ở bước dưới.
+    // Mở bán / tạm dừng theo TourTrip (OPENING/CLOSED…), không theo tour.status draft/active (legacy).
     const authRole = String((req as any)?.user?.role || '');
     const isPublicUser = authRole === 'user';
-    if (isPublicUser && (tour as any).status !== 'active') {
+    const tourCatalogStatus = String((tour as any).status || '').toLowerCase();
+    if (tourCatalogStatus === 'hidden') {
       return res.status(400).json({
         status: 'fail',
-        message: 'Tour không mở bán hoặc đang tạm dừng. Chỉ tour đang hoạt động mới được đặt.',
+        message: 'Tour không khả dụng.',
       });
     }
 
-    // Validate số chỗ còn lại cho ngày khởi hành
+    // Validate số chỗ còn lại cho ngày khởi hành (cùng format ngày với client & DB: YYYY-MM-DD, DD/MM/YYYY…)
     const departureSchedule = (tour as any).departure_schedule || [];
-    const startDateStr = new Date(startDate).toISOString().split('T')[0]; // YYYY-MM-DD
+    const startDateStr = toYyyyMmDd(startDate);
+    if (!startDateStr) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Ngày khởi hành không hợp lệ. Vui lòng chọn lại ngày.',
+      });
+    }
 
     const scheduleForDate = Array.isArray(departureSchedule)
       ? departureSchedule.find((s: any) => {
-          if (!s?.date) return false;
-          const normalized =
-            typeof s.date === 'string'
-              ? (s.date.includes('T') ? s.date.split('T')[0] : s.date)
-              : new Date(s.date).toISOString().split('T')[0];
-          return normalized === startDateStr;
+          if (s?.date == null || s?.date === '') return false;
+          return toYyyyMmDd(s.date) === startDateStr;
         })
       : null;
 
@@ -1438,7 +1462,8 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     const totalSlotsForDate = scheduleForDate.slots ?? 0;
 
-    // Trip status gate (4-state model): chỉ cho booking khi OPENING
+    // Trip status gate: chỉ cho đặt khi OPENING hoặc DRAFT (lịch đã có trong departure_schedule).
+    // Trước đây tạo TourTrip mặc định DRAFT rồi chặn vì !== OPENING → khách luôn 400.
     const tripDateStr = startDateStr;
     const tripKey = tripKeyOf(String(tour_id), tripDateStr);
     const tripDoc =
@@ -1447,13 +1472,15 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
         tour_id,
         trip_key: tripKey,
         trip_date: tripDateStr,
-        status: 'DRAFT' as TripStatus,
+        status: 'OPENING' as TripStatus,
       }));
     const st = String((tripDoc as any)?.status || '').toUpperCase();
-    if (st && st !== 'OPENING') {
+    const tripAllowsBooking = !st || st === 'OPENING' || st === 'DRAFT';
+    if (!tripAllowsBooking) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Chuyến đi hiện không mở bán (status != OPENING). Vui lòng chọn ngày khác hoặc liên hệ quản trị viên.',
+        message:
+          'Chuyến đi hiện không mở bán (đã đóng hoặc đã hoàn tất). Vui lòng chọn ngày khác hoặc liên hệ quản trị viên.',
       });
     }
 

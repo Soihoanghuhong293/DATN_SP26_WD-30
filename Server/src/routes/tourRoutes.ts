@@ -9,6 +9,8 @@ router
   .get(optionalProtect, tourController.getAllTours)
   .post(tourController.createTour);
 
+router.get('/available-guides', protect, restrictToAdmin, tourController.getAvailableGuidesForTrip);
+
 router
   .route('/:id')
   .get(optionalProtect, tourController.getTour)

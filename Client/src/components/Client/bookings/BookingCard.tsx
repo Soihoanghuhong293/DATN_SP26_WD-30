@@ -9,6 +9,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import styles from "./BookingCard.module.css";
+import { tourImagePlaceholder } from "../../../constants/tourImagePlaceholder";
 
 const { Text } = Typography;
 
@@ -64,10 +65,10 @@ export function BookingCard(props: {
       <div className={styles.row}>
         <img
           className={styles.thumb}
-          src={booking.tourThumb || "https://via.placeholder.com/320x200?text=Tour"}
+          src={booking.tourThumb || tourImagePlaceholder(320, 200)}
           alt={booking.tourName || "Tour"}
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = "https://via.placeholder.com/320x200?text=Tour";
+            (e.currentTarget as HTMLImageElement).src = tourImagePlaceholder(320, 200);
           }}
         />
 

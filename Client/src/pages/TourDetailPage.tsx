@@ -315,9 +315,8 @@ const TourDetailPage = () => {
           return out;
         };
 
-        // Fetch a pool then rank by priority:
-        // 1) same location 2) same serviceLevel 3) exclude current
-        const poolRes = await getTours({ page: 1, limit: 200, status: "active" });
+        
+        const poolRes = await getTours({ page: 1, limit: 200 });
         const pool = pickUnique(Array.isArray(poolRes?.data) ? poolRes.data : []);
 
         const curLoc = getTourLocationKey(current);
@@ -722,9 +721,7 @@ const TourDetailPage = () => {
 
         <h1>{tour.name}</h1>
 
-        <Tag color={tour.status === "active" ? "green" : "orange"}>
-          {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
-        </Tag>
+        <Tag color="green">Mở bán</Tag>
 
         <Button
           onClick={handleToggleWishlist}

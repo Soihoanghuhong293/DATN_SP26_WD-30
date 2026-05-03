@@ -3,21 +3,15 @@ import { Link } from 'react-router-dom';
 import { CalendarOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { ITour } from '../../types/tour.types';
 import '../styles/TourCard.css';
+import { tourImagePlaceholder } from '../../constants/tourImagePlaceholder';
 
 interface TourCardProps {
   tour: ITour;
 }
 
 const TourCard: React.FC<TourCardProps> = ({ tour }) => {
-  const statusLabelMap: Record<string, string> = {
-    active: 'ACTIVE',
-    draft: 'DRAFT',
-    inactive: 'INACTIVE',
-    hidden: 'HIDDEN',
-  };
-
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Kh%C3%B4ng+%E1%BA%A3nh';
+    e.currentTarget.src = tourImagePlaceholder(300, 200, 'Không ảnh');
   };
 
   const durationDays = tour.duration_days ?? tour.duration_;
@@ -28,15 +22,13 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
       <div className="tour-card">
         <div className="tour-card-image-container">
           <img
-            src={tour.images?.[0] || 'https://via.placeholder.com/300x200?text=%E1%BA%A2nh+tour'}
+            src={tour.images?.[0] || tourImagePlaceholder(300, 200, 'Ảnh tour')}
             alt={tour.name || 'Tour'}
             className="tour-card-image"
             onError={handleImageError}
           />
           <div className="tour-card-badge">
-            <span className={`badge badge-${tour.status}`}>
-              {statusLabelMap[tour.status] ?? tour.status}
-            </span>
+            <span className="badge badge-opening">Mở bán</span>
           </div>
         </div>
 

@@ -31,11 +31,65 @@ const normalizeDateStr = (value: any) => {
 
 const normalizeTripDate = (value: any) => {
   const s = normalizeDateStr(value);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
-  return s;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const raw = String(value ?? '').trim();
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    return `${slash[3]}-${slash[2].padStart(2, '0')}-${slash[1].padStart(2, '0')}`;
+  }
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return '';
+};
+
+const parseYyyyMmDd = (dateStr: string): Date | null => {
+  if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(dateStr || '').trim())) return null;
+  const d = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const addDays = (date: Date, days: number) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+
+const rangesOverlap = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) => {
+  return aStart.getTime() <= bEnd.getTime() && bStart.getTime() <= aEnd.getTime();
 };
 
 const tripKeyOf = (tourId: string, dateStr: string) => `${tourId}:${dateStr}`;
+
+async function filterTourSchedulesToOpeningTripsOnly(tours: any[]): Promise<any[]> {
+  if (!Array.isArray(tours) || tours.length === 0) return [];
+  const ids = tours.map((t: any) => t._id).filter(Boolean);
+  const rows = await TourTrip.find({ tour_id: { $in: ids }, status: 'OPENING' })
+    .select('tour_id trip_date trip_key')
+    .lean();
+
+  const allowedDatesByTourId = new Map<string, Set<string>>();
+  for (const r of rows as any[]) {
+    const tid = String(r.tour_id || '');
+    let d = normalizeTripDate(r.trip_date);
+    if (!d && r.trip_key) {
+      const tk = String(r.trip_key);
+      const pref = `${tid}:`;
+      if (tk.startsWith(pref)) d = normalizeTripDate(tk.slice(pref.length));
+    }
+    if (!tid || !d) continue;
+    if (!allowedDatesByTourId.has(tid)) allowedDatesByTourId.set(tid, new Set());
+    allowedDatesByTourId.get(tid)!.add(d);
+  }
+
+  const out: any[] = [];
+  for (const tour of tours) {
+    const tid = String(tour._id || '');
+    const allowed = allowedDatesByTourId.get(tid);
+    const plain = typeof tour.toObject === 'function' ? tour.toObject() : { ...tour };
+    const ds = Array.isArray(plain.departure_schedule) ? plain.departure_schedule : [];
+    if (!allowed || allowed.size === 0) continue;
+    plain.departure_schedule = ds.filter((s: any) => allowed.has(normalizeTripDate(s?.date)));
+    if (plain.departure_schedule.length === 0) continue;
+    out.push(plain);
+  }
+  return out;
+}
 
 const TRIP_STATUSES: TripStatus[] = ['DRAFT', 'OPENING', 'CLOSED', 'COMPLETED'];
 
@@ -1042,13 +1096,15 @@ export const getAllTours = async (req: Request, res: Response) => {
       .skip(skip)
       .limit(limitNum);
 
+    const data = !isAdmin ? await filterTourSchedulesToOpeningTripsOnly(tours) : tours.map((t: any) => (typeof t.toObject === 'function' ? t.toObject() : t));
+
     res.status(200).json({
       status: 'success',
       results: total,
       total,
       page: pageNum,
       limit: limitNum,
-      data: tours
+      data,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -1074,11 +1130,17 @@ export const getTour = async (req: Request, res: Response) => {
     if (!isAdmin) {
       const hasOpeningTrip = await TourTrip.exists({ tour_id: tour._id, status: 'OPENING' });
       if (!hasOpeningTrip) return res.status(404).json({ message: 'Không tìm thấy tour' });
+      const narrowed = await filterTourSchedulesToOpeningTripsOnly([tour]);
+      if (!narrowed.length) return res.status(404).json({ message: 'Không tìm thấy tour' });
+      return res.status(200).json({
+        status: 'success',
+        data: narrowed[0],
+      });
     }
 
     res.status(200).json({
       status: 'success',
-      data: tour
+      data: tour,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -1129,14 +1191,63 @@ export const createTour = async (req: Request, res: Response) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành không hợp lệ (YYYY-MM-DD)' });
     }
+    const departureDate = parseYyyyMmDd(dateStr);
+    if (!departureDate) {
+      return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành không hợp lệ' });
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (departureDate.getTime() < today.getTime()) {
+      return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành phải từ hôm nay trở đi.' });
+    }
     if (slots <= 0) {
       return res.status(400).json({ status: 'fail', message: 'Số chỗ phải lớn hơn 0' });
     }
-    payload.departure_schedule = [{ date: dateStr, slots }];
-    // Tour mới tạo luôn là "Bản nháp"
-    payload.status = 'draft';
 
-    // check trùng ngày cho cùng tên tour 
+    const guideIds: string[] = [];
+    if (payload.primary_guide_id) guideIds.push(String(payload.primary_guide_id));
+    if (Array.isArray(payload.secondary_guide_ids)) {
+      payload.secondary_guide_ids.forEach((id: any) => {
+        if (id) guideIds.push(String(id));
+      });
+    }
+
+    const uniqueGuideIds = [...new Set(guideIds)].filter(Boolean);
+    if (uniqueGuideIds.length > 0) {
+      const conflictTours = await Tour.find({
+        $or: [
+          { primary_guide_id: { $in: uniqueGuideIds } },
+          { secondary_guide_ids: { $in: uniqueGuideIds } },
+        ],
+      }).select('name departure_schedule duration_days primary_guide_id secondary_guide_ids').lean();
+
+      const durationDays = Math.max(1, Number(payload.duration_days || 1));
+      const requestedEndDate = addDays(departureDate, durationDays - 1);
+      const conflictMessages: string[] = [];
+
+      for (const tour of conflictTours) {
+        const tourDuration = Math.max(1, Number(tour.duration_days || 1));
+        const schedules = Array.isArray((tour as any).departure_schedule) ? (tour as any).departure_schedule : [];
+        for (const item of schedules) {
+          const existingDate = normalizeDateStr(item?.date);
+          const existingStart = parseYyyyMmDd(existingDate);
+          if (!existingStart) continue;
+          const existingEnd = addDays(existingStart, tourDuration - 1);
+          if (rangesOverlap(departureDate, requestedEndDate, existingStart, existingEnd)) {
+            conflictMessages.push(`${tour.name || 'Tour không rõ'} (${existingDate})`);
+            break;
+          }
+        }
+      }
+
+      if (conflictMessages.length > 0) {
+        return res.status(400).json({
+          status: 'fail',
+          message: `HDV đã được xếp lịch trùng với tour khác: ${[...new Set(conflictMessages)].join(', ')}. Vui lòng chọn ngày khác hoặc HDV khác.`,
+        });
+      }
+    }
+
     if (payload.name) {
       const existed = await Tour.findOne({
         name: String(payload.name).trim(),
@@ -1174,6 +1285,66 @@ export const createTour = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getAvailableGuidesForTrip = async (req: Request, res: Response) => {
+  try {
+    const dateStr = normalizeTripDate(req.query.date);
+    const duration = Math.max(1, Number(req.query.duration || 1));
+    if (!dateStr) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu ngày khởi hành (YYYY-MM-DD)' });
+    }
+    if (duration <= 0) {
+      return res.status(400).json({ status: 'fail', message: 'Duration phải lớn hơn 0' });
+    }
+    const startDate = parseYyyyMmDd(dateStr);
+    if (!startDate) {
+      return res.status(400).json({ status: 'fail', message: 'Ngày khởi hành không hợp lệ' });
+    }
+    const endDate = addDays(startDate, duration - 1);
+
+    const tours = await Tour.find({
+      $or: [
+        { primary_guide_id: { $exists: true, $ne: null } },
+        { secondary_guide_ids: { $exists: true, $ne: [] } },
+      ],
+    })
+      .select('primary_guide_id secondary_guide_ids departure_schedule duration_days')
+      .lean();
+
+    const busyGuideIds = new Set<string>();
+    for (const tour of tours) {
+      const tourDuration = Math.max(1, Number((tour as any).duration_days || 1));
+      const schedules = Array.isArray((tour as any).departure_schedule) ? (tour as any).departure_schedule : [];
+      for (const item of schedules) {
+        const existingDate = normalizeTripDate(item?.date);
+        const existingStart = parseYyyyMmDd(existingDate);
+        if (!existingStart) continue;
+        const existingEnd = addDays(existingStart, tourDuration - 1);
+        if (rangesOverlap(startDate, endDate, existingStart, existingEnd)) {
+          if ((tour as any).primary_guide_id) {
+            busyGuideIds.add(String((tour as any).primary_guide_id));
+          }
+          if (Array.isArray((tour as any).secondary_guide_ids)) {
+            for (const id of (tour as any).secondary_guide_ids) {
+              if (id) busyGuideIds.add(String(id));
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    const users = await User.find({ status: 'active', role: { $in: ['guide', 'hdv'] } })
+      .select('-password')
+      .lean();
+    const available = users.filter((u: any) => !busyGuideIds.has(String(u._id)));
+
+    res.status(200).json({ status: 'success', data: available });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 // 4. UPDATE: Sửa Tour
 export const updateTour = async (req: Request, res: Response) => {
   try {
