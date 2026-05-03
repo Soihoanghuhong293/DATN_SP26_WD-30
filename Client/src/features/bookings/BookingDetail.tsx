@@ -5,14 +5,14 @@ import axios from 'axios';
 import { 
   Button, Card, Spin, Tabs, Tag, Table, 
   Typography, Space, Popconfirm, message, Breadcrumb, Tooltip,
-  Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Collapse, List, Empty, Radio
+  Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Radio
 } from 'antd';
 import { 
   ArrowLeftOutlined, EditOutlined, DeleteOutlined, 
   CalendarOutlined, EnvironmentOutlined, UsergroupAddOutlined, 
   HomeOutlined, PrinterOutlined, PhoneOutlined, MailOutlined,
   IdcardOutlined, ProfileOutlined, UserOutlined, ClockCircleOutlined,
-  FileExcelOutlined, PlusOutlined, UploadOutlined, BookOutlined, PictureOutlined
+  FileExcelOutlined, PlusOutlined, UploadOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
@@ -340,216 +340,6 @@ const BookingDetail = () => {
   };
 
   const logs = booking.logs || [];
-
-  const CheckinTab = () => {
-    const checkpointCheckins = (booking as any)?.checkpoint_checkins || {};
-    const schedule = (tourInfo as any)?.schedule || [];
-    const passengers = Array.isArray((booking as any)?.passengers) ? (booking as any).passengers : [];
-
-    const checkpointDays =
-      Array.isArray(schedule) && schedule.length > 0
-        ? schedule
-            .map((d: any, idx: number) => ({
-              day: Number(d?.day ?? idx + 1),
-              title: d?.title || `Ngày ${idx + 1}`,
-              checkpoints: Array.isArray(d?.activities)
-                ? d.activities.filter((x: any) => typeof x === 'string' && x.trim().length > 0)
-                : [],
-            }))
-            .sort((a: any, b: any) => a.day - b.day)
-        : [];
-
-    const people = [
-      { type: 'leader' as const, name: booking.customer_name || 'Trưởng đoàn' },
-      ...passengers.map((p: any, i: number) => ({
-        type: 'passenger' as const,
-        passengerIndex: i,
-        name: p?.name || p?.full_name || `Khách ${i + 1}`,
-      })),
-    ];
-
-    const diaryEntries: any[] = Array.isArray((booking as any)?.diary_entries)
-      ? (booking as any).diary_entries
-      : [];
-
-    const getDiaryForDay = (dayNum: number) =>
-      diaryEntries.find((e: any) => Number(e?.day_no ?? 1) === Number(dayNum));
-
-    const renderDiaryForDay = (dayNum: number) => {
-      const entry = getDiaryForDay(dayNum);
-      if (!entry) {
-        return (
-          <div style={{ marginTop: 16, padding: '12px 14px', background: '#f9fafb', borderRadius: 10, border: '1px dashed #e5e7eb' }}>
-            <Space size={8}>
-              <BookOutlined style={{ color: '#94a3b8' }} />
-              <Text type="secondary" italic>Chưa có nhật ký hành trình từ HDV cho ngày này.</Text>
-            </Space>
-          </div>
-        );
-      }
-      const imgs = Array.isArray(entry.images) ? entry.images.filter((x: any) => x?.url) : [];
-      return (
-        <Card
-          size="small"
-          title={
-            <Space>
-              <BookOutlined style={{ color: '#2563eb' }} />
-              <span>Nhật ký hành trình (HDV)</span>
-              {entry.created_by ? <Tag color="blue">{String(entry.created_by)}</Tag> : null}
-            </Space>
-          }
-          style={{ marginTop: 16, background: '#f8fafc', borderColor: '#e2e8f0' }}
-        >
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            {entry.date ? (
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                {dayjs(entry.date).format('DD/MM/YYYY')}
-                {entry.title ? ` · ${entry.title}` : ''}
-              </Text>
-            ) : entry.title ? (
-              <Text strong>{entry.title}</Text>
-            ) : null}
-            {entry.highlight ? (
-              <div
-                style={{
-                  padding: '8px 10px',
-                  background: '#fffbeb',
-                  borderLeft: '3px solid #f59e0b',
-                  borderRadius: 4,
-                  fontWeight: 600,
-                  color: '#92400e',
-                }}
-              >
-                {entry.highlight}
-              </div>
-            ) : null}
-            {entry.content ? (
-              <div style={{ whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.65 }}>{entry.content}</div>
-            ) : !entry.highlight ? (
-              <Text type="secondary" italic>HDV chưa nhập nội dung chi tiết.</Text>
-            ) : null}
-            {imgs.length > 0 ? (
-              <div>
-                <Divider orientation="left" plain style={{ margin: '12px 0 8px', fontSize: 12 }}>
-                  <PictureOutlined /> Hình ảnh ({imgs.length})
-                </Divider>
-                <Space wrap size={[8, 8]}>
-                  {imgs.map((img: any, ii: number) => (
-                    <a key={ii} href={img.url} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={img.url}
-                        alt={img.name || `Ảnh ${ii + 1}`}
-                        style={{
-                          width: 96,
-                          height: 96,
-                          objectFit: 'cover',
-                          borderRadius: 8,
-                          border: '1px solid #e2e8f0',
-                        }}
-                      />
-                    </a>
-                  ))}
-                </Space>
-              </div>
-            ) : null}
-          </Space>
-        </Card>
-      );
-    };
-
-    if (checkpointDays.length === 0) {
-      return <Empty description="Chưa có dữ liệu checkpoint để hiển thị điểm danh." />;
-    }
-
-    return (
-      <Collapse
-        accordion
-        items={checkpointDays.map((d: any) => ({
-          key: String(d.day),
-          label: (
-            <Space>
-              <Tag color="blue" style={{ margin: 0 }}>Ngày {d.day}</Tag>
-              <span style={{ fontWeight: 700 }}>{d.title}</span>
-            </Space>
-          ),
-          children: (
-            <div>
-              {d.checkpoints.length === 0 ? (
-                <Empty description="Ngày này chưa có checkpoint/hoạt động." />
-              ) : (
-                <List
-                  dataSource={d.checkpoints.map((cp: string, cpIndex: number) => ({ cp, cpIndex }))}
-                  renderItem={(cpItem: any) => {
-                    const cpData = checkpointCheckins?.[String(d.day)]?.[String(cpItem.cpIndex)] || {};
-                    const leaderStatus = cpData?.leader;
-                    const leaderReason = cpData?.reasons?.leader;
-                    const passengerStatuses: any[] = Array.isArray(cpData?.passengers) ? cpData.passengers : [];
-                    const passengerReasons: any[] = Array.isArray(cpData?.reasons?.passengers) ? cpData.reasons.passengers : [];
-
-                    const renderStatus = (status: any) => {
-                      if (status === true) return <Tag color="green" style={{ margin: 0 }}>Có mặt</Tag>;
-                      if (status === false) return <Tag color="red" style={{ margin: 0 }}>Vắng</Tag>;
-                      return <Tag style={{ margin: 0 }}>Chưa điểm danh</Tag>;
-                    };
-
-                    return (
-                      <List.Item style={{ paddingLeft: 0, paddingRight: 0 }}>
-                        <Card size="small" style={{ width: '100%', borderRadius: 10 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                            <div style={{ fontWeight: 800 }}>{cpItem.cp}</div>
-                            <Text type="secondary">Checkpoint #{cpItem.cpIndex + 1}</Text>
-                          </div>
-
-                          <Divider style={{ margin: '12px 0' }} />
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {people.map((p: any, idx: number) => {
-                              const isLeader = p.type === 'leader';
-                              const status = isLeader ? leaderStatus : passengerStatuses[p.passengerIndex];
-                              const reason = isLeader ? leaderReason : passengerReasons[p.passengerIndex];
-                              return (
-                                <div
-                                  key={`${p.type}-${p.passengerIndex ?? 'leader'}-${idx}`}
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'flex-start',
-                                    gap: 12,
-                                    padding: '8px 10px',
-                                    background: '#fafafa',
-                                    borderRadius: 10,
-                                    border: '1px solid #f0f0f0',
-                                  }}
-                                >
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700 }}>
-                                      {p.name}{' '}
-                                      {isLeader ? <Tag color="blue" style={{ marginLeft: 8 }}>Trưởng đoàn</Tag> : null}
-                                    </div>
-                                    {status === false && reason ? (
-                                      <div style={{ marginTop: 4, color: '#6b7280', fontStyle: 'italic' }}>
-                                        Lý do: {String(reason)}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                  <div>{renderStatus(status)}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </Card>
-                      </List.Item>
-                    );
-                  }}
-                />
-              )}
-              {renderDiaryForDay(d.day)}
-            </div>
-          ),
-        }))}
-      />
-    );
-  };
 
   const OverviewTab = () => {
     const isGuestListFull = guestList.length >= (booking.groupSize || 0);
@@ -973,8 +763,7 @@ const BookingDetail = () => {
             defaultActiveKey="1" size="large"
             items={[
                 { key: '1', label: 'Tổng quan', children: <OverviewTab /> },
-                { key: '2', label: 'Chi tiết & Dịch vụ', children: <DetailsTab /> },
-                { key: '3', label: 'Điểm danh (HDV)', children: <CheckinTab /> }
+                { key: '2', label: 'Chi tiết & Dịch vụ', children: <DetailsTab /> }
             ]} 
         />
 

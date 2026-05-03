@@ -52,7 +52,6 @@ const HdvSidebar = ({ collapsed, onToggleCollapse }: Props) => {
   const menuItems = useMemo(
     () => [
       { key: "/hdv", icon: <DashboardOutlined />, label: <Link to="/hdv">Tổng quan</Link> },
-      { key: "/hdv/tours", icon: <CarOutlined />, label: <Link to="/hdv/tours">Tour của tôi</Link> },
       { key: "/hdv/assigned-trips", icon: <CarOutlined />, label: <Link to="/hdv/assigned-trips">Trip được phân công</Link> },
       { key: "/hdv/schedule", icon: <CalendarOutlined />, label: <Link to="/hdv/schedule">Lịch làm việc</Link> },
       { key: "/hdv/settings", icon: <SettingOutlined />, label: <Link to="/hdv/settings">Cài đặt</Link> },

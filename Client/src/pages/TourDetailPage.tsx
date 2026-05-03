@@ -315,8 +315,9 @@ const TourDetailPage = () => {
           return out;
         };
 
-        
-        const poolRes = await getTours({ page: 1, limit: 200 });
+        // Fetch a pool then rank by priority:
+        // 1) same location 2) same serviceLevel 3) exclude current
+        const poolRes = await getTours({ page: 1, limit: 200, status: "active" });
         const pool = pickUnique(Array.isArray(poolRes?.data) ? poolRes.data : []);
 
         const curLoc = getTourLocationKey(current);
@@ -721,7 +722,9 @@ const TourDetailPage = () => {
 
         <h1>{tour.name}</h1>
 
-        <Tag color="green">Mở bán</Tag>
+        <Tag color={tour.status === "active" ? "green" : "orange"}>
+          {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
+        </Tag>
 
         <Button
           onClick={handleToggleWishlist}
@@ -736,29 +739,35 @@ const TourDetailPage = () => {
       {tourImages.length > 0 && (
         <div className="tour-hero">
           {/* LEFT: GALLERY */}
-          <div className="tour-gallery" role="list">
-            {tourImages.map((src, idx) => (
-              <button
-                key={`${src}-${idx}`}
-                type="button"
-                className={`tour-gallery-slide ${
-                  idx === activeImageIndex ? "is-active" : ""
-                }`}
-                onClick={() => setActiveImageIndex(idx)}
-              >
-                <img
-                  src={src}
-                  alt={
-                    tour?.name
-                      ? `${tour.name} — ảnh ${idx + 1}`
-                      : `Ảnh ${idx + 1}`
-                  }
-                />
-              </button>
-            ))}
+          <div className="tour-gallery">
+            <div className="tour-gallery-thumbs">
+              {tourImages.map((src, idx) => (
+                <button
+                  key={`${src}-${idx}`}
+                  className={`tour-thumb ${
+                    idx === activeImageIndex ? "is-active" : ""
+                  }`}
+                  onClick={() => setActiveImageIndex(idx)}
+                >
+                  <img src={src} alt="thumb" />
+                </button>
+              ))}
+            </div>
+
+            <div className="tour-gallery-main">
+              <img
+                src={
+                  tourImages[
+                    Math.min(activeImageIndex, tourImages.length - 1)
+                  ]
+                }
+                alt="main"
+              />
+            </div>
           </div>
 
           {/* RIGHT: SIDEBAR */}
+         {/* RIGHT: SIDEBAR */}
           <div className={`tour-detail-sidebar${hidePriceSidebar ? " is-hidden" : ""}`}>
             <div className="sidebar-card">
               <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>GIÁ TOUR</h3>

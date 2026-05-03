@@ -25,7 +25,6 @@ import TourEdit from '../features/admin/tours/TourEdit';
 import ContactMessageList from '../pages/admin/ContactMessageList';
 import TourReviewManagement from '../pages/admin/TourReviewManagement';
 import HdvDashboard from '../pages/HdvDashboard';
-import HdvTours from '../pages/HdvTours';
 import HdvBookingDetail from '../pages/HdvBookingDetail';
 import HdvSchedule from '../pages/HdvSchedule';
 import HdvSettingsPage from '../pages/HdvSettingsPage';
@@ -86,7 +85,6 @@ const AppRoutes = () => {
       {/* ===== HDV (Hướng dẫn viên) ===== */}
       <Route path="/hdv" element={<ProtectedRoute allowRoles={['hdv','guide']}><HdvLayout /></ProtectedRoute>}>
         <Route index element={<HdvDashboard />} />
-        <Route path="tours" element={<HdvTours />} />
         <Route path="tours/:id" element={<HdvBookingDetail />} />
         <Route path="assigned-trips" element={<HdvTripListPage />} />
         <Route path="trips/:tourId/:date" element={<HdvTripDetailPage />} />
