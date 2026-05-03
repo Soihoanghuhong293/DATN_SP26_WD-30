@@ -8,6 +8,7 @@ import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icon
 import dayjs from 'dayjs';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminListCard from '../../components/admin/AdminListCard';
+import { resolveEffectivePayment, canAdminDeleteBookingRecord } from './bookingPaymentResolve';
 import './BookingList.css';
 
 const { Text } = Typography;
@@ -77,18 +78,7 @@ const BookingList = () => {
     refunded: { color: 'default', text: 'Đã hoàn tiền' },
   } as const;
 
-  const resolvePaymentStatus = (record: IBooking) => {
-    if (record.status === 'cancelled') return 'unpaid' as const;
-    if (record.payment_status) return record.payment_status;
-
-    // Tương thích dữ liệu cũ (nếu từng lưu paid/deposit/refunded trong status)
-    const legacy = record.status as any;
-    if (legacy === 'paid') return 'paid' as const;
-    if (legacy === 'deposit') return 'deposit' as const;
-    if (legacy === 'refunded') return 'refunded' as const;
-
-    return 'unpaid' as const;
-  };
+  const resolvePaymentStatus = (record: IBooking) => resolveEffectivePayment(record);
 
   // ✅ GET LIST
   const { data: bookings, isLoading, isFetching, refetch } = useQuery({
@@ -108,7 +98,9 @@ const BookingList = () => {
       message.success('Đã xóa đơn đặt tour!');
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
-    onError: () => message.error('Xóa đơn thất bại'),
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || 'Xóa đơn thất bại');
+    },
   });
 
   // ✅ SEARCH
@@ -322,24 +314,40 @@ const BookingList = () => {
       fixed: 'right',
       render: (_: any, record: IBooking) => {
         const rowDeleting = deleteMutation.isPending && deleteMutation.variables === record._id;
+        const stage = String(record.tour_stage || 'scheduled');
+        const deleteBlockedByStage = stage === 'in_progress' || stage === 'completed';
+        const deleteBlockedByPayment = !canAdminDeleteBookingRecord(record);
+        const deleteDisabled = deleteBlockedByStage || deleteBlockedByPayment;
         return (
           <Space size={6} className="booking-list-actions">
             <Popconfirm
               title="Xóa đơn này?"
               description="Thao tác không thể hoàn tác."
+              disabled={deleteDisabled}
               onConfirm={() => deleteMutation.mutate(record._id)}
               okText="Xóa"
               cancelText="Hủy"
               okButtonProps={{ danger: true }}
             >
-              <Tooltip title="Xóa">
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={rowDeleting}
-                  onClick={(e) => e.stopPropagation()}
-                />
+              <Tooltip
+                title={
+                  deleteBlockedByStage
+                    ? 'Không thể xóa booking khi tour đang diễn ra hoặc đã kết thúc.'
+                    : deleteBlockedByPayment
+                      ? 'Không thể xóa đơn đã thanh toán đủ hoặc đã hoàn tiền.'
+                      : 'Xóa'
+                }
+              >
+                <span>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    loading={rowDeleting}
+                    disabled={deleteDisabled}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </span>
               </Tooltip>
             </Popconfirm>
           </Space>
@@ -528,7 +536,12 @@ const BookingList = () => {
           pagination={{ pageSize: 10, showSizeChanger: false }}
           scroll={{ x: 1000 }}
           onRow={(record: IBooking) => ({
-            onClick: () => navigate(`/admin/bookings/${record._id}`),
+            onClick: (e) => {
+              if ((e.target as HTMLElement).closest('.booking-list-actions, .ant-popover, .ant-popconfirm')) {
+                return;
+              }
+              navigate(`/admin/bookings/${record._id}`);
+            },
           })}
         />
       </AdminListCard>

@@ -6,7 +6,7 @@ import {
   Button, Card, Descriptions, Spin, Tabs, Tag, 
   Image, Table, Typography, Space, Popconfirm, message, 
   Breadcrumb, Row, Col, ConfigProvider, Divider, Modal, Select,
-  Form, DatePicker, InputNumber, Empty, List
+  Form, DatePicker, InputNumber, Empty, List, Collapse
 } from 'antd';
 import { 
   EditOutlined, 
@@ -21,6 +21,8 @@ import {
   PlusOutlined,
   MinusCircleOutlined,
   FileTextOutlined,
+  BookOutlined,
+  PictureOutlined,
   TagsOutlined,
   CoffeeOutlined,
 } from '@ant-design/icons';
@@ -188,6 +190,7 @@ const TourDetail = () => {
   const [headerTripStatus, setHeaderTripStatus] = useState<TripStatus>('DRAFT');
   const [nearestTripDate, setNearestTripDate] = useState<string>('');
   const [loadingTripStatus, setLoadingTripStatus] = useState(false);
+  const [tripOpsDate, setTripOpsDate] = useState<string>('');
 
   // 1. API GET DATA
   const { data: tour, isLoading } = useQuery({
@@ -398,6 +401,29 @@ const TourDetail = () => {
     if (st) setHeaderTripStatus(st);
   }, [nearestTripDate, tripStatusByDate]);
 
+  useEffect(() => {
+    if (!nearestTripDate) return;
+    setTripOpsDate((prev) => prev || nearestTripDate);
+  }, [nearestTripDate]);
+
+  const { data: tripBookingsForOps = [], isLoading: loadingTripBookingsForOps } = useQuery({
+    queryKey: ['trip-ops-bookings', id, tripOpsDate],
+    queryFn: async () => {
+      const res = await axios.get(`http://localhost:5000/api/v1/bookings`, {
+        headers: getAuthHeaders(),
+        params: { _t: Date.now() },
+      });
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      const tid = String(id || '');
+      return list.filter((b: any) => {
+        const bookingTourId = String(b?.tour_id?._id || b?.tour_id || '');
+        const ds = normalizeDate(String(b?.startDate || ''));
+        return bookingTourId === tid && ds === tripOpsDate && String(b?.status || '').toLowerCase() !== 'cancelled';
+      });
+    },
+    enabled: !!id && !!tripOpsDate,
+  });
+
   const updateHeaderTripStatus = async (nextRaw: string) => {
     const tourId = String((tour as any)?._id || (tour as any)?.id || id || '');
     const d = String(nearestTripDate || '');
@@ -543,7 +569,12 @@ const TourDetail = () => {
                   render: (_: unknown, row: any) => {
                     const d = normalizeDate(String(row?.date || ''));
                     const st = String(row?._tripStatus || '').toUpperCase();
-                    const canOperate = st === 'CLOSED' || st === 'COMPLETED';
+                    /** Cho phép xếp xe/phòng từ nháp → mở bán → đang chạy → hoàn thành (trước đây chỉ CLOSED/COMPLETED nên khóa nhầm OPENING). */
+                    const canOperate =
+                      st === 'DRAFT' ||
+                      st === 'OPENING' ||
+                      st === 'CLOSED' ||
+                      st === 'COMPLETED';
                     return (
                       <Space size="small" wrap>
                         <Button
@@ -903,6 +934,249 @@ const TourDetail = () => {
     );
   };
 
+  const TripOpsTab = () => {
+    const scheduleRows = Array.isArray((tour as any)?.schedule) ? (tour as any).schedule : [];
+    const departureRows = Array.isArray((tour as any)?.departure_schedule) ? (tour as any).departure_schedule : [];
+    const dateOptions = [...new Set(departureRows.map((r: any) => normalizeDate(String(r?.date || ''))).filter(Boolean))]
+      .sort()
+      .map((d) => ({ value: d, label: dayjs(d).format('DD/MM/YYYY') }));
+
+    const checkpointDays =
+      scheduleRows.length > 0
+        ? scheduleRows
+            .map((d: any, idx: number) => ({
+              day: Number(d?.day ?? idx + 1),
+              title: d?.title || `Ngày ${idx + 1}`,
+              checkpoints: Array.isArray(d?.activities)
+                ? d.activities.filter((x: any) => typeof x === 'string' && x.trim().length > 0)
+                : [],
+            }))
+            .sort((a: any, b: any) => a.day - b.day)
+        : [];
+
+    if (dateOptions.length === 0) {
+      return (
+        <Card bordered className="saas-card">
+          <Empty description="Tour chưa có đợt khởi hành để xem điểm danh/nhật ký." />
+        </Card>
+      );
+    }
+
+    const renderStatus = (status: any) => {
+      if (status === true) return <Tag color="green" style={{ margin: 0 }}>Có mặt</Tag>;
+      if (status === false) return <Tag color="red" style={{ margin: 0 }}>Vắng</Tag>;
+      return <Tag style={{ margin: 0 }}>Chưa điểm danh</Tag>;
+    };
+
+    return (
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card bordered className="saas-card">
+            <Space wrap>
+              <Text strong>Đợt khởi hành</Text>
+              <Select
+                value={tripOpsDate || dateOptions[0].value}
+                style={{ minWidth: 200 }}
+                onChange={(v) => setTripOpsDate(String(v))}
+                options={dateOptions}
+              />
+              <Tag color={tripStatusColor(tripStatusByDate[tripOpsDate])}>{tripStatusLabel(tripStatusByDate[tripOpsDate])}</Tag>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col span={24}>
+          {loadingTripBookingsForOps ? (
+            <Card bordered className="saas-card" style={{ textAlign: 'center', padding: 24 }}>
+              <Spin />
+            </Card>
+          ) : tripBookingsForOps.length === 0 ? (
+            <Card bordered className="saas-card">
+              <Empty description="Không có booking cho đợt này." />
+            </Card>
+          ) : (
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+              {tripBookingsForOps.map((booking: any) => {
+                const checkpointCheckins = (booking as any)?.checkpoint_checkins || {};
+                const passengers = Array.isArray((booking as any)?.passengers) ? (booking as any).passengers : [];
+                const people = [
+                  { type: 'leader' as const, name: booking.customer_name || 'Trưởng đoàn' },
+                  ...passengers.map((p: any, i: number) => ({
+                    type: 'passenger' as const,
+                    passengerIndex: i,
+                    name: p?.name || p?.full_name || `Khách ${i + 1}`,
+                  })),
+                ];
+                const diaryEntries: any[] = Array.isArray((booking as any)?.diary_entries) ? (booking as any).diary_entries : [];
+                const getDiaryForDay = (dayNum: number) =>
+                  diaryEntries.find((e: any) => Number(e?.day_no ?? 1) === Number(dayNum));
+
+                return (
+                  <Card
+                    key={String(booking._id)}
+                    bordered
+                    className="saas-card"
+                    title={
+                      <Space wrap>
+                        <Text strong>{booking.customer_name || 'Booking'}</Text>
+                        <Tag>{booking.customer_phone || '—'}</Tag>
+                        <Tag color="blue">{Number(booking.groupSize || 0)} khách</Tag>
+                      </Space>
+                    }
+                    extra={<Link to={`/admin/bookings/${booking._id}`}>Mở booking</Link>}
+                  >
+                    {checkpointDays.length === 0 ? (
+                      <Empty description="Tour chưa có checkpoint trong lịch trình." />
+                    ) : (
+                      <Collapse
+                        accordion
+                        items={checkpointDays.map((d: any) => ({
+                          key: `${booking._id}-${d.day}`,
+                          label: (
+                            <Space>
+                              <Tag color="blue" style={{ margin: 0 }}>Ngày {d.day}</Tag>
+                              <span style={{ fontWeight: 700 }}>{d.title}</span>
+                            </Space>
+                          ),
+                          children: (
+                            <div>
+                              {d.checkpoints.length === 0 ? (
+                                <Empty description="Ngày này chưa có checkpoint/hoạt động." />
+                              ) : (
+                                <List
+                                  dataSource={d.checkpoints.map((cp: string, cpIndex: number) => ({ cp, cpIndex }))}
+                                  renderItem={(cpItem: any) => {
+                                    const cpData = checkpointCheckins?.[String(d.day)]?.[String(cpItem.cpIndex)] || {};
+                                    const leaderStatus = cpData?.leader;
+                                    const leaderReason = cpData?.reasons?.leader;
+                                    const passengerStatuses: any[] = Array.isArray(cpData?.passengers) ? cpData.passengers : [];
+                                    const passengerReasons: any[] = Array.isArray(cpData?.reasons?.passengers) ? cpData.reasons.passengers : [];
+                                    return (
+                                      <List.Item style={{ paddingLeft: 0, paddingRight: 0 }}>
+                                        <Card size="small" style={{ width: '100%', borderRadius: 10 }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                            <div style={{ fontWeight: 800 }}>{cpItem.cp}</div>
+                                            <Text type="secondary">Checkpoint #{cpItem.cpIndex + 1}</Text>
+                                          </div>
+                                          <Divider style={{ margin: '12px 0' }} />
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            {people.map((p: any, idx: number) => {
+                                              const isLeader = p.type === 'leader';
+                                              const status = isLeader ? leaderStatus : passengerStatuses[p.passengerIndex];
+                                              const reason = isLeader ? leaderReason : passengerReasons[p.passengerIndex];
+                                              return (
+                                                <div
+                                                  key={`${p.type}-${p.passengerIndex ?? 'leader'}-${idx}`}
+                                                  style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'flex-start',
+                                                    gap: 12,
+                                                    padding: '8px 10px',
+                                                    background: '#fafafa',
+                                                    borderRadius: 10,
+                                                    border: '1px solid #f0f0f0',
+                                                  }}
+                                                >
+                                                  <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 700 }}>
+                                                      {p.name} {isLeader ? <Tag color="blue" style={{ marginLeft: 8 }}>Trưởng đoàn</Tag> : null}
+                                                    </div>
+                                                    {status === false && reason ? (
+                                                      <div style={{ marginTop: 4, color: '#6b7280', fontStyle: 'italic' }}>Lý do: {String(reason)}</div>
+                                                    ) : null}
+                                                  </div>
+                                                  <div>{renderStatus(status)}</div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </Card>
+                                      </List.Item>
+                                    );
+                                  }}
+                                />
+                              )}
+
+                              {(() => {
+                                const entry = getDiaryForDay(d.day);
+                                if (!entry) {
+                                  return (
+                                    <div style={{ marginTop: 16, padding: '12px 14px', background: '#f9fafb', borderRadius: 10, border: '1px dashed #e5e7eb' }}>
+                                      <Space size={8}>
+                                        <BookOutlined style={{ color: '#94a3b8' }} />
+                                        <Text type="secondary" italic>Chưa có nhật ký hành trình từ HDV cho ngày này.</Text>
+                                      </Space>
+                                    </div>
+                                  );
+                                }
+                                const imgs = Array.isArray(entry.images) ? entry.images.filter((x: any) => x?.url) : [];
+                                return (
+                                  <Card
+                                    size="small"
+                                    title={
+                                      <Space>
+                                        <BookOutlined style={{ color: '#2563eb' }} />
+                                        <span>Nhật ký hành trình (HDV)</span>
+                                        {entry.created_by ? <Tag color="blue">{String(entry.created_by)}</Tag> : null}
+                                      </Space>
+                                    }
+                                    style={{ marginTop: 16, background: '#f8fafc', borderColor: '#e2e8f0' }}
+                                  >
+                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                      {entry.date ? (
+                                        <Text type="secondary" style={{ fontSize: 13 }}>
+                                          {dayjs(entry.date).format('DD/MM/YYYY')}
+                                          {entry.title ? ` · ${entry.title}` : ''}
+                                        </Text>
+                                      ) : entry.title ? (
+                                        <Text strong>{entry.title}</Text>
+                                      ) : null}
+                                      {entry.highlight ? (
+                                        <div style={{ padding: '8px 10px', background: '#fffbeb', borderLeft: '3px solid #f59e0b', borderRadius: 4, fontWeight: 600, color: '#92400e' }}>
+                                          {entry.highlight}
+                                        </div>
+                                      ) : null}
+                                      {entry.content ? (
+                                        <div style={{ whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.65 }}>{entry.content}</div>
+                                      ) : null}
+                                      {imgs.length > 0 ? (
+                                        <div>
+                                          <Divider orientation="left" plain style={{ margin: '12px 0 8px', fontSize: 12 }}>
+                                            <PictureOutlined /> Hình ảnh ({imgs.length})
+                                          </Divider>
+                                          <Space wrap size={[8, 8]}>
+                                            {imgs.map((img: any, ii: number) => (
+                                              <a key={ii} href={img.url} target="_blank" rel="noopener noreferrer">
+                                                <img
+                                                  src={img.url}
+                                                  alt={img.name || `Ảnh ${ii + 1}`}
+                                                  style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
+                                                />
+                                              </a>
+                                            ))}
+                                          </Space>
+                                        </div>
+                                      ) : null}
+                                    </Space>
+                                  </Card>
+                                );
+                              })()}
+                            </div>
+                          ),
+                        }))}
+                      />
+                    )}
+                  </Card>
+                );
+              })}
+            </Space>
+          )}
+        </Col>
+      </Row>
+    );
+  };
+
   // --- MAIN RENDER ---
   return (
     <ConfigProvider
@@ -1016,6 +1290,11 @@ const TourDetail = () => {
                     key: '3', 
                     label: 'Giá & Chính sách', 
                     children: <PolicyTab /> 
+                },
+                {
+                    key: '4',
+                    label: 'Điểm danh & nhật ký (Trip)',
+                    children: <TripOpsTab />
                 }
             ]} 
         />

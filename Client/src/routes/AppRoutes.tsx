@@ -30,6 +30,8 @@ import HdvBookingDetail from '../pages/HdvBookingDetail';
 import HdvSchedule from '../pages/HdvSchedule';
 import HdvSettingsPage from '../pages/HdvSettingsPage';
 import HdvTripAssignmentPage from '../pages/HdvTripAssignmentPage';
+import HdvTripListPage from '../pages/HdvTripListPage';
+import HdvTripDetailPage from '../pages/HdvTripDetailPage';
 
 /* 👉 THÊM */
 import LoginPage from '../pages/LoginPage';
@@ -86,6 +88,8 @@ const AppRoutes = () => {
         <Route index element={<HdvDashboard />} />
         <Route path="tours" element={<HdvTours />} />
         <Route path="tours/:id" element={<HdvBookingDetail />} />
+        <Route path="assigned-trips" element={<HdvTripListPage />} />
+        <Route path="trips/:tourId/:date" element={<HdvTripDetailPage />} />
         <Route path="tours/:id/trips/:date/assignment" element={<HdvTripAssignmentPage />} />
         <Route path="schedule" element={<HdvSchedule />} />
         <Route path="settings" element={<HdvSettingsPage />} />

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   Button, Card, Spin, Tabs, Tag, Table, 
-  Typography, Space, Popconfirm, message, Breadcrumb, 
+  Typography, Space, Popconfirm, message, Breadcrumb, Tooltip,
   Row, Col, ConfigProvider, Divider, Avatar, Modal, Form, Input, Select, Upload, Collapse, List, Empty, Radio
 } from 'antd';
 import { 
@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
+import { canAdminDeleteBookingRecord } from './bookingPaymentResolve';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -141,12 +142,15 @@ const BookingDetail = () => {
     mutationFn: async () => {
       await axios.delete(`http://localhost:5000/api/v1/bookings/${id}`, getAuthHeader());
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       message.success('Đã xóa booking thành công');
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      navigate('/admin/bookings');
+      queryClient.removeQueries({ queryKey: ['booking', id] });
+      await queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      navigate('..', { relative: 'path', replace: true });
     },
-    onError: () => message.error('Xóa thất bại')
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || 'Xóa thất bại');
+    },
   });
 
   // xuất excel
@@ -276,6 +280,12 @@ const BookingDetail = () => {
 
   if (isLoading) return <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>;
   if (!booking) return <div style={{ padding: 40, textAlign: 'center' }}>Không tìm thấy dữ liệu!</div>;
+
+  const tourStage = String((booking as any).tour_stage || 'scheduled');
+  const deleteBlockedByStage = tourStage === 'in_progress' || tourStage === 'completed';
+
+  const deleteBlockedByPayment = !canAdminDeleteBookingRecord(booking as any);
+  const deleteDisabled = deleteBlockedByStage || deleteBlockedByPayment;
 
   const renderStatus = (status: string) => {
     switch (status) {
@@ -904,12 +914,30 @@ const BookingDetail = () => {
                   Lịch sử xử lý
                 </Button>
                 <Button icon={<EditOutlined />} onClick={() => navigate(`/admin/bookings/edit/${booking._id}`)}>Chỉnh sửa</Button>
-                <Popconfirm
-                    title="Xóa booking này?" description="Hành động này không thể hoàn tác."
-                    onConfirm={() => deleteMutation.mutate()} okText="Xóa ngay" okButtonProps={{ danger: true }}
+                <Tooltip
+                  title={
+                    deleteBlockedByStage
+                      ? 'Không thể xóa booking khi tour đang diễn ra hoặc đã kết thúc.'
+                      : deleteBlockedByPayment
+                        ? 'Không thể xóa đơn đã thanh toán đủ hoặc đã hoàn tiền.'
+                        : undefined
+                  }
                 >
-                    <Button danger icon={<DeleteOutlined />}>Xóa</Button>
-                </Popconfirm>
+                  <span>
+                    <Popconfirm
+                      title="Xóa booking này?"
+                      description="Hành động này không thể hoàn tác."
+                      disabled={deleteDisabled}
+                      onConfirm={() => deleteMutation.mutate()}
+                      okText="Xóa ngay"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Button danger icon={<DeleteOutlined />} disabled={deleteDisabled}>
+                        Xóa
+                      </Button>
+                    </Popconfirm>
+                  </span>
+                </Tooltip>
             </Space>
         </div>
 

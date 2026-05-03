@@ -2,32 +2,44 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Card, DatePicker, Empty, Input, Select, Space, Table, Tag, Typography, Button, message } from "antd";
+import {
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Input,
+  message,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import { CarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./HdvTours.css";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
-const API_V1 = (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
-
+const API_V1 =
+  (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
 
-interface IBooking {
-  _id: string;
-  tour_id?: { _id: string; name: string; duration_days?: number };
-  customer_name?: string;
-  customer_phone?: string;
-  total_price?: number;
-  startDate: string;
-  endDate?: string;
-  groupSize: number;
-  status: "pending" | "confirmed" | "paid" | "cancelled";
-  tour_stage?: "scheduled" | "in_progress" | "completed";
-}
+type TripRow = {
+  key: string;
+  tourId: string;
+  date: string;
+  tourName: string;
+  duration_days?: number;
+  bookings: number;
+  passengers: number;
+  stage: string;
+  /** Mọi booking trong trip đều đã nhập đủ DS khách */
+  guestListComplete: boolean;
+};
 
 const stageMap: Record<string, { color: string; label: string }> = {
   scheduled: { color: "blue", label: "Sắp khởi hành" },
@@ -35,8 +47,9 @@ const stageMap: Record<string, { color: string; label: string }> = {
   completed: { color: "default", label: "Kết thúc" },
 };
 
-const HdvTours = () => {
+export default function HdvTripListPage() {
   const navigate = useNavigate();
+
   type FilterState = {
     search: string;
     dateRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
@@ -52,103 +65,103 @@ const HdvTours = () => {
   const [draft, setDraft] = useState<FilterState>(() => emptyFilters());
   const [applied, setApplied] = useState<FilterState>(() => emptyFilters());
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["hdv-bookings", applied],
-    queryFn: async () => {
-      const res = await axios.get(
-        `${API_V1}/bookings/guide/me`,
-        getAuthHeader()
-      );
-      return res.data?.data || [];
-    },
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["hdv-bookings-for-trip-list"],
+    queryFn: async () =>
+      (await axios.get(`${API_V1}/bookings/guide/me`, getAuthHeader())).data
+        ?.data || [],
   });
 
-  const bookings: IBooking[] = data || [];
+  const trips = useMemo(() => {
+    const map = new Map<string, TripRow>();
+    (data as any[]).forEach((b) => {
+      const tid = String(b?.tour_id?._id || b?.tour_id || "");
+      const date = b?.startDate ? dayjs(b.startDate).format("YYYY-MM-DD") : "";
+      if (!tid || !date) return;
+      const key = `${tid}:${date}`;
+      const cur = map.get(key) || {
+        key,
+        tourId: tid,
+        date,
+        tourName: b?.tour_id?.name || "Tour",
+        duration_days: b?.tour_id?.duration_days,
+        bookings: 0,
+        passengers: 0,
+        stage: b?.tour_stage || "scheduled",
+        guestListComplete: true,
+      };
+      if (b?.tour_id?.duration_days != null) cur.duration_days = b.tour_id.duration_days;
+      if (String(b?.customer_info_status || "") !== "COMPLETED") {
+        cur.guestListComplete = false;
+      }
+      cur.bookings += 1;
+      cur.passengers += Number(b?.groupSize || 0);
+      map.set(key, cur);
+    });
+    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [data]);
 
-  const filteredBookings = useMemo(() => {
+  const filteredTrips = useMemo(() => {
     const q = applied.search.trim().toLowerCase();
     const [from, to] = applied.dateRange ?? [null, null];
-    return bookings.filter((b) => {
-      if (applied.tour_stage && (b.tour_stage || "scheduled") !== applied.tour_stage) return false;
+    return trips.filter((t) => {
+      if (applied.tour_stage && (t.stage || "scheduled") !== applied.tour_stage)
+        return false;
       if (q) {
-        const tourName = (b.tour_id?.name || "").toLowerCase();
-        const customer = (b.customer_name || "").toLowerCase();
-        const phone = (b.customer_phone || "").toLowerCase();
-        const id = (b._id || "").toLowerCase();
-        if (!tourName.includes(q) && !customer.includes(q) && !phone.includes(q) && !id.includes(q)) return false;
+        const name = (t.tourName || "").toLowerCase();
+        const id = (t.tourId || "").toLowerCase();
+        if (!name.includes(q) && !id.includes(q)) return false;
       }
       if (from || to) {
-        const d = dayjs(b.startDate);
+        const d = dayjs(t.date);
         if (from && d.isBefore(from.startOf("day"))) return false;
         if (to && d.isAfter(to.endOf("day"))) return false;
       }
       return true;
     });
-  }, [bookings, applied]);
+  }, [trips, applied]);
 
   const columns = [
     {
       title: "Tour",
       key: "tour",
-      render: (_: unknown, record: IBooking) => (
+      render: (_: unknown, record: TripRow) => (
         <div>
           <div style={{ fontWeight: 600, color: "#1f2937" }}>
-            {record.tour_id?.name || "—"}
+            {record.tourName}
           </div>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.tour_id?.duration_days ? `${record.tour_id.duration_days} ngày` : ""}
+            {record.duration_days ? `${record.duration_days} ngày` : ""}
           </Text>
         </div>
       ),
     },
     {
-      title: "Thời gian",
-      key: "dates",
-      render: (_: unknown, record: IBooking) => (
-        <div>
-          <div>{dayjs(record.startDate).format("DD/MM/YYYY")}</div>
-          {record.endDate && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              → {dayjs(record.endDate).format("DD/MM/YYYY")}
-            </Text>
-          )}
-        </div>
+      title: "Ngày khởi hành",
+      key: "date",
+      render: (_: unknown, record: TripRow) => (
+        <div>{dayjs(record.date).format("DD/MM/YYYY")}</div>
       ),
     },
     {
-      title: "Khách hàng",
-      key: "customer",
-      render: (_: unknown, record: IBooking) => (
-        <div>
-          <div>{record.customer_name || "—"}</div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.customer_phone || ""}
-          </Text>
-        </div>
-      ),
+      title: "Số booking",
+      dataIndex: "bookings",
+      key: "bookings",
     },
     {
-      title: "Số khách",
-      dataIndex: "groupSize",
-      key: "groupSize",
+      title: "Hành khách",
+      dataIndex: "passengers",
+      key: "passengers",
       render: (val: number) => `${val || 0} người`,
     },
     {
-      title: "Tổng tiền",
-      key: "total_price",
-      render: (_: unknown, record: IBooking) =>
-        record.total_price
-          ? `${(record.total_price as number).toLocaleString("vi-VN")} đ`
-          : "—",
-    },
-    {
       title: "Giai đoạn",
-      dataIndex: "tour_stage",
-      key: "tour_stage",
-      render: (_stage: string, record: IBooking) => {
-        const stage = record.tour_stage || "scheduled";
-        const s = stageMap[stage] || { color: "default", label: stage };
-        return <Tag color={s.color}>{s.label}</Tag>;
+      dataIndex: "stage",
+      key: "stage",
+      render: (_s: string, record: TripRow) => {
+        const stage = record.stage || "scheduled";
+        const sm = stageMap[stage] || { color: "default", label: stage };
+        return <Tag color={sm.color}>{sm.label}</Tag>;
       },
     },
   ];
@@ -163,7 +176,7 @@ const HdvTours = () => {
           color: "#1f2937",
         }}
       >
-        Tour của tôi
+        Trip được phân công
       </h1>
       <p
         style={{
@@ -172,7 +185,8 @@ const HdvTours = () => {
           marginBottom: 24,
         }}
       >
-        Danh sách các tour bạn được phân công hướng dẫn
+        Các chuyến đi gom theo tour và ngày khởi hành — bấm một dòng để mở chi
+        tiết trip
       </p>
 
       <Card
@@ -188,9 +202,11 @@ const HdvTours = () => {
               <div className="hdv-bookings-filterbar-label">Tìm kiếm</div>
               <Input
                 allowClear
-                placeholder="Tìm theo tour, khách, SĐT hoặc mã..."
+                placeholder="Tìm theo tên tour hoặc mã tour..."
                 value={draft.search}
-                onChange={(e) => setDraft((p: FilterState) => ({ ...p, search: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((p: FilterState) => ({ ...p, search: e.target.value }))
+                }
               />
             </div>
 
@@ -199,7 +215,12 @@ const HdvTours = () => {
               <RangePicker
                 style={{ width: "100%" }}
                 value={draft.dateRange}
-                onChange={(v) => setDraft((p: FilterState) => ({ ...p, dateRange: (v as any) || [null, null] }))}
+                onChange={(v) =>
+                  setDraft((p: FilterState) => ({
+                    ...p,
+                    dateRange: (v as any) || [null, null],
+                  }))
+                }
                 format="DD/MM/YYYY"
               />
             </div>
@@ -210,7 +231,9 @@ const HdvTours = () => {
                 allowClear
                 placeholder="Tất cả"
                 value={draft.tour_stage}
-                onChange={(v) => setDraft((p: FilterState) => ({ ...p, tour_stage: v }))}
+                onChange={(v) =>
+                  setDraft((p: FilterState) => ({ ...p, tour_stage: v }))
+                }
                 options={[
                   { value: "scheduled", label: "Sắp khởi hành" },
                   { value: "in_progress", label: "Đang diễn ra" },
@@ -239,42 +262,42 @@ const HdvTours = () => {
           </div>
           <div className="hdv-bookings-filterbar-footer">
             <Text type="secondary" style={{ fontSize: 13 }}>
-              {filteredBookings.length} tour
+              {filteredTrips.length} trip
             </Text>
           </div>
         </div>
 
-        {filteredBookings.length === 0 && !isLoading ? (
+        {filteredTrips.length === 0 && !isLoading ? (
           <Empty
             image={<CarOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
-            description="Chưa có tour nào được phân công cho bạn"
+            description="Chưa có trip nào được phân công cho bạn"
             style={{ padding: 48 }}
           >
             <Text type="secondary">
-              Khi Admin tạo booking và gán bạn làm HDV, tour sẽ hiển thị ở đây.
+              Khi Admin tạo booking và gán bạn làm HDV, trip sẽ hiển thị ở đây.
             </Text>
           </Empty>
         ) : (
           <Table
             className="hdv-bookings-table"
-            dataSource={filteredBookings}
+            dataSource={filteredTrips}
             columns={columns}
-            rowKey="_id"
+            rowKey="key"
             loading={isLoading}
             pagination={{
               pageSize: 10,
               showSizeChanger: false,
-              showTotal: (total) => `Tổng ${total} tour`,
+              showTotal: (total) => `Tổng ${total} trip`,
             }}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 900 }}
             onRow={(record) => ({
               onClick: () => {
-                if (String(record.customer_info_status || "") !== "COMPLETED") {
+                if (record.guestListComplete === false) {
                   message.warning(
-                    "Booking chưa nhập đủ danh sách khách. Vui lòng liên hệ để bổ sung trước khi bắt đầu chuyến."
+                    "Có booking trong trip chưa nhập đủ danh sách khách. Vui lòng liên hệ để bổ sung trước khi bắt đầu chuyến."
                   );
                 }
-                navigate(`/hdv/tours/${record._id}`);
+                navigate(`/hdv/trips/${record.tourId}/${record.date}`);
               },
             })}
           />
@@ -282,6 +305,4 @@ const HdvTours = () => {
       </Card>
     </div>
   );
-};
-
-export default HdvTours;
+}

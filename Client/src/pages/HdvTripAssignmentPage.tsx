@@ -78,6 +78,12 @@ export default function HdvTripAssignmentPage() {
     return m;
   }, [passengerRows]);
 
+  const allocationIncomplete = useMemo(() => {
+    const ps = Array.isArray(data?.passengers) ? data.passengers : [];
+    if (ps.length === 0) return false;
+    return ps.some((p: any) => !p?.seat || !p?.room);
+  }, [data]);
+
   if (loading) {
     return (
       <div style={{ padding: 24 }}>
@@ -104,7 +110,8 @@ export default function HdvTripAssignmentPage() {
   const roomingList: any[] = Array.isArray(data?.rooming_list) ? data.rooming_list : [];
   const unpaidBookingCount = Number((data as any)?.unpaid_booking_count || 0);
   const stUpper = String(tripStatus || '').toUpperCase();
-  const canStart = stUpper === 'OPENING' && unpaidBookingCount <= 0;
+  const canStart =
+    stUpper === "OPENING" && unpaidBookingCount <= 0 && !allocationIncomplete;
   const canEnd = stUpper === 'CLOSED';
 
   const startTrip = async () => {
@@ -160,7 +167,9 @@ export default function HdvTripAssignmentPage() {
                   ? 'Chỉ được bắt đầu khi trạng thái là Mở bán (OPENING).'
                   : unpaidBookingCount > 0
                     ? `Không thể bắt đầu vì còn ${unpaidBookingCount} booking chưa thanh toán đủ.`
-                    : undefined
+                    : allocationIncomplete
+                      ? 'Mọi khách phải được xếp ghế xe và phòng khách sạn (đủ chỗ) trước khi bắt đầu chuyến.'
+                      : undefined
               }
             >
               <Button type="primary" loading={starting} disabled={!canStart} onClick={startTrip}>

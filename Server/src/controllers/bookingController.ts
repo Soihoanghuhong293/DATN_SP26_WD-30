@@ -17,6 +17,11 @@ import { canSendMail } from '../services/mailer';
 import { sendGuideAssignmentEmail } from '../services/guideAssignmentEmail';
 import { sendGuideUnassignmentEmail } from '../services/guideUnassignmentEmail';
 import TourTrip, { TripStatus } from '../models/TourTrip';
+import VehicleAssignment from '../models/VehicleAssignment';
+import RoomAssignment from '../models/RoomAssignment';
+import TourReview from '../models/TourReview';
+import GuideReview from '../models/GuideReview';
+import { validateTripAllocationsForStart } from '../utils/tripAllocationValidation';
 
 const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 'refunded'> = {
   pending: 'unpaid',
@@ -25,6 +30,23 @@ const LEGACY_PAYMENT_STATUS_MAP: Record<string, 'unpaid' | 'deposit' | 'paid' | 
   paid: 'paid',
   refunded: 'refunded',
   cancelled: 'unpaid',
+};
+
+const resolveEffectivePaymentForBooking = (booking: {
+  payment_status?: string | null;
+  status?: string | null;
+}): 'unpaid' | 'deposit' | 'paid' | 'refunded' => {
+  const statusKey = String(booking.status || 'confirmed').toLowerCase();
+  const legacy = LEGACY_PAYMENT_STATUS_MAP[statusKey] ?? 'unpaid';
+  const ex = booking.payment_status;
+  if (ex === undefined || ex === null || String(ex).trim() === '') {
+    return legacy;
+  }
+  const p = String(ex).trim().toLowerCase();
+  if (p === 'unpaid' || p === 'deposit' || p === 'paid' || p === 'refunded') {
+    return p;
+  }
+  return legacy;
 };
 
 const normalizeId = (v: any) => (v === null || v === undefined ? '' : String(v).trim());
@@ -168,7 +190,10 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     const bookings = await Booking.find({
       $or: [{ guide_id: guideId }, ...(tourIdList.length ? [{ tour_id: { $in: tourIdList } }] : [])],
     })
-      .populate({ path: 'tour_id', select: 'name images duration_days price primary_guide_id secondary_guide_ids' })
+      .populate({
+        path: 'tour_id',
+        select: 'name images duration_days price primary_guide_id secondary_guide_ids schedule',
+      })
       .populate({ path: 'user_id', select: 'name email phone' })
       .sort({ startDate: 1 });
 
@@ -947,6 +972,71 @@ export const checkInPassenger = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const hasCheckpointReason = (v: any) => typeof v === 'string' && v.trim().length > 0;
+
+/** Kiểm tra 1 booking đã điểm danh đủ checkpoint trước khi kết thúc tour */
+function assertBookingCheckpointsCompleteForCompletedTour(
+  b: any,
+  checkpointDays: any[]
+): { ok: true } | { ok: false; message: string } {
+  const hasAnyCheckpoint = checkpointDays.some(
+    (d: any) => Array.isArray(d.checkpoints) && d.checkpoints.length > 0
+  );
+  if (!hasAnyCheckpoint) return { ok: true };
+
+  const checkins = (b.checkpoint_checkins || {}) as any;
+  const totalPassengers = Array.isArray(b.passengers) ? b.passengers.length : 0;
+  const bookingLabel = b.customer_name ? ` (đơn: ${b.customer_name})` : '';
+
+  for (const d of checkpointDays) {
+    for (let cpIdx = 0; cpIdx < (d.checkpoints || []).length; cpIdx += 1) {
+      const cp = checkins?.[String(d.day)]?.[String(cpIdx)];
+      if (!cp) {
+        return {
+          ok: false,
+          message: `Chưa điểm danh đủ${bookingLabel}. Thiếu dữ liệu ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
+        };
+      }
+
+      // Có danh sách khách chi tiết: chỉ bắt buộc điểm danh theo passengers[] (người đặt đã nằm trong list, không cộng thêm ô leader).
+      if (totalPassengers === 0) {
+        if (cp.leader === undefined) {
+          return {
+            ok: false,
+            message: `Chưa điểm danh trưởng đoàn${bookingLabel} ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
+          };
+        }
+        const leaderOk = cp.leader === true || (cp.leader === false && hasCheckpointReason(cp?.reasons?.leader));
+        if (!leaderOk) {
+          return {
+            ok: false,
+            message: `Trưởng đoàn vắng mặt nhưng chưa có lý do${bookingLabel} ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
+          };
+        }
+        continue;
+      }
+
+      for (let pIdx = 0; pIdx < totalPassengers; pIdx += 1) {
+        const st = cp?.passengers?.[pIdx];
+        if (st === undefined) {
+          return {
+            ok: false,
+            message: `Chưa điểm danh đủ${bookingLabel}. Thiếu khách #${pIdx + 1} ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
+          };
+        }
+        const ok = st === true || (st === false && hasCheckpointReason(cp?.reasons?.passengers?.[pIdx]));
+        if (!ok) {
+          return {
+            ok: false,
+            message: `Khách #${pIdx + 1} vắng mặt nhưng chưa có lý do${bookingLabel} ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
+          };
+        }
+      }
+    }
+  }
+  return { ok: true };
+}
+
 // HDV: Cập nhật giai đoạn tour
 export const updateTourStage = async (req: AuthRequest, res: Response) => {
   try {
@@ -992,9 +1082,62 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Nếu kết thúc tour: bắt buộc điểm danh đủ tất cả ngày + lịch trình (checkpoint)
+    const rawTid = b.tour_id;
+    const tourOid =
+      rawTid && typeof rawTid === 'object' && (rawTid as any)._id ? (rawTid as any)._id : rawTid;
+    const dateStr = normalizeTripDate(new Date(b.startDate).toISOString());
+    const sameTripCandidates = await Booking.find({ tour_id: tourOid });
+    const siblings: any[] = [];
+    for (const c of sameTripCandidates) {
+      const cAny = c as any;
+      if (normalizeTripDate(new Date(cAny.startDate).toISOString()) !== dateStr) continue;
+      if (!(await guideHasAccessToBooking(guideId, cAny))) continue;
+      siblings.push(cAny);
+    }
+    if (siblings.length === 0) {
+      siblings.push(b);
+    }
+
+    const baseStage = b.tour_stage || 'scheduled';
+    for (const sib of siblings) {
+      if ((sib.tour_stage || 'scheduled') !== baseStage) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Các booking cùng trip chưa đồng bộ giai đoạn. Vui lòng liên hệ quản trị.',
+        });
+      }
+    }
+
+    // Bắt đầu chuyến (scheduled -> in_progress): mọi đơn cùng trip phải đã thanh toán + đủ danh sách khách
+    if (tour_stage === 'in_progress') {
+      for (const sib of siblings) {
+        const s = sib as any;
+        const ps = s.payment_status || LEGACY_PAYMENT_STATUS_MAP[s.status] || 'unpaid';
+        if (ps !== 'paid') {
+          const label = s.customer_name ? ` "${String(s.customer_name)}"` : '';
+          return res.status(400).json({
+            status: 'fail',
+            message: `Không thể bắt đầu chuyến: đơn${label} chưa thanh toán đủ (yêu cầu trạng thái: Đã thanh toán).`,
+          });
+        }
+        if (String(s.customer_info_status || '') !== 'COMPLETED') {
+          const label = s.customer_name ? ` "${String(s.customer_name)}"` : '';
+          return res.status(400).json({
+            status: 'fail',
+            message: `Không thể bắt đầu chuyến: đơn${label} chưa nhập đủ danh sách khách.`,
+          });
+        }
+      }
+
+      const allocCheck = await validateTripAllocationsForStart(String(tourOid), dateStr);
+      if (!allocCheck.ok) {
+        return res.status(400).json({ status: 'fail', message: allocCheck.message });
+      }
+    }
+
+    // Nếu kết thúc tour: bắt buộc điểm danh đủ tất cả ngày + lịch trình (checkpoint) cho từng booking cùng trip
     if (tour_stage === 'completed') {
-      const tour = await Tour.findById(b.tour_id).select('schedule');
+      const tour = await Tour.findById(tourOid).select('schedule');
       const schedule = Array.isArray((tour as any)?.schedule) ? (tour as any).schedule : [];
       const checkpointDays = schedule
         .map((d: any, idx: number) => ({
@@ -1005,72 +1148,39 @@ export const updateTourStage = async (req: AuthRequest, res: Response) => {
         }))
         .sort((a: any, b2: any) => a.day - b2.day);
 
-      // Nếu không có checkpoint thì không cần ràng buộc điểm danh
       const hasAnyCheckpoint = checkpointDays.some((d: any) => Array.isArray(d.checkpoints) && d.checkpoints.length > 0);
       if (hasAnyCheckpoint) {
-        const checkins = (b.checkpoint_checkins || {}) as any;
-        const totalPassengers = Array.isArray(b.passengers) ? b.passengers.length : 0;
-
-        const hasReason = (v: any) => typeof v === 'string' && v.trim().length > 0;
-
-        for (const d of checkpointDays) {
-          for (let cpIdx = 0; cpIdx < (d.checkpoints || []).length; cpIdx += 1) {
-            const cp = checkins?.[String(d.day)]?.[String(cpIdx)];
-            if (!cp) {
-              return res.status(400).json({
-                status: 'fail',
-                message: `Chưa điểm danh đủ. Thiếu dữ liệu điểm danh ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
-              });
-            }
-
-            if (cp.leader === undefined) {
-              return res.status(400).json({
-                status: 'fail',
-                message: `Chưa điểm danh trưởng đoàn ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
-              });
-            }
-            const leaderOk = cp.leader === true || (cp.leader === false && hasReason(cp?.reasons?.leader));
-            if (!leaderOk) {
-              return res.status(400).json({
-                status: 'fail', 
-                message: `Trưởng đoàn vắng mặt nhưng chưa có lý do ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
-              });
-            }
-
-            for (let pIdx = 0; pIdx < totalPassengers; pIdx += 1) {
-              const st = cp?.passengers?.[pIdx];
-              if (st === undefined) {
-                return res.status(400).json({
-                  status: 'fail',
-                  message: `Chưa điểm danh đủ. Thiếu điểm danh khách #${pIdx + 1} ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
-                });
-              }
-              const ok = st === true || (st === false && hasReason(cp?.reasons?.passengers?.[pIdx]));
-              if (!ok) {
-                return res.status(400).json({
-                  status: 'fail',
-                  message: `Khách #${pIdx + 1} vắng mặt nhưng chưa có lý do ở Ngày ${d.day}, lịch trình ${cpIdx + 1}.`,
-                });
-              }
-            }
+        for (const sib of siblings) {
+          const chk = assertBookingCheckpointsCompleteForCompletedTour(sib, checkpointDays);
+          if (!chk.ok) {
+            return res.status(400).json({
+              status: 'fail',
+              message: chk.message,
+            });
           }
         }
       }
     }
 
-    // Ghi log tự động khi HDV đổi giai đoạn tour
-    b.logs.push({
-      time: new Date(),
-      user: req.user?.name || 'Hướng dẫn viên',
-      old: b.tour_stage || 'scheduled',
-      new: tour_stage,
-      note: 'HDV cập nhật tiến độ tour'
-    });
-    b.tour_stage = tour_stage;
+    const actorName = req.user?.name || 'Hướng dẫn viên';
+    for (const sib of siblings) {
+      const doc = await Booking.findById(sib._id);
+      if (!doc) continue;
+      const d = doc as any;
+      if (!Array.isArray(d.logs)) d.logs = [];
+      d.logs.push({
+        time: new Date(),
+        user: actorName,
+        old: d.tour_stage || 'scheduled',
+        new: tour_stage,
+        note: 'HDV cập nhật tiến độ tour',
+      });
+      d.tour_stage = tour_stage;
+      await d.save();
+    }
 
-    await b.save();
-
-    res.status(200).json({ status: 'success', data: b });
+    const out = await Booking.findById(req.params.id);
+    res.status(200).json({ status: 'success', data: out });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -1864,26 +1974,52 @@ export const deleteBooking = async (req: Request, res: Response) => {
   try {
     const bookingId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
-    const booking: any = await Booking.findById(bookingId).select('payment_status status');
+    const booking: any = await Booking.findById(bookingId).select('payment_status status tour_stage');
     if (!booking) {
       return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
     }
 
-    const resolvedPayment = booking.payment_status || LEGACY_PAYMENT_STATUS_MAP[booking.status] || 'unpaid';
-    if (resolvedPayment !== 'unpaid') {
+    const stage = String(booking.tour_stage ?? 'scheduled').trim().toLowerCase();
+    if (stage === 'in_progress') {
       return res.status(400).json({
         status: 'fail',
-        message: 'Chỉ được xóa booking khi chưa thanh toán/đặt cọc (payment_status = unpaid).',
+        message: 'Không thể xóa booking khi tour đang diễn ra.',
+      });
+    }
+    if (stage === 'completed') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Không thể xóa booking khi tour đã kết thúc.',
       });
     }
 
+    const effectivePay = resolveEffectivePaymentForBooking(booking);
+
+    // Chặn chỉ khi đã thanh toán đủ hoặc hoàn tiền (cho phép unpaid + đặt cọc… sau khi tour chưa chạy).
+    if (effectivePay === 'paid' || effectivePay === 'refunded') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Không thể xóa booking đã thanh toán đủ hoặc đã hoàn tiền.',
+      });
+    }
+
+    const passengerIds = await Passenger.find({ booking_id: bookingId }).distinct('_id');
+    if (passengerIds.length > 0) {
+      await RoomingAllocation.deleteMany({ passenger_id: { $in: passengerIds } });
+      await SeatingAllocation.deleteMany({ passenger_id: { $in: passengerIds } });
+    }
+    await VehicleAssignment.deleteMany({ booking_id: bookingId });
+    await RoomAssignment.deleteMany({ booking_id: bookingId });
+    await Passenger.deleteMany({ booking_id: bookingId });
     await VehicleAllocation.deleteMany({ booking_id: bookingId });
     await RoomAllocation.deleteMany({ booking_id: bookingId });
+    await TourReview.deleteMany({ booking_id: bookingId });
+    await GuideReview.deleteMany({ booking_id: bookingId });
     await Booking.findByIdAndDelete(bookingId);
 
-    res.status(204).json({
+    res.status(200).json({
       status: 'success',
-      data: null
+      data: null,
     });
   } catch (error: any) {
     res.status(500).json({

@@ -19,6 +19,7 @@ import Hotel from '../models/Hotel';
 import User from '../models/user.model';
 import Guide from '../models/Guide';
 import TourTrip, { TripStatus } from '../models/TourTrip';
+import { validateTripAllocationsForStart } from '../utils/tripAllocationValidation';
 
 const normalizeDateStr = (value: any) => {
   if (!value) return '';
@@ -128,6 +129,12 @@ export const guideStartTrip = async (req: AuthRequest, res: Response) => {
         message: `Không thể bắt đầu chuyến đi vì còn ${unpaidCount} booking chưa thanh toán đủ. Vui lòng yêu cầu điều hành xác nhận thanh toán trước khi bắt đầu.`,
       });
     }
+
+    const allocCheck = await validateTripAllocationsForStart(tourId, dateStr);
+    if (!allocCheck.ok) {
+      return res.status(400).json({ status: 'fail', message: allocCheck.message });
+    }
+
     const trip = await ensureTripDoc(tourId, dateStr);
     const prev = trip.status as TripStatus;
     if (prev !== 'OPENING') {

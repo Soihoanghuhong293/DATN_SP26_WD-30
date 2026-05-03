@@ -1,51 +1,50 @@
-
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
-  Card,
   Button,
-  Typography,
-  Tag,
-  List,
-  Switch,
-  Tabs,
-  Spin,
+  Card,
   Empty,
-  Steps,
+  Form,
+  Image,
+  Input,
+  List,
   message,
   Modal,
-  Tooltip,
   Popconfirm,
-  Form,
-  Input,
   Segmented,
+  Spin,
+  Steps,
+  Switch,
+  Tabs,
+  Tag,
+  Tooltip,
+  Typography,
   Upload,
-  Image,
 } from "antd";
 import {
   ArrowLeftOutlined,
   CalendarOutlined,
   CheckCircleOutlined,
-  UserOutlined,
+  CheckOutlined,
+  PhoneOutlined,
+  RightOutlined,
   RocketOutlined,
   SyncOutlined,
-  CheckOutlined,
-  RightOutlined,
-  PhoneOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
+const API_V1 = (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
+const BOOKINGS_API = `${API_V1}/bookings`;
+
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
-
-const API = "http://localhost:5000/api/v1/bookings";
-const API_V1 = (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
 
 const resizeImageToDataUrl = async (file: File, maxW = 1280, maxH = 1280, quality = 0.75) => {
   const dataUrl: string = await new Promise((resolve, reject) => {
@@ -73,15 +72,34 @@ const resizeImageToDataUrl = async (file: File, maxW = 1280, maxH = 1280, qualit
   const ctx = canvas.getContext("2d");
   if (!ctx) return dataUrl;
   ctx.drawImage(img, 0, 0, w, h);
-
-  // jpeg nhỏ hơn png
   return canvas.toDataURL("image/jpeg", quality);
 };
 
-const HdvBookingDetail = () => {
-  const { id } = useParams<{ id: string }>();
+type DisplayRow = {
+  key: string;
+  bookingId: string;
+  name: string;
+  phone?: string;
+  role: string;
+  type: "leader" | "passenger";
+  passengerIndex?: number;
+};
+
+type AbsentPayload = {
+  bookingId: string;
+  name: string;
+  type: "leader" | "passenger";
+  passengerIndex?: number;
+  day: number;
+  checkpointIndex: number;
+};
+
+export default function HdvTripDetailPage() {
+  const { tourId, date } = useParams<{ tourId: string; date: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const dateStr = date ? dayjs(date).format("YYYY-MM-DD") : "";
+
   const [openPoint, setOpenPoint] = useState<{
     day: number;
     checkpointIndex: number;
@@ -89,32 +107,38 @@ const HdvBookingDetail = () => {
   } | null>(null);
   const [diaryForm] = Form.useForm();
   const [diaryFileList, setDiaryFileList] = useState<any[]>([]);
-  const [selectedDiaryDayIndex, setSelectedDiaryDayIndex] = useState<number>(0);
-  const [isDiaryEditing, setIsDiaryEditing] = useState<boolean>(true);
-  const [absentTarget, setAbsentTarget] = useState<any>(null);
+  const [selectedDiaryDayIndex, setSelectedDiaryDayIndex] = useState(0);
+  const [isDiaryEditing, setIsDiaryEditing] = useState(true);
+  const [absentTarget, setAbsentTarget] = useState<AbsentPayload | null>(null);
   const [reasonForm] = Form.useForm();
-  const [activeCheckpointDay, setActiveCheckpointDay] = useState<string>("1");
+  const [activeCheckpointDay, setActiveCheckpointDay] = useState("1");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["hdv-booking", id],
-    queryFn: async () => {
-      const res = await axios.get(`${API}/guide/${id}`, getAuthHeader());
-      return res.data?.data;
-    },
-    enabled: !!id,
+  const { data: guideBookings = [], isLoading: listLoading } = useQuery({
+    queryKey: ["hdv-guide-me-bookings"],
+    queryFn: async () =>
+      (await axios.get(`${BOOKINGS_API}/guide/me`, getAuthHeader())).data?.data || [],
   });
 
-  const guardTourId = String((data as any)?.tour_id?._id || (data as any)?.tour_id || "");
-  const guardDateStr = (data as any)?.startDate
-    ? dayjs((data as any).startDate).format("YYYY-MM-DD")
-    : "";
+  const tripBookings = useMemo(() => {
+    return (guideBookings as any[]).filter((b) => {
+      const tid = String(b?.tour_id?._id || b?.tour_id || "");
+      const ds = b?.startDate ? dayjs(b.startDate).format("YYYY-MM-DD") : "";
+      return tid === String(tourId || "") && ds === dateStr;
+    });
+  }, [guideBookings, tourId, dateStr]);
+
+  const primaryId = useMemo(() => {
+    if (!tripBookings.length) return undefined as string | undefined;
+    const sorted = [...tripBookings].sort((a, b) => String(a._id).localeCompare(String(b._id)));
+    return String(sorted[0]._id);
+  }, [tripBookings]);
 
   const { data: assignmentGuardData, isPending: assignmentGuardLoading } = useQuery({
-    queryKey: ["hdv-booking-allocation-guard", guardTourId, guardDateStr],
+    queryKey: ["hdv-trip-allocation-guard", tourId, dateStr],
     queryFn: async () =>
-      (await axios.get(`${API_V1}/tours/${guardTourId}/trips/${guardDateStr}/assignment`, getAuthHeader()))
-        .data?.data,
-    enabled: !!guardTourId && !!guardDateStr && !!data,
+      (await axios.get(`${API_V1}/tours/${tourId}/trips/${dateStr}/assignment`, getAuthHeader())).data
+        ?.data,
+    enabled: !!tourId && !!dateStr,
   });
 
   const tripAllocationIncomplete = useMemo(() => {
@@ -123,30 +147,112 @@ const HdvBookingDetail = () => {
     return ps.some((p: any) => !p?.seat || !p?.room);
   }, [assignmentGuardData]);
 
+  const { data: primaryBooking, isLoading: detailLoading } = useQuery({
+    queryKey: ["hdv-trip-primary", primaryId],
+    queryFn: async () =>
+      (await axios.get(`${BOOKINGS_API}/guide/${primaryId}`, getAuthHeader())).data?.data,
+    enabled: !!primaryId,
+  });
+
+  const booking = primaryBooking as any;
+  const tour = booking?.tour_id || (tripBookings[0] as any)?.tour_id;
+  const schedule = Array.isArray(tour?.schedule) ? tour.schedule : [];
+  const scheduleDetail = booking?.schedule_detail || "";
+
+  const bookingById = useMemo(() => {
+    const m = new Map<string, any>();
+    (tripBookings as any[]).forEach((b) => m.set(String(b._id), b));
+    return m;
+  }, [tripBookings]);
+
+  const displayList: DisplayRow[] = useMemo(() => {
+    const rows: DisplayRow[] = [];
+    (tripBookings as any[]).forEach((bk: any, bi: number) => {
+      const plist = Array.isArray(bk.passengers) ? bk.passengers : [];
+      const ref = (bk.customer_name || "").trim() || `Đơn ${bi + 1}`;
+      if (!plist.length) {
+        rows.push({
+          key: `leader-${bk._id}`,
+          bookingId: String(bk._id),
+          name: bk.customer_name,
+          phone: bk.customer_phone,
+          role: `Trưởng đoàn (${ref})`,
+          type: "leader",
+        });
+        return;
+      }
+      const leaderIdx = plist.findIndex(
+        (p: any) =>
+          p?.is_leader === true || p?.isLeader === true || p?.is_representative === true
+      );
+      plist.forEach((p: any, i: number) => {
+        rows.push({
+          key: `p-${bk._id}-${i}`,
+          bookingId: String(bk._id),
+          name: p.name || p.full_name || `Khách ${i + 1}`,
+          phone: p.phone || p.phoneNumber,
+          role:
+            (leaderIdx >= 0 && i === leaderIdx) || (leaderIdx < 0 && i === 0)
+              ? `Trưởng đoàn (${ref})`
+              : "",
+          type: "passenger",
+          passengerIndex: i,
+        });
+      });
+    });
+    return rows;
+  }, [tripBookings]);
+
+  const totalPax = useMemo(
+    () => (tripBookings as any[]).reduce((s, b) => s + Number(b?.groupSize || 0), 0),
+    [tripBookings]
+  );
+
   const updateStageMutation = useMutation({
     mutationFn: async (tour_stage: string) => {
-      const res = await axios.patch(`${API}/guide/${id}/stage`, { tour_stage }, getAuthHeader());
+      const res = await axios.patch(
+        `${BOOKINGS_API}/guide/${primaryId}/stage`,
+        { tour_stage },
+        getAuthHeader()
+      );
       return res.data;
     },
     onSuccess: (_, stage) => {
-      const label = stage === "scheduled" ? "Sắp khởi hành" : stage === "in_progress" ? "Đang diễn ra" : "Đã kết thúc";
+      const label =
+        stage === "scheduled"
+          ? "Sắp khởi hành"
+          : stage === "in_progress"
+            ? "Đang diễn ra"
+            : "Đã kết thúc";
       message.success(`Đã cập nhật: ${label}`);
-      queryClient.invalidateQueries({ queryKey: ["hdv-booking", id] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-trip-primary", primaryId] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-guide-me-bookings"] });
       queryClient.invalidateQueries({ queryKey: ["hdv-bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["hdv-booking-allocation-guard", guardTourId, guardDateStr] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-bookings-for-trip-list"] });
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || "Cập nhật trạng thái thất bại.";
-      message.error(msg);
+      message.error(err?.response?.data?.message || "Cập nhật trạng thái thất bại.");
     },
   });
 
   const checkInMutation = useMutation({
-    mutationFn: async (payload: { type: string; passengerIndex?: number; day?: number; checkpointIndex?: number; checked: boolean; reason?: string }) => {
-      await axios.patch(`${API}/guide/${id}/checkin`, payload, getAuthHeader());
+    mutationFn: async (
+      payload: {
+        bookingId: string;
+        type: string;
+        passengerIndex?: number;
+        day?: number;
+        checkpointIndex?: number;
+        checked: boolean;
+        reason?: string;
+      }
+    ) => {
+      const { bookingId, ...body } = payload;
+      await axios.patch(`${BOOKINGS_API}/guide/${bookingId}/checkin`, body, getAuthHeader());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["hdv-booking", id] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-guide-me-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-trip-primary", primaryId] });
       queryClient.invalidateQueries({ queryKey: ["hdv-bookings"] });
     },
   });
@@ -160,53 +266,17 @@ const HdvBookingDetail = () => {
       highlight?: string;
       images?: Array<{ name?: string; url: string }>;
     }) => {
-      await axios.patch(`${API}/guide/${id}/diary`, payload, getAuthHeader());
+      await axios.patch(`${BOOKINGS_API}/guide/${primaryId}/diary`, payload, getAuthHeader());
     },
     onSuccess: () => {
       message.success("Đã lưu nhật kí");
       setIsDiaryEditing(false);
-      queryClient.invalidateQueries({ queryKey: ["hdv-booking", id] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-trip-primary", primaryId] });
     },
     onError: (err: any) => {
       message.error(err.response?.data?.message || "Lưu nhật kí thất bại");
     },
   });
-
-  const booking = data ?? null;
-
-  /** Điểm danh chỉ theo danh sách khách (passengers), không thêm dòng người đặt trùng */
-  const displayList = useMemo(() => {
-    if (!booking) return [];
-    const plist = Array.isArray(booking.passengers) ? booking.passengers : [];
-    const leaderCi = booking.leaderCheckedIn || false;
-    if (!plist.length) {
-      return [
-        {
-          key: "leader-fallback",
-          name: booking.customer_name,
-          phone: booking.customer_phone,
-          role: "Trưởng đoàn",
-          checkedIn: leaderCi,
-          type: "leader" as const,
-          passengerIndex: undefined,
-        },
-      ];
-    }
-    const leaderIdx = plist.findIndex(
-      (p: any) =>
-        p?.is_leader === true || p?.isLeader === true || p?.is_representative === true
-    );
-    return plist.map((p: any, i: number) => ({
-      key: `p-${i}`,
-      name: p.name || p.full_name || `Khách ${i + 1}`,
-      phone: p.phone || p.phoneNumber,
-      role:
-        (leaderIdx >= 0 && i === leaderIdx) || (leaderIdx < 0 && i === 0) ? "Trưởng đoàn" : "",
-      checkedIn: p.checkedIn || false,
-      type: "passenger" as const,
-      passengerIndex: i,
-    }));
-  }, [booking]);
 
   const diaryDays = useMemo(() => {
     if (!booking?.startDate) return [];
@@ -223,24 +293,22 @@ const HdvBookingDetail = () => {
   const selectedDiaryDayNo = selectedDiaryDayIndex + 1;
   const selectedDiaryEntry = useMemo(() => {
     const entries = Array.isArray(booking?.diary_entries) ? booking.diary_entries : [];
-    // nếu dữ liệu cũ bị trùng, lấy bản mới nhất theo created_at/date
     const sameDay = entries.filter((e: any) => Number(e?.day_no || 1) === Number(selectedDiaryDayNo));
     sameDay.sort(
       (a: any, b: any) =>
-        dayjs(b.updated_at || b.created_at || b.date).valueOf() - dayjs(a.updated_at || a.created_at || a.date).valueOf()
+        dayjs(b.updated_at || b.created_at || b.date).valueOf() -
+        dayjs(a.updated_at || a.created_at || a.date).valueOf()
     );
     return sameDay[0] || null;
   }, [booking?.diary_entries, selectedDiaryDayNo]);
 
   useEffect(() => {
-    // Có nhật kí thì mặc định chỉ xem (ẩn form). Không có nhật kí thì mở form để nhập.
     setIsDiaryEditing(!selectedDiaryEntry);
     diaryForm.setFieldsValue({
       title: selectedDiaryEntry?.title || "",
       content: selectedDiaryEntry?.content || "",
       highlight: selectedDiaryEntry?.highlight || "",
     });
-
     const imgs = Array.isArray(selectedDiaryEntry?.images) ? selectedDiaryEntry.images : [];
     setDiaryFileList(
       imgs.map((img: any, idx: number) => ({
@@ -252,47 +320,31 @@ const HdvBookingDetail = () => {
     );
   }, [diaryForm, selectedDiaryDayNo, selectedDiaryEntry]);
 
-  if (!id) return null;
-  if (isLoading)
-    return (
-      <div style={{ textAlign: "center", padding: 80 }}>
-        <Spin size="large" />
-      </div>
-    );
-  if (!data) return <Empty description="Không tìm thấy đơn hàng" />;
-
-  const tour = booking.tour_id;
-  const schedule = tour?.schedule || [];
-  const scheduleDetail = booking.schedule_detail || "";
-  const passengers = booking.passengers || [];
-  const leaderCheckedIn = booking.leaderCheckedIn || false;
-  const tourStage = booking.tour_stage || "scheduled";
+  const tourStage = booking?.tour_stage || "scheduled";
   const canCheckin = tourStage === "in_progress";
 
-  const checkpointDays =
-    Array.isArray(schedule) && schedule.length > 0
-      ? schedule
-          .map((d: any, idx: number) => ({
-            day: Number(d?.day ?? idx + 1),
-            title: d?.title || `Ngày ${idx + 1}`,
-            checkpoints: Array.isArray(d?.activities)
-              ? d.activities.filter((x: any) => typeof x === "string" && x.trim().length > 0)
-              : [],
-          }))
-          .sort((a: any, b: any) => a.day - b.day)
-      : [];
+  const checkpointDays = useMemo(() => {
+    if (!Array.isArray(schedule) || schedule.length === 0) return [];
+    return schedule
+      .map((d: any, idx: number) => ({
+        day: Number(d?.day ?? idx + 1),
+        title: d?.title || `Ngày ${idx + 1}`,
+        checkpoints: Array.isArray(d?.activities)
+          ? d.activities.filter((x: any) => typeof x === "string" && x.trim().length > 0)
+          : [],
+      }))
+      .sort((a: any, b: any) => a.day - b.day);
+  }, [schedule]);
 
-  const STAGES = [
-    { key: "scheduled", label: "Sắp khởi hành", icon: <RocketOutlined /> },
-    { key: "in_progress", label: "Đang diễn ra", icon: <SyncOutlined spin /> },
-    { key: "completed", label: "Đã kết thúc", icon: <CheckOutlined /> },
-  ];
-  const currentStageIndex = STAGES.findIndex((s) => s.key === tourStage);
-
-  const checkpointCheckins = (booking as any)?.checkpoint_checkins || {};
-
-  const getCheckpointStatus = (day: number, cpIndex: number, type: "leader" | "passenger", passengerIdx?: number) => {
-    const d = checkpointCheckins?.[String(day)];
+  const getCheckpointStatus = (
+    bk: any,
+    day: number,
+    cpIndex: number,
+    type: "leader" | "passenger",
+    passengerIdx?: number
+  ) => {
+    const checkpointCheckins = bk?.checkpoint_checkins || {};
+    const d = checkpointCheckins[String(day)];
     const cp = d?.[String(cpIndex)];
     if (!cp) return undefined;
     if (type === "leader") return cp.leader;
@@ -300,29 +352,33 @@ const HdvBookingDetail = () => {
     return cp.passengers?.[passengerIdx];
   };
 
-  const getCheckpointChecked = (day: number, cpIndex: number, type: "leader" | "passenger", passengerIdx?: number) => {
-    return getCheckpointStatus(day, cpIndex, type, passengerIdx) === true;
+  const getRowCheckpointStatus = (row: DisplayRow, day: number, cpIndex: number) => {
+    const bk = bookingById.get(row.bookingId);
+    if (!bk) return undefined;
+    return getCheckpointStatus(bk, day, cpIndex, row.type, row.passengerIndex);
   };
 
-  const isCheckpointFinished = (dayNum: number, cpIdx: number) => {
+  const isCheckpointFinishedForBooking = (bk: any, dayNum: number, cpIdx: number) => {
     const dayData = checkpointDays.find((d) => d.day === dayNum);
     if (!dayData) return true;
     if (cpIdx < 0 || cpIdx >= (dayData.checkpoints?.length || 0)) return true;
-
+    const plist = bk.passengers || [];
+    const checkpointCheckins = bk.checkpoint_checkins || {};
     const cp = checkpointCheckins?.[String(dayNum)]?.[String(cpIdx)];
     if (!cp) return false;
-
-    if (!passengers.length) {
+    if (!plist.length) {
       if (cp.leader === undefined) return false;
       return cp.leader === true || (cp.leader === false && cp.reasons?.leader);
     }
-
-    return passengers.every((_: any, pIdx: number) => {
+    return plist.every((_: any, pIdx: number) => {
       const status = cp.passengers?.[pIdx];
       if (status === undefined) return false;
       return status === true || (status === false && cp.reasons?.passengers?.[pIdx]);
     });
   };
+
+  const isCheckpointFinished = (dayNum: number, cpIdx: number) =>
+    (tripBookings as any[]).every((bk) => isCheckpointFinishedForBooking(bk, dayNum, cpIdx));
 
   const isDayFinished = (dayNum: number) => {
     const dayData = checkpointDays.find((d) => d.day === dayNum);
@@ -345,6 +401,13 @@ const HdvBookingDetail = () => {
   const effectivePaymentStatus = (b: any) =>
     b?.payment_status || LEGACY_PAYMENT_MAP[String(b?.status)] || "unpaid";
 
+  const STAGES = [
+    { key: "scheduled", label: "Sắp khởi hành", icon: <RocketOutlined /> },
+    { key: "in_progress", label: "Đang diễn ra", icon: <SyncOutlined spin /> },
+    { key: "completed", label: "Đã kết thúc", icon: <CheckOutlined /> },
+  ];
+  const currentStageIndex = STAGES.findIndex((s) => s.key === tourStage);
+
   const validateNextStage = (nextStageKey: string) => {
     const nextStage = STAGES.find((s) => s.key === nextStageKey);
     if (!nextStage) return { ok: false, reason: "Trạng thái không hợp lệ." as const };
@@ -361,17 +424,21 @@ const HdvBookingDetail = () => {
     }
 
     if (nextStageKey === "in_progress") {
-      if (effectivePaymentStatus(booking) !== "paid") {
-        return {
-          ok: false,
-          reason: "Không thể bắt đầu chuyến khi đơn chưa thanh toán đủ (yêu cầu: Đã thanh toán).",
-        } as const;
-      }
-      if (String(booking.customer_info_status || "") !== "COMPLETED") {
-        return {
-          ok: false,
-          reason: "Booking chưa nhập đủ danh sách khách (tên + SĐT đủ theo số lượng đặt).",
-        } as const;
+      for (const bk of tripBookings as any[]) {
+        if (effectivePaymentStatus(bk) !== "paid") {
+          const label = bk.customer_name ? ` (${bk.customer_name})` : "";
+          return {
+            ok: false,
+            reason: `Không thể bắt đầu chuyến: có đơn${label} chưa thanh toán đủ (yêu cầu: Đã thanh toán).`,
+          } as const;
+        }
+        if (String(bk.customer_info_status || "") !== "COMPLETED") {
+          const label = bk.customer_name ? ` (${bk.customer_name})` : "";
+          return {
+            ok: false,
+            reason: `Không thể bắt đầu chuyến: có đơn${label} chưa nhập đủ danh sách khách.`,
+          } as const;
+        }
       }
       if (assignmentGuardLoading) {
         return {
@@ -383,7 +450,7 @@ const HdvBookingDetail = () => {
         return {
           ok: false,
           reason:
-            "Chưa xếp đủ ghế xe hoặc phòng khách sạn cho mọi khách trong chuyến. Vui lòng hoàn tất trên trang điều hành.",
+            "Chưa xếp đủ ghế xe hoặc phòng khách sạn cho mọi khách. Vui lòng hoàn tất trên trang lệnh điều động.",
         } as const;
       }
     }
@@ -391,12 +458,48 @@ const HdvBookingDetail = () => {
     if (nextStageKey === "completed" && checkpointDays.length > 0 && !allCheckpointDaysFinished) {
       return {
         ok: false,
-        reason: "Bắt buộc điểm danh đủ tất cả các ngày và lịch trình trước khi kết thúc tour.",
+        reason:
+          "Bắt buộc điểm danh đủ tất cả các ngày và lịch trình (mọi đơn trong trip) trước khi kết thúc tour.",
       } as const;
     }
 
     return { ok: true, label: nextStage.label as string };
   };
+
+  if (!tourId || !dateStr) return null;
+
+  const loading = listLoading || (!!primaryId && detailLoading);
+
+  if (loading && !tripBookings.length) {
+    return (
+      <div style={{ textAlign: "center", padding: 80 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!tripBookings.length) {
+    return (
+      <div>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate("/hdv/assigned-trips")}
+          style={{ marginBottom: 24 }}
+        >
+          Quay lại
+        </Button>
+        <Empty description="Không có booking nào cho trip này" />
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div style={{ textAlign: "center", padding: 80 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   const tabItems = [
     {
@@ -478,13 +581,9 @@ const HdvBookingDetail = () => {
                     ) : (
                       <List
                         dataSource={d.checkpoints.map((cp: string, cpIndex: number) => {
-                          const totalChecked = passengers.length
-                            ? passengers.filter((_: any, i: number) =>
-                                getCheckpointChecked(d.day, cpIndex, "passenger", i)
-                              ).length
-                            : getCheckpointChecked(d.day, cpIndex, "leader")
-                              ? 1
-                              : 0;
+                          const totalChecked = displayList.filter(
+                            (row) => getRowCheckpointStatus(row, d.day, cpIndex) === true
+                          ).length;
                           return {
                             cp,
                             cpIndex,
@@ -492,49 +591,54 @@ const HdvBookingDetail = () => {
                             totalPeople: displayList.length,
                           };
                         })}
-                        renderItem={(item: any) => (
-                          (() => {
-                            const isLockedByPrevCheckpoint = item.cpIndex > 0 && !isCheckpointFinished(d.day, item.cpIndex - 1);
-                            const disabled = !canCheckin || isLockedByPrevCheckpoint;
-                            return (
-                          <List.Item
-                            style={{
-                              background: "#fff",
-                              border: "1px solid #eef2f7",
-                              borderRadius: 12,
-                              padding: "12px 14px",
-                              marginBottom: 10,
-                              boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
-                              cursor: disabled ? "not-allowed" : "pointer",
-                              opacity: disabled ? 0.6 : 1,
-                            }}
-                            onClick={() =>
-                              !disabled
-                                ? setOpenPoint({
-                                    day: d.day,
-                                    checkpointIndex: item.cpIndex,
-                                    title: item.cp,
-                                  })
-                                : isLockedByPrevCheckpoint
-                                  ? message.warning(`Bạn cần điểm danh xong lịch trình ${item.cpIndex} trước khi điểm danh lịch trình ${item.cpIndex + 1}.`)
-                                  : message.warning(
-                                      tourStage === "completed"
-                                        ? "Tour đã kết thúc nên không thể điểm danh."
-                                        : "Tour đang ở trạng thái sắp khởi hành nên chưa thể điểm danh."
-                                    )
-                            }
-                            actions={[
-                              <Tag key="count" color={item.totalChecked === item.totalPeople ? "green" : "blue"} style={{ margin: 0 }}>
-                                {item.totalChecked}/{item.totalPeople} có mặt
-                              </Tag>,
-                              <RightOutlined key="go" style={{ color: "#9ca3af" }} />,
-                            ]}
-                          >
-                            <div style={{ fontWeight: 700, color: "#111827" }}>{item.cp}</div>
-                          </List.Item>
-                            );
-                          })()
-                        )}
+                        renderItem={(item: any) => {
+                          const isLockedByPrevCheckpoint =
+                            item.cpIndex > 0 && !isCheckpointFinished(d.day, item.cpIndex - 1);
+                          const disabled = !canCheckin || isLockedByPrevCheckpoint;
+                          return (
+                            <List.Item
+                              style={{
+                                background: "#fff",
+                                border: "1px solid #eef2f7",
+                                borderRadius: 12,
+                                padding: "12px 14px",
+                                marginBottom: 10,
+                                boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
+                                cursor: disabled ? "not-allowed" : "pointer",
+                                opacity: disabled ? 0.6 : 1,
+                              }}
+                              onClick={() =>
+                                !disabled
+                                  ? setOpenPoint({
+                                      day: d.day,
+                                      checkpointIndex: item.cpIndex,
+                                      title: item.cp,
+                                    })
+                                  : isLockedByPrevCheckpoint
+                                    ? message.warning(
+                                        `Bạn cần điểm danh xong lịch trình ${item.cpIndex} trước khi điểm danh lịch trình ${item.cpIndex + 1}.`
+                                      )
+                                    : message.warning(
+                                        tourStage === "completed"
+                                          ? "Tour đã kết thúc nên không thể điểm danh."
+                                          : "Tour đang ở trạng thái sắp khởi hành nên chưa thể điểm danh."
+                                      )
+                              }
+                              actions={[
+                                <Tag
+                                  key="count"
+                                  color={item.totalChecked === item.totalPeople ? "green" : "blue"}
+                                  style={{ margin: 0 }}
+                                >
+                                  {item.totalChecked}/{item.totalPeople} có mặt
+                                </Tag>,
+                                <RightOutlined key="go" style={{ color: "#9ca3af" }} />,
+                              ]}
+                            >
+                              <div style={{ fontWeight: 700, color: "#111827" }}>{item.cp}</div>
+                            </List.Item>
+                          );
+                        }}
                       />
                     )}
                   </div>
@@ -562,33 +666,32 @@ const HdvBookingDetail = () => {
               <div>
                 <div style={{ marginBottom: 12 }}>
                   <Tag color="blue">
-                    {(passengers.length
-                      ? passengers.filter((_: any, i: number) =>
-                          getCheckpointChecked(openPoint.day, openPoint.checkpointIndex, "passenger", i)
-                        ).length
-                      : getCheckpointChecked(openPoint.day, openPoint.checkpointIndex, "leader")
-                        ? 1
-                        : 0)}
+                    {
+                      displayList.filter(
+                        (row) => getRowCheckpointStatus(row, openPoint.day, openPoint.checkpointIndex) === true
+                      ).length
+                    }
                     /{displayList.length} có mặt
                   </Tag>
                 </div>
                 <List
                   dataSource={displayList}
-                  renderItem={(p) => {
-                    const status = getCheckpointStatus(openPoint.day, openPoint.checkpointIndex, p.type as any, p.passengerIndex);
+                  renderItem={(row) => {
+                    const status = getRowCheckpointStatus(row, openPoint.day, openPoint.checkpointIndex);
                     const checked = status === true;
                     const absent = status === false;
-                    
-                    const cpData = checkpointCheckins?.[String(openPoint.day)]?.[String(openPoint.checkpointIndex)];
+                    const bk = bookingById.get(row.bookingId);
+                    const cpData = bk?.checkpoint_checkins?.[String(openPoint.day)]?.[
+                      String(openPoint.checkpointIndex)
+                    ];
                     const reason =
-                      p.type === "leader"
+                      row.type === "leader"
                         ? cpData?.reasons?.leader
-                        : cpData?.reasons?.passengers?.[p.passengerIndex as number];
-
+                        : cpData?.reasons?.passengers?.[row.passengerIndex!];
                     const phone =
-                      p.type === "leader"
-                        ? booking.customer_phone
-                        : passengers?.[p.passengerIndex as number]?.phone;
+                      row.type === "leader"
+                        ? bk?.customer_phone
+                        : bk?.passengers?.[row.passengerIndex!]?.phone;
 
                     return (
                       <List.Item
@@ -612,9 +715,10 @@ const HdvBookingDetail = () => {
                               onClick={() => {
                                 reasonForm.resetFields();
                                 setAbsentTarget({
-                                  name: p.name,
-                                  type: p.type,
-                                  passengerIndex: p.passengerIndex,
+                                  bookingId: row.bookingId,
+                                  name: row.name,
+                                  type: row.type,
+                                  passengerIndex: row.passengerIndex,
                                   day: openPoint.day,
                                   checkpointIndex: openPoint.checkpointIndex,
                                 });
@@ -628,23 +732,22 @@ const HdvBookingDetail = () => {
                             checked={checked}
                             disabled={!canCheckin}
                             onChange={(nextChecked) => {
-                              // Nếu chuyển sang "Vắng mặt" thì bắt buộc nhập lý do trước khi submit lên server
                               if (nextChecked === false) {
                                 reasonForm.resetFields();
                                 setAbsentTarget({
-                                  name: p.name,
-                                  type: p.type,
-                                  passengerIndex: p.passengerIndex,
+                                  bookingId: row.bookingId,
+                                  name: row.name,
+                                  type: row.type,
+                                  passengerIndex: row.passengerIndex,
                                   day: openPoint.day,
                                   checkpointIndex: openPoint.checkpointIndex,
                                 });
                                 return;
                               }
-
-                              // Có mặt: submit luôn
                               checkInMutation.mutate({
-                                type: p.type,
-                                passengerIndex: p.passengerIndex,
+                                bookingId: row.bookingId,
+                                type: row.type,
+                                passengerIndex: row.passengerIndex,
                                 day: openPoint.day,
                                 checkpointIndex: openPoint.checkpointIndex,
                                 checked: true,
@@ -678,12 +781,12 @@ const HdvBookingDetail = () => {
                           }
                           title={
                             <span>
-                              {p.name}
-                              {p.role && (
+                              {row.name}
+                              {row.role ? (
                                 <Tag color="blue" style={{ marginLeft: 8 }}>
-                                  {p.role}
+                                  {row.role}
                                 </Tag>
-                              )}
+                              ) : null}
                               {checked ? (
                                 <Tag color="green" style={{ marginLeft: 8 }}>
                                   Có mặt
@@ -694,7 +797,7 @@ const HdvBookingDetail = () => {
                                 </Tag>
                               ) : (
                                 <Tag color="default" style={{ marginLeft: 8 }}>
-                                  Vắng mặt
+                                  Chưa điểm danh
                                 </Tag>
                               )}
                             </span>
@@ -734,15 +837,24 @@ const HdvBookingDetail = () => {
               form={reasonForm}
               layout="vertical"
               onFinish={(values) => {
-                checkInMutation.mutate({
-                  ...absentTarget,
-                  checked: false,
-                  reason: values.reason
-                });
-                setAbsentTarget(null);
+                if (!absentTarget) return;
+                checkInMutation.mutate(
+                  {
+                    ...absentTarget,
+                    checked: false,
+                    reason: values.reason,
+                  },
+                  {
+                    onSuccess: () => setAbsentTarget(null),
+                  }
+                );
               }}
             >
-              <Form.Item name="reason" label="Vui lòng nhập lý do vắng mặt" rules={[{ required: true, message: 'Lý do là bắt buộc khi khách vắng mặt!' }]}>
+              <Form.Item
+                name="reason"
+                label="Vui lòng nhập lý do vắng mặt"
+                rules={[{ required: true, message: "Lý do là bắt buộc khi khách vắng mặt!" }]}
+              >
                 <Input.TextArea rows={3} placeholder="Ví dụ: Khách bị ốm, khách tự di chuyển..." />
               </Form.Item>
             </Form>
@@ -760,7 +872,15 @@ const HdvBookingDetail = () => {
       children: (
         <Card>
           <div style={{ maxWidth: 720 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginBottom: 12,
+              }}
+            >
               <Text type="secondary">Ngày:</Text>
               <Segmented
                 value={selectedDiaryDayIndex}
@@ -883,7 +1003,7 @@ const HdvBookingDetail = () => {
     <div>
       <Button
         icon={<ArrowLeftOutlined />}
-        onClick={() => navigate("/hdv/tours")}
+        onClick={() => navigate("/hdv/assigned-trips")}
         style={{ marginBottom: 24 }}
       >
         Quay lại
@@ -891,7 +1011,7 @@ const HdvBookingDetail = () => {
 
       <div style={{ marginBottom: 24 }}>
         <Title level={4} style={{ marginBottom: 4 }}>
-          {tour?.name || "Chi tiết booking"}
+          {tour?.name || "Chi tiết trip"}
         </Title>
         <Card style={{ marginBottom: 24 }} title="Trạng thái giai đoạn tour">
           <Steps
@@ -945,7 +1065,7 @@ const HdvBookingDetail = () => {
           />
         </Card>
 
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
           <Text type="secondary">
             {dayjs(booking.startDate).format("DD/MM/YYYY")}
             {booking.endDate && ` - ${dayjs(booking.endDate).format("DD/MM/YYYY")}`}
@@ -957,18 +1077,18 @@ const HdvBookingDetail = () => {
             {booking.status === "confirmed"
               ? "Đã xác nhận"
               : booking.status === "paid"
-              ? "Đã thanh toán"
-              : booking.status === "cancelled"
-              ? "Đã hủy"
-              : "Chờ duyệt"}
+                ? "Đã thanh toán"
+                : booking.status === "cancelled"
+                  ? "Đã hủy"
+                  : "Chờ duyệt"}
           </Tag>
-          <Text>{booking.groupSize} khách</Text>
+          <Text>
+            {tripBookings.length} đơn · {totalPax} khách
+          </Text>
         </div>
       </div>
 
       <Tabs items={tabItems} />
     </div>
   );
-};
-
-export default HdvBookingDetail;
+}
