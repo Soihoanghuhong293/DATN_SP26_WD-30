@@ -42,6 +42,7 @@ const BookingDetail = () => {
       return res.data?.data || res.data;
     },
     enabled: !!id,
+    refetchOnMount: 'always',
   });
 
   const { data: usersData } = useQuery({
@@ -130,10 +131,14 @@ const BookingDetail = () => {
     onSuccess: () => {
       message.success('Đã cập nhật trạng thái thanh toán');
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['hdv-bookings'] });
     },
     onError: (error: any) => {
       message.error(error.response?.data?.message || 'Cập nhật thanh toán thất bại!');
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['hdv-bookings'] });
     }
   });
 
@@ -146,6 +151,7 @@ const BookingDetail = () => {
       message.success('Đã xóa booking thành công');
       queryClient.removeQueries({ queryKey: ['booking', id] });
       await queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['hdv-bookings'] });
       navigate('..', { relative: 'path', replace: true });
     },
     onError: (err: any) => {
@@ -287,12 +293,34 @@ const BookingDetail = () => {
   const deleteBlockedByPayment = !canAdminDeleteBookingRecord(booking as any);
   const deleteDisabled = deleteBlockedByStage || deleteBlockedByPayment;
 
-  const renderStatus = (status: string) => {
-    switch (status) {
-      case 'confirmed': return <Tag color="success" bordered={false}>Đã xác nhận</Tag>;
-      case 'pending': return <Tag color="warning" bordered={false}>Chờ xác nhận</Tag>;
-      case 'cancelled': return <Tag color="error" bordered={false}>Đã hủy</Tag>;
-      default: return <Tag bordered={false}>{status || 'Chưa rõ'}</Tag>;
+  const renderStatus = (bookingObj: any) => {
+    const status = String(bookingObj?.status || 'pending').trim().toLowerCase();
+    const tourStage = String(bookingObj?.tour_stage || 'scheduled').trim().toLowerCase();
+
+    if (status === 'cancelled') {
+      return <Tag color="error" bordered={false}>Đã hủy</Tag>;
+    }
+    if (tourStage === 'completed') {
+      return <Tag color="default" bordered={false}>Đã kết thúc</Tag>;
+    }
+    if (tourStage === 'in_progress') {
+      return <Tag color="blue" bordered={false}>Đang diễn ra</Tag>;
+    }
+
+    const resolvedPayment = bookingObj?.payment_status ||
+      (status === 'paid' ? 'paid' : status === 'deposit' ? 'deposit' : status === 'refunded' ? 'refunded' : 'unpaid');
+
+    switch (resolvedPayment) {
+      case 'paid':
+        return <Tag color="green" bordered={false}>Đã thanh toán đủ</Tag>;
+      case 'deposit':
+        return <Tag color="purple" bordered={false}>Đã đặt cọc</Tag>;
+      case 'refunded':
+        return <Tag color="default" bordered={false}>Đã hoàn tiền</Tag>;
+      default:
+        return status === 'confirmed'
+          ? <Tag color="success" bordered={false}>Đã xác nhận</Tag>
+          : <Tag color="warning" bordered={false}>Chờ xác nhận</Tag>;
     }
   };
 
@@ -901,7 +929,7 @@ const BookingDetail = () => {
                     <Space size="small">
                         <Text type="secondary">ID: {booking._id}</Text>
                         <Divider type="vertical" />
-                        {renderStatus(booking.status)}
+                        {renderStatus(booking)}
                     </Space>
                 </div>
             </div>

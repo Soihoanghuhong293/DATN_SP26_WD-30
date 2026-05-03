@@ -164,6 +164,7 @@ const BookingCreate = () => {
     onSuccess: () => {
       message.success('Tạo đơn đặt tour thành công!');
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['hdv-bookings'] });
       navigate('/admin/bookings');
     },
     onError: (error: any) => {

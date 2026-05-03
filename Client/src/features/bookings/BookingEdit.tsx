@@ -142,6 +142,7 @@ const BookingEdit = () => {
       message.success('Cập nhật booking thành công!');
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
+      queryClient.invalidateQueries({ queryKey: ['hdv-bookings'] });
       navigate('/admin/bookings');
     },
     onError: (error: any) => {

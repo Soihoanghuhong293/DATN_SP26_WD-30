@@ -98,6 +98,7 @@ const BookingList = () => {
       const res = await axios.get(`${API_V1}/bookings`, getAuthHeader());
       return res.data?.data || res.data || [];
     },
+    refetchOnMount: 'always',
   });
 
   // ✅ DELETE
@@ -108,6 +109,7 @@ const BookingList = () => {
     onSuccess: () => {
       message.success('Đã xóa đơn đặt tour!');
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['hdv-bookings'] });
     },
     onError: (err: any) => {
       message.error(err?.response?.data?.message || 'Xóa đơn thất bại');

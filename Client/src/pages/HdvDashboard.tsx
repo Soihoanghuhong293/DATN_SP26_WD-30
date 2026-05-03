@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Card, Row, Col, Statistic, List, Tag } from "antd";
@@ -9,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import { resolveEffectivePayment } from "../features/bookings/bookingPaymentResolve";
 
 dayjs.extend(isSameOrAfter);
 
@@ -26,6 +28,7 @@ const HdvDashboard = () => {
       );
       return res.data?.data || [];
     },
+    refetchOnMount: 'always',
   });
 
   const { data: myGuide } = useQuery({
@@ -36,21 +39,85 @@ const HdvDashboard = () => {
     },
   });
 
-  const upcomingBookings = bookings.filter(
-    (b: any) =>
-      b.status !== "cancelled" &&
-      !dayjs(b.startDate).startOf("day").isBefore(dayjs().startOf("day")),
+  const tourScheduleItems = useMemo(() => {
+    const tourMap = new Map<string, any>();
+
+    const normalizeStatus = (record: any) => {
+      const tourStage = String(record.tour_stage || "scheduled").toLowerCase();
+      if (tourStage === "completed") return "completed";
+      if (tourStage === "in_progress") return "in_progress";
+      if (String(record.status || "").toLowerCase() === "cancelled") return "cancelled";
+      const payment = resolveEffectivePayment(record);
+      if (payment === "paid") return "paid";
+      if (payment === "deposit") return "deposit";
+      if (String(record.status || "").toLowerCase() === "confirmed") return "confirmed";
+      return "pending";
+    };
+
+    const getMergedStatus = (statuses: string[]) => {
+      if (statuses.includes("completed")) return "completed";
+      if (statuses.includes("in_progress")) return "in_progress";
+      if (statuses.includes("cancelled")) return "cancelled";
+      if (statuses.includes("paid")) return "paid";
+      if (statuses.includes("deposit")) return "deposit";
+      if (statuses.includes("confirmed")) return "confirmed";
+      return "pending";
+    };
+
+    for (const b of bookings as any[]) {
+      if (!b.tour_id || !b.startDate) continue;
+      if (String(b.status || "").toLowerCase() === "cancelled") continue;
+
+      const tourId = typeof b.tour_id === "object" ? b.tour_id._id : b.tour_id;
+      if (!tourId) continue;
+      const startDate = dayjs(b.startDate).format("YYYY-MM-DD");
+      const key = `${tourId}|${startDate}`;
+      const existing = tourMap.get(key);
+
+      const title = typeof b.tour_id === "object" ? b.tour_id.name : String(b.tour_id || "Tour");
+      const endDate = b.endDate || (b.tour_id?.duration_days ? dayjs(b.startDate).add(Number(b.tour_id.duration_days || 1) - 1, "day").format("YYYY-MM-DD") : undefined);
+      const status = normalizeStatus(b);
+
+      if (existing) {
+        existing.totalPassengers += Number(b.groupSize || 0);
+        existing.statusList.push(status);
+        if (!existing.endDate && endDate) existing.endDate = endDate;
+      } else {
+        tourMap.set(key, {
+          key,
+          tourId,
+          title,
+          startDate,
+          endDate,
+          totalPassengers: Number(b.groupSize || 0),
+          statusList: [status],
+        });
+      }
+    }
+
+    return Array.from(tourMap.values()).map((item) => ({
+      ...item,
+      status: getMergedStatus(item.statusList),
+    }));
+  }, [bookings]);
+
+  const upcomingTours = tourScheduleItems.filter((item) =>
+    !dayjs(item.startDate).startOf("day").isBefore(dayjs().startOf("day"))
+  );
+
+  const completedTours = tourScheduleItems.filter((item) =>
+    dayjs(item.endDate || item.startDate).isBefore(dayjs(), "day")
   );
 
   const stats = [
     {
       title: "Tour đã dẫn",
-      value: bookings.filter((b: any) => b.status !== "cancelled" && dayjs(b.endDate || b.startDate).isBefore(dayjs(), "day")).length,
+      value: completedTours.length,
       icon: <CarOutlined style={{ fontSize: 28, color: "#667eea" }} />,
     },
     {
       title: "Tour sắp tới",
-      value: upcomingBookings.length,
+      value: upcomingTours.length,
       icon: <CalendarOutlined style={{ fontSize: 28, color: "#10b981" }} />,
     },
     {
@@ -68,6 +135,25 @@ const HdvDashboard = () => {
       icon: <TeamOutlined style={{ fontSize: 28, color: "#8b5cf6" }} />,
     },
   ];
+
+  const renderTourStatusTag = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <Tag color="default">Đã kết thúc</Tag>;
+      case "in_progress":
+        return <Tag color="blue">Đang diễn ra</Tag>;
+      case "cancelled":
+        return <Tag color="error">Đã hủy</Tag>;
+      case "paid":
+        return <Tag color="green">Đã thanh toán</Tag>;
+      case "deposit":
+        return <Tag color="purple">Đã đặt cọc</Tag>;
+      case "confirmed":
+        return <Tag color="blue">Đã xác nhận</Tag>;
+      default:
+        return <Tag color="orange">Chờ xác nhận</Tag>;
+    }
+  };
 
   return (
     <div>
@@ -151,22 +237,22 @@ const HdvDashboard = () => {
               boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
             }}
           >
-            {upcomingBookings.length > 0 ? (
+            {upcomingTours.length > 0 ? (
               <List
-                dataSource={upcomingBookings.slice(0, 5)}
-                renderItem={(b: any) => (
+                dataSource={upcomingTours.slice(0, 5)}
+                renderItem={(item: any) => (
                   <List.Item>
                     <div style={{ width: "100%" }}>
                       <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        {b.tour_id?.name || "Tour"}
+                        {item.title || "Tour"}
                       </div>
                       <div style={{ fontSize: 13, color: "#6b7280" }}>
-                        {dayjs(b.startDate).format("DD/MM/YYYY")}
-                        {b.endDate && ` - ${dayjs(b.endDate).format("DD/MM/YYYY")}`} • {b.groupSize} khách
+                        {dayjs(item.startDate).format("DD/MM/YYYY")}
+                        {item.endDate && ` - ${dayjs(item.endDate).format("DD/MM/YYYY")}`} • {item.totalPassengers} khách
                       </div>
-                      <Tag color={b.status === "confirmed" ? "blue" : b.status === "paid" ? "green" : "orange"} style={{ marginTop: 4 }}>
-                        {b.status === "confirmed" ? "Đã xác nhận" : b.status === "paid" ? "Đã thanh toán" : "Chờ duyệt"}
-                      </Tag>
+                      <div style={{ marginTop: 4 }}>
+                        {renderTourStatusTag(item.status)}
+                      </div>
                     </div>
                   </List.Item>
                 )}
