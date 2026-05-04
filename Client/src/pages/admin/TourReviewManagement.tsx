@@ -6,6 +6,7 @@ import { DeleteOutlined, EyeOutlined, ReloadOutlined, SearchOutlined, StarOutlin
 import { adminDeleteTourReview, adminGetTourReviews, adminUpdateTourReviewStatus } from '../../services/api';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminListCard from '../../components/admin/AdminListCard';
+import { ADMIN_PENDING_TOUR_REVIEW_COUNT_KEY } from '../../components/layout/AdminSidebar';
 import './GuideReviewManagement.css';
 
 const { Text } = Typography;
@@ -50,6 +51,7 @@ export default function TourReviewManagement() {
     onSuccess: () => {
       message.success('Đã cập nhật trạng thái đánh giá');
       queryClient.invalidateQueries({ queryKey: ['admin-tour-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_PENDING_TOUR_REVIEW_COUNT_KEY });
     },
     onError: (e: any) => message.error(e?.response?.data?.message || 'Cập nhật trạng thái thất bại'),
   });
@@ -61,6 +63,7 @@ export default function TourReviewManagement() {
     onSuccess: () => {
       message.success('Đã xóa đánh giá');
       queryClient.invalidateQueries({ queryKey: ['admin-tour-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_PENDING_TOUR_REVIEW_COUNT_KEY });
       setSelected(null);
     },
     onError: (e: any) => message.error(e?.response?.data?.message || 'Xóa thất bại'),

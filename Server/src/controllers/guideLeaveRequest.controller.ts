@@ -118,6 +118,35 @@ async function applyReplacementGuide(args: {
   }
 }
 
+async function appendLeaveRejectLogs(args: {
+  tourId: string;
+  tripDate: string;
+  adminName: string;
+  note: string;
+}) {
+  const tid = new mongoose.Types.ObjectId(args.tourId);
+  const bookings = await Booking.find({
+    tour_id: tid,
+    status: { $ne: "cancelled" },
+    ...tripStartDateMatchesExpr(args.tripDate),
+  })
+    .select("_id")
+    .lean();
+
+  const now = new Date();
+  const logEntry = {
+    time: now,
+    user: args.adminName,
+    old: "Yêu cầu nghỉ/thay HDV",
+    new: "Từ chối",
+    note: args.note,
+  };
+
+  for (const b of bookings) {
+    await Booking.updateOne({ _id: (b as any)._id }, { $push: { logs: logEntry } });
+  }
+}
+
 export const createGuideLeaveRequest = async (req: AuthRequest, res: Response) => {
   try {
     const requesterId = String(req.user?._id || "");
@@ -197,7 +226,7 @@ export const getMyLeaveRequestForTrip = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ status: "fail", message: "Thiếu hoặc sai tour_id / trip_date" });
     }
 
-    const row = await GuideLeaveRequest.findOne({
+    const pending = await GuideLeaveRequest.findOne({
       tour_id,
       trip_date,
       requester_user_id: requesterId,
@@ -208,7 +237,53 @@ export const getMyLeaveRequestForTrip = async (req: AuthRequest, res: Response) 
       .populate("proposed_replacement_user_id", "name email")
       .lean();
 
-    res.status(200).json({ status: "success", data: row || null });
+    if (pending) {
+      return res.status(200).json({ status: "success", data: { pending, resolution: null } });
+    }
+
+    const resolvedRow: any = await GuideLeaveRequest.findOne({
+      tour_id,
+      trip_date,
+      requester_user_id: requesterId,
+      status: { $in: ["approved", "rejected"] },
+    })
+      .sort({ processed_at: -1, updated_at: -1 })
+      .populate("requester_user_id", "name email")
+      .populate("tour_id", "name")
+      .populate("proposed_replacement_user_id", "name email")
+      .populate("resolved_replacement_user_id", "name email")
+      .populate("processed_by_user_id", "name email")
+      .lean();
+
+    if (!resolvedRow) {
+      return res.status(200).json({ status: "success", data: { pending: null, resolution: null } });
+    }
+
+    const st = String(resolvedRow.status || "");
+    const outcome = st === "approved" ? "replaced" : "rejected";
+    const tourName = String(resolvedRow?.tour_id?.name || "").trim() || "Tour";
+    const replacement = resolvedRow?.resolved_replacement_user_id;
+    const replacementName =
+      replacement && typeof replacement === "object" ? String((replacement as any).name || "").trim() : "";
+
+    const summaryMessage =
+      outcome === "replaced"
+        ? "Yêu cầu đã được admin duyệt. Trạng thái: Replaced — HDV phụ trách trip đã được đổi."
+        : "Yêu cầu không được duyệt (Từ chối). Bạn vẫn là HDV phụ trách trip theo hệ thống.";
+
+    const resolution = {
+      request_id: String(resolvedRow._id),
+      outcome,
+      status: st,
+      processed_at: resolvedRow.processed_at || resolvedRow.updated_at,
+      tour_name: tourName,
+      replacement_user_name: outcome === "replaced" ? replacementName || undefined : undefined,
+      admin_note: resolvedRow.admin_note ? String(resolvedRow.admin_note) : undefined,
+      rejection_note: resolvedRow.rejection_note ? String(resolvedRow.rejection_note) : undefined,
+      message: summaryMessage,
+    };
+
+    res.status(200).json({ status: "success", data: { pending: null, resolution } });
   } catch (e: any) {
     res.status(500).json({ status: "error", message: e?.message || "Lỗi server" });
   }
@@ -316,11 +391,20 @@ export const rejectGuideLeaveRequest = async (req: AuthRequest, res: Response) =
       return res.status(400).json({ status: "fail", message: "Yêu cầu không còn ở trạng thái Pending" });
     }
 
+    const adminName = String((req.user as any)?.name || (req.user as any)?.email || "Admin");
+
     row.status = "rejected";
     row.rejection_note = rejection_note || undefined;
     row.processed_at = new Date();
     row.processed_by_user_id = req.user?._id;
     await row.save();
+
+    await appendLeaveRejectLogs({
+      tourId: String(row.tour_id),
+      tripDate: String(row.trip_date),
+      adminName,
+      note: `Từ chối yêu cầu nghỉ/thay HDV${rejection_note ? ` — ${rejection_note}` : ""}`,
+    });
 
     const populated = await GuideLeaveRequest.findById(row._id)
       .populate("requester_user_id", "name email")

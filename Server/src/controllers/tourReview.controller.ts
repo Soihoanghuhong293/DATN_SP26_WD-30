@@ -8,6 +8,16 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 
 const isValidObjectId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
+/** Admin: số đánh giá tour chờ duyệt */
+export const countPendingTourReviewsAdmin = async (_req: AuthRequest, res: Response) => {
+  try {
+    const n = await TourReview.countDocuments({ status: "pending" });
+    return res.status(200).json({ status: "success", data: { count: n } });
+  } catch (error: any) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
 const recomputeTourRating = async (tourId: string) => {
   if (!tourId || !isValidObjectId(tourId)) return;
 

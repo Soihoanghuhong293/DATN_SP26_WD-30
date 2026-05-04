@@ -29,6 +29,8 @@ import { getMe } from "../../services/account";
 const API_V1 = (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
 
 export const ADMIN_PENDING_HDV_LEAVE_COUNT_KEY = ["admin-pending-hdv-leave-count"] as const;
+export const ADMIN_PENDING_TOUR_REVIEW_COUNT_KEY = ["admin-pending-tour-review-count"] as const;
+export const ADMIN_UNREAD_CONTACT_MESSAGE_COUNT_KEY = ["admin-unread-contact-message-count"] as const;
 
 type Props = {
   collapsed: boolean;
@@ -84,6 +86,32 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       const res = await axios.get(`${API_V1}/guide-leave-requests/count`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         params: { status: "pending" },
+      });
+      return Number(res.data?.data?.count ?? 0);
+    },
+    enabled: Boolean(auth.token && auth.role === "admin"),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: pendingTourReviewCount = 0 } = useQuery({
+    queryKey: ADMIN_PENDING_TOUR_REVIEW_COUNT_KEY,
+    queryFn: async () => {
+      const res = await axios.get(`${API_V1}/tour-reviews/pending-count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      return Number(res.data?.data?.count ?? 0);
+    },
+    enabled: Boolean(auth.token && auth.role === "admin"),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: unreadContactCount = 0 } = useQuery({
+    queryKey: ADMIN_UNREAD_CONTACT_MESSAGE_COUNT_KEY,
+    queryFn: async () => {
+      const res = await axios.get(`${API_V1}/contact-messages/count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       return Number(res.data?.data?.count ?? 0);
     },
@@ -171,35 +199,16 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       {
         key: "guide-management",
         icon:
-          collapsed && pendingLeaveCount > 0 ? (
-            <Badge count={pendingLeaveCount} size="small" color="#ff4d4f" overflowCount={99} offset={[6, -2]}>
-              <TeamOutlined />
-            </Badge>
+          pendingLeaveCount > 0 && (collapsed || !openKeys.includes("guide-management")) ? (
+            <span className="admin-sider__menuIconBadge">
+              <Badge count={pendingLeaveCount} size="small" color="#ff4d4f" overflowCount={99} offset={[2, -4]}>
+                <TeamOutlined className="admin-sider__menuIconBadge__icon" />
+              </Badge>
+            </span>
           ) : (
             <TeamOutlined />
           ),
-        label:
-          !collapsed && pendingLeaveCount > 0 ? (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                width: "100%",
-                minWidth: 0,
-              }}
-            >
-              <span style={{ flex: 1, minWidth: 0 }}>Quản lý Hướng dẫn viên</span>
-              <Badge
-                count={pendingLeaveCount}
-                size="small"
-                overflowCount={99}
-                style={{ backgroundColor: "#ff4d4f", flexShrink: 0 }}
-              />
-            </span>
-          ) : (
-            "Quản lý Hướng dẫn viên"
-          ),
+        label: "Quản lý Hướng dẫn viên",
         onTitleClick: () =>
           setOpenKeys((prev) => (prev.includes("guide-management") ? [] : ["guide-management"])),
         children: [
@@ -210,41 +219,48 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
           },
           {
             key: "/admin/guides/incidents",
-            icon: <AlertOutlined />,
-            label: (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  width: "100%",
-                  minWidth: 0,
-                }}
-              >
-                <span style={{ flex: 1, minWidth: 0 }}>Sự cố HDV</span>
-                {pendingLeaveCount > 0 ? (
-                  <Badge
-                    count={pendingLeaveCount}
-                    size="small"
-                    overflowCount={99}
-                    style={{ backgroundColor: "#ff4d4f", flexShrink: 0 }}
-                  />
-                ) : null}
-              </span>
-            ),
+            icon:
+              pendingLeaveCount > 0 ? (
+                <span className="admin-sider__menuIconBadge">
+                  <Badge count={pendingLeaveCount} size="small" color="#ff4d4f" overflowCount={99} offset={[2, -4]}>
+                    <AlertOutlined className="admin-sider__menuIconBadge__icon" />
+                  </Badge>
+                </span>
+              ) : (
+                <AlertOutlined />
+              ),
+            label: "Sự cố HDV",
           },
         ],
       },
       {
         key: "review-management",
-        icon: <StarOutlined />,
+        icon:
+          pendingTourReviewCount > 0 && (collapsed || !openKeys.includes("review-management")) ? (
+            <span className="admin-sider__menuIconBadge">
+              <Badge count={pendingTourReviewCount} size="small" color="#ff4d4f" overflowCount={99} offset={[2, -4]}>
+                <StarOutlined className="admin-sider__menuIconBadge__icon" />
+              </Badge>
+            </span>
+          ) : (
+            <StarOutlined />
+          ),
         label: "Quản lý đánh giá",
         onTitleClick: () =>
           setOpenKeys((prev) => (prev.includes("review-management") ? [] : ["review-management"])),
         children: [
           {
             key: "/admin/tour-reviews",
-            icon: <StarOutlined />,
+            icon:
+              pendingTourReviewCount > 0 ? (
+                <span className="admin-sider__menuIconBadge">
+                  <Badge count={pendingTourReviewCount} size="small" color="#ff4d4f" overflowCount={99} offset={[2, -4]}>
+                    <StarOutlined className="admin-sider__menuIconBadge__icon" />
+                  </Badge>
+                </span>
+              ) : (
+                <StarOutlined />
+              ),
             label: "Đánh giá tour & HDV",
           },
         ],
@@ -316,7 +332,16 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       },
       {
         key: "/admin/contact-messages",
-        icon: <MessageOutlined />,
+        icon:
+          unreadContactCount > 0 ? (
+            <span className="admin-sider__menuIconBadge">
+              <Badge count={unreadContactCount} size="small" color="#ff4d4f" overflowCount={99} offset={[2, -4]}>
+                <MessageOutlined className="admin-sider__menuIconBadge__icon" />
+              </Badge>
+            </span>
+          ) : (
+            <MessageOutlined />
+          ),
         label: "Tin nhắn offline",
       },
       {
@@ -330,7 +355,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
         label: "Cài đặt",
       },
     ],
-    [pendingLeaveCount, collapsed]
+    [pendingLeaveCount, pendingTourReviewCount, unreadContactCount, collapsed, openKeys]
   );
 
   return (

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import {
+  Alert,
   Button,
   Card,
   Empty,
@@ -98,6 +99,20 @@ type AbsentPayload = {
   checkpointIndex: number;
 };
 
+type HdvLeaveTripResolution = {
+  outcome: "replaced" | "rejected";
+  message: string;
+  replacement_user_name?: string;
+  rejection_note?: string;
+  admin_note?: string;
+  processed_at?: string;
+};
+
+type HdvLeaveTripState = {
+  pending: Record<string, unknown> | null;
+  resolution: HdvLeaveTripResolution | null;
+};
+
 export default function HdvTripDetailPage() {
   const { tourId, date } = useParams<{ tourId: string; date: string }>();
   const navigate = useNavigate();
@@ -180,17 +195,31 @@ export default function HdvTripDetailPage() {
       }));
   }, [guidesForReplacement, myUserId]);
 
-  const { data: pendingLeaveRequest } = useQuery({
+  const { data: leaveTripState } = useQuery({
     queryKey: ["hdv-leave-request-trip", tourId, dateStr],
-    queryFn: async () => {
+    queryFn: async (): Promise<HdvLeaveTripState> => {
       const res = await axios.get(`${API_V1}/guide-leave-requests/me/for-trip`, {
         ...getAuthHeader(),
         params: { tour_id: tourId, trip_date: dateStr },
       });
-      return res.data?.data ?? null;
+      const raw = res.data?.data;
+      if (raw && typeof raw === "object" && ("pending" in raw || "resolution" in raw)) {
+        return {
+          pending: ((raw as HdvLeaveTripState).pending as Record<string, unknown>) ?? null,
+          resolution: ((raw as HdvLeaveTripState).resolution as HdvLeaveTripResolution) ?? null,
+        };
+      }
+      if (raw && typeof raw === "object" && (raw as { status?: string }).status === "pending") {
+        return { pending: raw as Record<string, unknown>, resolution: null };
+      }
+      return { pending: null, resolution: null };
     },
-    enabled: Boolean(tourId && dateStr && tripBookings.length > 0),
+    enabled: Boolean(tourId && dateStr),
   });
+
+  const pendingLeaveRequest = leaveTripState?.pending ?? null;
+  const leaveResolution = leaveTripState?.resolution ?? null;
+  const leaveReplaced = leaveResolution?.outcome === "replaced";
 
   const submitLeaveRequestMutation = useMutation({
     mutationFn: async (payload: { reason: string; proposedGuideId?: string }) => {
@@ -1182,6 +1211,32 @@ export default function HdvTripDetailPage() {
                   Pending
                 </Tag>
               </Tooltip>
+            ) : leaveResolution ? (
+              leaveResolution.outcome === "replaced" ? (
+                <Tooltip
+                  title={
+                    leaveResolution.replacement_user_name
+                      ? `${leaveResolution.message} HDV phụ trách hiện tại: ${leaveResolution.replacement_user_name}.`
+                      : leaveResolution.message
+                  }
+                >
+                  <Tag color="green" style={{ fontWeight: 600 }}>
+                    Replaced
+                  </Tag>
+                </Tooltip>
+              ) : (
+                <Tooltip
+                  title={
+                    leaveResolution.rejection_note
+                      ? `${leaveResolution.message} Lý do: ${leaveResolution.rejection_note}`
+                      : leaveResolution.message
+                  }
+                >
+                  <Tag color="red" style={{ fontWeight: 600 }}>
+                    Từ chối
+                  </Tag>
+                </Tooltip>
+              )
             ) : null}
             <Text>
               {tripBookings.length} đơn · {totalPax} khách
@@ -1193,7 +1248,9 @@ export default function HdvTripDetailPage() {
                 ? "Tour đã kết thúc, không thể báo nghỉ."
                 : pendingLeaveRequest
                   ? "Bạn đã gửi yêu cầu — trạng thái Pending."
-                  : "Báo không thể dẫn tour và đề xuất HDV thay thế (nếu có)."
+                  : leaveReplaced
+                    ? "Yêu cầu đã được duyệt (Replaced). Bạn không còn phụ trách trip này."
+                    : "Báo không thể dẫn tour và đề xuất HDV thay thế (nếu có)."
             }
           >
             <Button
@@ -1202,12 +1259,47 @@ export default function HdvTripDetailPage() {
                 leaveForm.resetFields();
                 setLeaveModalOpen(true);
               }}
-              disabled={tourStage === "completed" || !!pendingLeaveRequest}
+              disabled={tourStage === "completed" || !!pendingLeaveRequest || leaveReplaced}
             >
               Báo nghỉ / Đề xuất thay
             </Button>
           </Tooltip>
         </div>
+        {leaveResolution ? (
+          <Alert
+            style={{ marginTop: 14 }}
+            type={leaveResolution.outcome === "replaced" ? "success" : "warning"}
+            showIcon
+            message={
+              leaveResolution.outcome === "replaced"
+                ? "Admin đã duyệt — trạng thái Replaced"
+                : "Admin đã từ chối yêu cầu"
+            }
+            description={
+              <div style={{ marginTop: 4 }}>
+                <div>{leaveResolution.message}</div>
+                {leaveResolution.outcome === "replaced" && leaveResolution.replacement_user_name ? (
+                  <div style={{ marginTop: 6 }}>
+                    <Text strong>HDV phụ trách trip: </Text>
+                    {leaveResolution.replacement_user_name}
+                  </div>
+                ) : null}
+                {leaveResolution.outcome === "rejected" && leaveResolution.rejection_note ? (
+                  <div style={{ marginTop: 6 }}>
+                    <Text strong>Lý do: </Text>
+                    {leaveResolution.rejection_note}
+                  </div>
+                ) : null}
+                {leaveResolution.admin_note ? (
+                  <div style={{ marginTop: 6 }}>
+                    <Text strong>Ghi chú admin: </Text>
+                    {leaveResolution.admin_note}
+                  </div>
+                ) : null}
+              </div>
+            }
+          />
+        ) : null}
       </div>
 
       <Tabs items={tabItems} />

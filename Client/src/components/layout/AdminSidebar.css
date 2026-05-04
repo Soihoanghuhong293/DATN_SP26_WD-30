@@ -46,7 +46,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
   padding: 10px 10px 0;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge legacy */
@@ -81,6 +81,23 @@
   padding-inline: 16px !important;
   color: rgba(255, 255, 255, 0.82) !important;
   transition: background 0.2s ease, color 0.2s ease;
+  overflow: visible !important;
+}
+
+/* Badge trên icon: tránh bị cắt, số nằm góc phải-trên icon (dễ nhìn hơn cuối dòng) */
+.admin-sider__menuIconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+}
+
+.admin-sider__menuIconBadge__icon {
+  font-size: 16px;
+}
+
+.admin-sider__menu .ant-menu-title-content {
+  overflow: visible !important;
 }
 
 .admin-sider__menu .ant-menu-item .anticon,

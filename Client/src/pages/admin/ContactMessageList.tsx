@@ -28,6 +28,7 @@ import {
 import dayjs from 'dayjs';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import AdminListCard from '../../components/admin/AdminListCard';
+import { ADMIN_UNREAD_CONTACT_MESSAGE_COUNT_KEY } from '../../components/layout/AdminSidebar';
 import type { ColumnsType } from 'antd/es/table';
 import './ContactMessageList.css';
 
@@ -80,6 +81,7 @@ const ContactMessageList = () => {
     onSuccess: () => {
       message.success('Đã đánh dấu đã đọc');
       queryClient.invalidateQueries({ queryKey: ['contact-messages'] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_UNREAD_CONTACT_MESSAGE_COUNT_KEY });
       setSelectedMsg((prev) => (prev ? { ...prev, status: 'read' as const } : null));
     },
     onError: () => message.error('Cập nhật thất bại'),
@@ -92,6 +94,7 @@ const ContactMessageList = () => {
     onSuccess: () => {
       message.success('Đã xóa tin nhắn');
       queryClient.invalidateQueries({ queryKey: ['contact-messages'] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_UNREAD_CONTACT_MESSAGE_COUNT_KEY });
       setSelectedMsg(null);
     },
     onError: () => message.error('Xóa thất bại'),

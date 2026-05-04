@@ -1,5 +1,17 @@
-import { Request, Response } from 'express';
-import ContactMessage from '../models/ContactMessage.js';
+import { Request, Response } from "express";
+import ContactMessage from "../models/ContactMessage.js";
+import type { AuthRequest } from "../middlewares/auth.middleware";
+
+/** GET /api/v1/contact-messages/count — admin: số tin chưa đọc */
+export const countUnreadContactMessagesAdmin = async (_req: AuthRequest, res: Response) => {
+  try {
+    const n = await ContactMessage.countDocuments({ status: "unread" });
+    res.status(200).json({ status: "success", data: { count: n } });
+  } catch (error) {
+    console.error("Count contact messages error:", error);
+    res.status(500).json({ status: "error", message: "Lỗi đếm tin nhắn" });
+  }
+};
 
 /**
  * GET /api/v1/contact-messages

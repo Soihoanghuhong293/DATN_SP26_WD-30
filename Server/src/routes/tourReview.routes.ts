@@ -5,6 +5,7 @@ import * as tourReviewController from '../controllers/tourReview.controller';
 const router = express.Router();
 
 router.get('/me', protect, tourReviewController.getMyTourReviewByBooking);
+router.get('/pending-count', protect, restrictToAdmin, tourReviewController.countPendingTourReviewsAdmin);
 router.post('/', protect, tourReviewController.createTourReview);
 router.put('/me/:id', protect, tourReviewController.updateMyTourReview);
 router.delete('/me/:id', protect, tourReviewController.deleteMyTourReview);
