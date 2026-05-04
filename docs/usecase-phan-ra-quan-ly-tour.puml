@@ -1,0 +1,58 @@
+@startuml usecase_phan_ra_quan_ly_tour
+title Phân rã use case — Quản lý tour (Admin)
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Quản lý tour" as UC_ROOT 
+
+usecase "Xem danh sách tour\nvà áp dụng bộ lọc" as UC_LIST
+usecase "Tạo tour mới" as UC_CREATE
+usecase "Sửa thông tin tour" as UC_EDIT
+usecase "Xem chi tiết tour\n(vận hành theo ngày trip)" as UC_DETAIL
+usecase "Xóa tour" as UC_DELETE
+
+usecase "Tải danh sách tour\n(API + phân trang)" as UC_LOAD
+usecase "Lọc theo từ khóa / danh mục /\nkhoảng ngày / giá / HDV /\ntrạng thái trip / chỗ còn" as UC_FILTER
+
+usecase "Kiểm tra dữ liệu\nvà gửi lưu tour" as UC_VALIDATE
+
+usecase "Xem tab thông tin,\nmedia, giá, HDV gán…" as UC_VIEWINFO
+usecase "Quản lý lịch khởi hành\n(thêm / sửa ngày, slots)" as UC_SCHED
+usecase "Theo dõi & cập nhật trạng thái\nTourTrip theo ngày\n(DRAFT / OPENING / CLOSED / COMPLETED)" as UC_TRIPST
+usecase "Phân bổ chỗ ngồi / xe\n(trang Seating)" as UC_SEAT
+usecase "Phân bổ phòng nghỉ\n(trang Rooming)" as UC_ROOM
+
+usecase "Chọn tour + ngày trip\nkhởi hành" as UC_PICKDATE
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_CREATE
+UC_ROOT <|-- UC_EDIT
+UC_ROOT <|-- UC_DETAIL
+UC_ROOT <|-- UC_DELETE
+
+ADM --> UC_ROOT
+
+
+
+UC_LIST ..> UC_LOAD : <<include>>
+UC_LIST <.. UC_FILTER : <<extend>>
+
+UC_CREATE ..> UC_VALIDATE : <<include>>
+UC_EDIT ..> UC_VALIDATE : <<include>>
+
+UC_DETAIL ..> UC_VIEWINFO : <<include>>
+UC_DETAIL <.. UC_SCHED : <<extend>>
+UC_DETAIL <.. UC_TRIPST : <<extend>>
+UC_DETAIL <.. UC_SEAT : <<extend>>
+UC_DETAIL <.. UC_ROOM : <<extend>>
+
+UC_SEAT ..> UC_PICKDATE : <<include>>
+UC_ROOM ..> UC_PICKDATE : <<include>>
+
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+@enduml

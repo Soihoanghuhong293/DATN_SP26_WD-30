@@ -1,0 +1,48 @@
+@startuml usecase_khach_dat_tour
+title Use case — Đặt tour (Khách hàng)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách hàng" as KH
+
+usecase "Đặt tour" as UC_ROOT
+
+usecase "Lập đơn đặt tour\n(/order/booking/:id)" as UC_FORM
+usecase "Xem kết quả sau đặt\n(/booking/success/:id)" as UC_OK
+usecase "Thanh toán đơn đặt\n(/booking/payment/:id)" as UC_PAY
+
+usecase "Tải thông tin tour instance\n(getTour)" as UC_TOUR
+usecase "Tải booking để tính chỗ còn\n(GET /bookings)" as UC_SLOTS
+usecase "Tải & tính giá\n(holiday-pricings +\ncalculate)" as UC_PRICE
+usecase "Kiểm tra form & điều kiện\n(ngày đi, số chỗ,\nquy tắc đặt cọc…)" as UC_VALIDATE
+usecase "Gửi tạo booking\n(POST /bookings)" as UC_CREATE
+
+usecase "Chọn ngày khởi hành\n& số lượng khách" as UC_CHON_NGAY
+
+usecase "Tải chi tiết booking\n(GET /bookings/:id)" as UC_FETCH_B
+
+usecase "Thực hiện thanh toán\n(MoMo / mock chuyển khoản)" as UC_GATEWAY
+
+UC_ROOT <|-- UC_FORM
+UC_ROOT <|-- UC_OK
+UC_ROOT <|-- UC_PAY
+
+KH --> UC_ROOT
+
+
+
+UC_FORM ..> UC_TOUR : <<include>>
+UC_FORM ..> UC_SLOTS : <<include>>
+UC_FORM ..> UC_PRICE : <<include>>
+UC_FORM ..> UC_VALIDATE : <<include>>
+UC_FORM ..> UC_CREATE : <<include>>
+
+UC_FORM <.. UC_CHON_NGAY : <<extend>>
+
+UC_OK ..> UC_FETCH_B : <<include>>
+UC_OK <.. UC_PAY : <<extend>>
+
+UC_PAY ..> UC_FETCH_B : <<include>>
+UC_PAY <.. UC_GATEWAY : <<extend>>
+
+@enduml

@@ -1,0 +1,271 @@
+' Một file — xuất PNG/SVG: mỗi trang = một module (newpage).
+' Hoặc tách từng khối giữa newpage thành file riêng nếu công cụ chỉ hỗ trợ 1 diagram/file.
+
+@startuml admin_use_cases_modules
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+title UC — Quản lý tour (Admin)
+left to right direction
+
+actor "Admin" as ADM
+
+rectangle "Quản lý tour" {
+  usecase "Đăng nhập hệ thống" as L1
+  usecase "Vào trang quản trị" as A1
+  usecase "Mở danh sách tour" as LIST1
+
+  usecase "Tạo tour mới" as C1
+  usecase "Xem / chỉnh sửa tour" as E1
+  usecase "Xem chi tiết tour\n(lịch khởi hành, booking)" as D1
+  usecase "Xóa tour" as X1
+
+  usecase "Cập nhật trạng thái chuyến\n(DRAFT / OPENING / CLOSED…)" as TRIP1
+  usecase "Xếp ghế / phân bổ xe\n(theo ngày khởi hành)" as SEAT1
+  usecase "Xếp phòng / phân bổ chỗ nghỉ" as ROOM1
+
+  L1 .> A1 : <<include>>
+  A1 .> LIST1 : <<include>>
+
+  LIST1 <.. C1 : <<extend>>
+  LIST1 <.. E1 : <<extend>>
+  LIST1 <.. D1 : <<extend>>
+  LIST1 <.. X1 : <<extend>>
+
+  D1 <.. TRIP1 : <<extend>>
+  D1 <.. SEAT1 : <<extend>>
+  D1 <.. ROOM1 : <<extend>>
+}
+
+ADM --> L1
+
+newpage UC — Quản lý tour template (Admin)
+left to right direction
+
+actor "Admin" as ADM2
+
+rectangle "Quản lý tour template" {
+  usecase "Đăng nhập hệ thống" as L2
+  usecase "Vào mục Tour template" as H2
+  usecase "Xem danh sách template" as LIST2
+
+  usecase "Tạo template" as C2
+  usecase "Sửa template" as E2
+
+  L2 .> H2 : <<include>>
+  H2 .> LIST2 : <<include>>
+
+  LIST2 <.. C2 : <<extend>>
+  LIST2 <.. E2 : <<extend>>
+}
+
+ADM2 --> L2
+
+newpage UC — Quản lý danh mục (Admin)
+left to right direction
+
+actor "Admin" as ADM3
+
+rectangle "Quản lý danh mục" {
+  usecase "Đăng nhập hệ thống" as L3
+  usecase "Vào quản lý danh mục" as H3
+  usecase "Xem cây danh mục" as TREE3
+
+  usecase "Thêm danh mục" as C3
+  usecase "Sửa danh mục" as E3
+  usecase "Đổi trạng thái\n(active / inactive)" as ST3
+
+  L3 .> H3 : <<include>>
+  H3 .> TREE3 : <<include>>
+
+  TREE3 <.. C3 : <<extend>>
+  TREE3 <.. E3 : <<extend>>
+  E3 <.. ST3 : <<extend>>
+}
+
+ADM3 --> L3
+
+newpage UC — Quản lý nhà cung cấp (Admin)
+left to right direction
+
+actor "Admin" as ADM4
+
+rectangle "Quản lý nhà cung cấp" {
+  usecase "Đăng nhập hệ thống" as L4
+  usecase "Vào danh sách nhà cung cấp" as H4
+  usecase "Xem / tìm nhà cung cấp" as LIST4
+
+  usecase "Thêm nhà cung cấp" as C4
+  usecase "Sửa nhà cung cấp" as E4
+  usecase "Xem chi tiết nhà cung cấp" as D4
+
+  L4 .> H4 : <<include>>
+  H4 .> LIST4 : <<include>>
+
+  LIST4 <.. C4 : <<extend>>
+  LIST4 <.. E4 : <<extend>>
+  LIST4 <.. D4 : <<extend>>
+}
+
+ADM4 --> L4
+
+newpage UC — Quản lý HDV (Admin)
+left to right direction
+
+actor "Admin" as ADM5
+
+rectangle "Quản lý HDV" {
+  usecase "Đăng nhập hệ thống" as L5
+  usecase "Vào danh sách HDV" as H5
+  usecase "Xem / lọc HDV" as LIST5
+
+  usecase "Thêm HDV" as C5
+  usecase "Sửa thông tin HDV" as E5
+  usecase "Gán / đổi HDV cho tour" as ASG5
+
+  L5 .> H5 : <<include>>
+  H5 .> LIST5 : <<include>>
+
+  LIST5 <.. C5 : <<extend>>
+  LIST5 <.. E5 : <<extend>>
+  LIST5 <.. ASG5 : <<extend>>
+}
+
+ADM5 --> L5
+
+newpage UC — Quản lý người dùng (Admin)
+left to right direction
+
+actor "Admin" as ADM6
+
+rectangle "Quản lý người dùng" {
+  usecase "Đăng nhập hệ thống" as L6
+  usecase "Vào danh sách user" as H6
+  usecase "Xem / tìm người dùng" as LIST6
+
+  usecase "Thêm người dùng" as C6
+  usecase "Sửa người dùng" as E6
+  usecase "Khóa / mở khóa tài khoản" as LOCK6
+
+  L6 .> H6 : <<include>>
+  H6 .> LIST6 : <<include>>
+
+  LIST6 <.. C6 : <<extend>>
+  LIST6 <.. E6 : <<extend>>
+  LIST6 <.. LOCK6 : <<extend>>
+}
+
+ADM6 --> L6
+
+newpage UC — Quản lý đánh giá tour (Admin)
+left to right direction
+
+actor "Admin" as ADM7
+
+rectangle "Quản lý đánh giá tour" {
+  usecase "Đăng nhập hệ thống" as L7
+  usecase "Vào mục đánh giá tour" as H7
+  usecase "Xem danh sách đánh giá" as LIST7
+
+  usecase "Duyệt / ẩn đánh giá\n(cập nhật trạng thái)" as MOD7
+
+  L7 .> H7 : <<include>>
+  H7 .> LIST7 : <<include>>
+
+  LIST7 <.. MOD7 : <<extend>>
+}
+
+ADM7 --> L7
+
+newpage UC — Quản lý tin nhắn / liên hệ offline (Admin)
+left to right direction
+
+actor "Admin" as ADM8
+
+rectangle "Quản lý tin nhắn (liên hệ)" {
+  usecase "Đăng nhập hệ thống" as L8
+  usecase "Vào hộp tin nhắn / liên hệ" as H8
+  usecase "Xem danh sách tin" as LIST8
+
+  usecase "Xem chi tiết tin" as D8
+  usecase "Đánh dấu đã xử lý\n/ cập nhật trạng thái" as ST8
+
+  L8 .> H8 : <<include>>
+  H8 .> LIST8 : <<include>>
+
+  LIST8 <.. D8 : <<extend>>
+  D8 <.. ST8 : <<extend>>
+}
+
+ADM8 --> L8
+
+newpage UC — Quản lý giá ngày lễ (Admin)
+left to right direction
+
+actor "Admin" as ADM9
+
+rectangle "Quản lý giá ngày lễ" {
+  usecase "Đăng nhập hệ thống" as L9
+  usecase "Vào danh sách cấu hình giá lễ" as H9
+  usecase "Xem / lọc theo tour / ngày" as LIST9
+
+  usecase "Thêm quy tắc giá lễ" as C9
+  usecase "Sửa quy tắc giá lễ" as E9
+  usecase "Kiểm tra áp dụng giá\n(tính thử)" as CAL9
+
+  L9 .> H9 : <<include>>
+  H9 .> LIST9 : <<include>>
+
+  LIST9 <.. C9 : <<extend>>
+  LIST9 <.. E9 : <<extend>>
+  LIST9 <.. CAL9 : <<extend>>
+}
+
+ADM9 --> L9
+
+newpage UC — Phân phòng và xe (Admin)
+left to right direction
+
+actor "Admin" as ADM10
+
+rectangle "Phân phòng và xe\n(theo tour + ngày trip)" {
+  usecase "Đăng nhập hệ thống" as L10
+  usecase "Vào chi tiết tour\nchọn ngày khởi hành" as H10
+
+  usecase "Xem / chỉnh xếp ghế\n(vehicle)" as SEAT10
+  usecase "Xem / chỉnh xếp phòng\n(room)" as ROOM10
+  usecase "Tự động phân bổ xe / phòng" as AUTO10
+
+  L10 .> H10 : <<include>>
+
+  H10 <.. SEAT10 : <<extend>>
+  H10 <.. ROOM10 : <<extend>>
+  SEAT10 <.. AUTO10 : <<extend>>
+  ROOM10 <.. AUTO10 : <<extend>>
+}
+
+ADM10 --> L10
+
+newpage UC — Thống kê / Dashboard (Admin)
+left to right direction
+
+actor "Admin" as ADM11
+
+rectangle "Thống kê" {
+  usecase "Đăng nhập hệ thống" as L11
+  usecase "Vào Dashboard" as D11
+
+  usecase "Xem tổng quan\n(booking, doanh thu…)" as SUM11
+  usecase "Lọc theo khoảng thời gian" as FIL11
+  usecase "Xem biểu đồ / bảng" as CH11
+
+  L11 .> D11 : <<include>>
+  D11 .> SUM11 : <<include>>
+
+  SUM11 <.. FIL11 : <<extend>>
+  SUM11 <.. CH11 : <<extend>>
+}
+
+ADM11 --> L11
+
+@enduml

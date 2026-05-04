@@ -1,0 +1,42 @@
+@startuml usecase_hdv_chi_tiet_chuyen
+title Use case — Chi tiết chuyến (HDV)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Hướng dẫn viên\n(HDV)" as HDV
+
+usecase "Chi tiết chuyến\n(theo tour + ngày trip)" as UC_ROOT <<abstract>>
+
+usecase "Xem trang chi tiết chuyến\n(/hdv/trips/:tourId/:date)" as UC_PAGE
+
+usecase "Tải booking được gán cho HDV\n(GET /bookings/guide/me)" as UC_LIST
+usecase "Lọc booking theo tour\nvà ngày khởi hành\n(phía client)" as UC_FILTER
+
+usecase "Kiểm tra xếp xe & phòng\n(GET …/trips/:date/assignment)" as UC_ASSIGN
+usecase "Tải chi tiết booking chính\n(GET /bookings/guide/:id)" as UC_DETAIL
+
+usecase "Cập nhật giai đoạn chuyến\n(scheduled / in_progress / completed)\n(PATCH …/guide/:id/stage)" as UC_STAGE
+
+usecase "Điểm danh checkpoint\n(PATCH …/guide/:bookingId/checkin)" as UC_CHECKIN
+usecase "Đánh dấu vắng mặt\n+kèm lý do\n(cùng API checkin)" as UC_ABSENT
+
+usecase "Lưu nhật ký chuyến\n(PATCH …/guide/:id/diary)" as UC_DIARY
+
+UC_ROOT <|-- UC_PAGE
+
+HDV --> UC_ROOT
+
+
+
+UC_PAGE ..> UC_LIST : <<include>>
+UC_PAGE ..> UC_FILTER : <<include>>
+UC_PAGE ..> UC_ASSIGN : <<include>>
+UC_PAGE ..> UC_DETAIL : <<include>>
+
+UC_PAGE <.. UC_STAGE : <<extend>>
+UC_PAGE <.. UC_CHECKIN : <<extend>>
+UC_CHECKIN <.. UC_ABSENT : <<extend>>
+
+UC_PAGE <.. UC_DIARY : <<extend>>
+
+@enduml

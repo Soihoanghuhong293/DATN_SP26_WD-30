@@ -1,0 +1,45 @@
+@startuml usecase_thong_ke
+title Use case — Thống kê & Dashboard (Admin)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Thống kê" as UC_ROOT >
+
+usecase "Xem Dashboard tổng quan" as UC_DASH
+
+usecase "Tải dữ liệu thống kê\n(GET /dashboard/overview)" as UC_LOAD
+
+usecase "Chọn kỳ thống kê\n(ngày / tháng / năm + mốc anchor)" as UC_PERIOD
+
+usecase "Xem KPI kỳ hiện tại\n(booking, doanh thu,\nkhách, tỉ lệ lấp đầy)" as UC_KPI
+
+usecase "Xem biểu đồ\ndoanh thu & booking\ntheo điểm thời gian trong kỳ" as UC_CHART
+
+usecase "Xem Top tour\nvà bảng xếp hạng" as UC_TOP
+
+usecase "Xem cảnh báo vận hành\n(sắp khởi hành, booking chờ,\nHDV, tài nguyên)" as UC_ALERT
+
+usecase "Xem thống kê khách hàng\n(mới / quay lại / top)" as UC_CUST
+
+usecase "Xem tình trạng tài nguyên\n(phòng, xe, vé)" as UC_RES
+
+UC_ROOT <|-- UC_DASH
+
+ADM --> UC_ROOT
+
+
+
+UC_DASH ..> UC_LOAD : <<include>>
+
+UC_DASH <.. UC_PERIOD : <<extend>>
+
+UC_DASH <.. UC_KPI : <<extend>>
+UC_DASH <.. UC_CHART : <<extend>>
+UC_DASH <.. UC_TOP : <<extend>>
+UC_DASH <.. UC_ALERT : <<extend>>
+UC_DASH <.. UC_CUST : <<extend>>
+UC_DASH <.. UC_RES : <<extend>>
+
+@enduml

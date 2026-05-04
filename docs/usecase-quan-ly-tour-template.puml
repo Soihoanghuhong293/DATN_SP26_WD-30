@@ -1,0 +1,42 @@
+@startuml usecase_quan_ly_tour_template
+title Use case — Quản lý tour template (Admin)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Quản lý tour template" as UC_ROOT 
+
+usecase "Xem danh sách template\nvà áp dụng bộ lọc" as UC_LIST
+usecase "Tạo template mới" as UC_CREATE
+usecase "Sửa template" as UC_EDIT
+usecase "Xóa template" as UC_DELETE
+
+usecase "Tải danh sách template\n(GET /tour-templates)" as UC_LOAD
+usecase "Lọc theo từ khóa /\ndanh mục / khoảng\nsố ngày tour" as UC_FILTER
+
+usecase "Tải dữ liệu template\nđể chỉnh sửa" as UC_FETCH
+usecase "Kiểm tra form\nvà gửi lưu template\n(POST / PUT)" as UC_SAVE
+
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_CREATE
+UC_ROOT <|-- UC_EDIT
+UC_ROOT <|-- UC_DELETE
+
+ADM --> UC_ROOT
+
+
+
+UC_LIST ..> UC_LOAD : <<include>>
+UC_LIST <.. UC_FILTER : <<extend>>
+
+UC_CREATE ..> UC_SAVE : <<include>>
+UC_EDIT ..> UC_FETCH : <<include>>
+UC_EDIT ..> UC_SAVE : <<include>>
+
+UC_LIST <.. UC_DELETE : <<extend>>
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+@enduml
