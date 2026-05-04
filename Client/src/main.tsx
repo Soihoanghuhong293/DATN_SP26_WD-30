@@ -12,7 +12,15 @@ const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <ConfigProvider>
+    <ConfigProvider
+      theme={{
+        components: {
+          // Header sticky z-index 1000; chat widget ~9999 — đưa toast/feedback lên trên
+          Message: { zIndexPopup: 12000 },
+          Notification: { zIndexPopup: 12000 },
+        },
+      }}
+    >
       <AntdApp>
         <AuthProvider>
             <SettingsProvider>

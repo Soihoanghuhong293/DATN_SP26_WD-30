@@ -6,27 +6,62 @@ import { loginAPI } from "../services/auth";
 import "./styles/LoginPage.css";
 import { useAuth } from "../auth/AuthProvider";
 import { roleHome } from "../auth/roleHome";
+import { parseApiErrorFromAxios } from "../utils/axiosErrorMessage";
 
 const LoginPage = () => {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
+  const clearServerFieldErrors = () => {
+    form.setFields([
+      { name: "email", errors: [] },
+      { name: "password", errors: [] },
+    ]);
+  };
+
+  const applyServerLoginError = (parsed: ReturnType<typeof parseApiErrorFromAxios>) => {
+    if (parsed.code === "INVALID_PASSWORD") {
+      form.setFields([
+        { name: "email", errors: [] },
+        { name: "password", errors: ["Mật khẩu bạn nhập không khớp."] },
+      ]);
+      return;
+    }
+    if (parsed.code === "EMAIL_NOT_FOUND") {
+      form.setFields([
+        { name: "email", errors: [parsed.message] },
+        { name: "password", errors: [] },
+      ]);
+      return;
+    }
+    form.setFields([
+      { name: "email", errors: [parsed.message] },
+      { name: "password", errors: [] },
+    ]);
+  };
+
   const onFinish = async (values: { email: string; password: string }) => {
+    clearServerFieldErrors();
     setLoading(true);
     try {
-      const res = await loginAPI(values);
+      const payload = {
+        email: values.email.trim(),
+        password: values.password.trim(),
+      };
+      const res = await loginAPI(payload);
       const { token, role } = res.data;
 
-      auth.login({ token, role, email: values.email });
+      auth.login({ token, role, email: payload.email });
 
-      message.success("Đăng nhập thành công");
+      message.success("Đăng nhập thành công — chào mừng bạn quay lại ViGo!");
 
       const from = (location.state as any)?.from;
       navigate(typeof from === "string" && from ? from : roleHome(role), { replace: true });
-    } catch (err: any) {
-      message.error(err.response?.data?.message || "Đăng nhập thất bại");
+    } catch (err: unknown) {
+      applyServerLoginError(parseApiErrorFromAxios(err, "Đăng nhập thất bại"));
     } finally {
       setLoading(false);
     }
@@ -48,29 +83,44 @@ const LoginPage = () => {
           </div>
 
           <Form
+            form={form}
             name="login"
             onFinish={onFinish}
+            onValuesChange={() => clearServerFieldErrors()}
             autoComplete="off"
             className="login-form"
             layout="vertical"
+            scrollToFirstError={{ behavior: "smooth", block: "center" }}
+            validateTrigger={["onBlur", "onChange"]}
           >
             <Form.Item
               name="email"
+              label="Email"
               rules={[
-                { required: true, message: "Vui lòng nhập email" },
-                { type: "email", message: "Email không hợp lệ" },
+                { required: true, message: "Vui lòng nhập địa chỉ email để đăng nhập." },
+                {
+                  type: "email",
+                  message:
+                    "Email chưa đúng định dạng (ví dụ: ten@gmail.com). Kiểm tra ký tự @ và phần sau @.",
+                },
               ]}
             >
               <Input
                 prefix={<UserOutlined style={{ color: "#9ca3af" }} />}
-                placeholder="Email"
+                placeholder="Nhập email đã đăng ký"
                 size="large"
               />
             </Form.Item>
 
             <Form.Item
               name="password"
-              rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
+              label="Mật khẩu"
+              rules={[
+                {
+                  required: true,
+                  message: "Vui lòng nhập mật khẩu. Mật khẩu phân biệt chữ hoa/thường.",
+                },
+              ]}
             >
               <Input.Password
                 prefix={<LockOutlined style={{ color: "#9ca3af" }} />}
