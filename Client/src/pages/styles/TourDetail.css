@@ -355,6 +355,18 @@
     line-height: 1.5;
   }
 
+  .tour-extra-info__text--attractions{
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.45;
+    font-weight: 500;
+  }
+
   /* ===== REVIEW OVERVIEW ===== */
 
   .tour-review-section{

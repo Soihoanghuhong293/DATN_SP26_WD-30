@@ -58,16 +58,38 @@ function buildAttractionsFromSchedule(schedule: any[]): string {
   const rows = Array.isArray(schedule) ? schedule : [];
 
   const normalize = (s: string) =>
-    s
+    String(s || "")
       .replace(/\s+/g, " ")
       .replace(/[“”"]/g, "")
       .trim();
 
+  /** Chỉ giữ cụm giống tên riêng / tên địa điểm — không số, không ngoặc, không câu mô tả. */
+  const isStrictPlaceLabel = (p: string) => {
+    const t = normalize(p);
+    if (t.length < 2 || t.length > 44) return false;
+    if (/\d/.test(t)) return false;
+    if (/[():;@#%&+=\[\]{}…]/.test(t)) return false;
+    const w = t.split(/\s+/).filter(Boolean);
+    if (w.length > 6) return false;
+    if (!/[a-zA-ZÀ-ỹ]/i.test(t)) return false;
+    const s = t.toLowerCase();
+    const glue =
+      /\b(xe|ô\s*tô|oto|hdv|hướng\s+dẫn|đoàn|quý\s+khách|khách\s+hàng|buffet|nhà\s+hàng|khách\s+sạn|xe\s+(đưa|đón|chở)|đưa\s+đoàn|đón\s+khách|sau\s+đó|tiếp\s+theo|một\s+trong|cùng\s+với|để\s+tự|vui\s+chơi|tự\s+do|thả\s+đèn|hoa\s+đăng|check-?in|check\s+in|cáp\s+treo|tắm\s+biển|\btắm\b|tham\s+quan|viếng\s+thăm|khám\s+phá|lên\s+xe|xuống\s+xe|nhận\s+phòng|trả\s+phòng|được|đã|sẽ|không|các|những|cho\s+đoàn|tại\s+đây|của|cùng|với|trong|ngoài|khi|nếu|theo|nhằm|nhờ|để\b|có\s+thể|sẽ\s+được|hotel|buffet|ăn\s+(trưa|tối|sáng))\b/i;
+    if (glue.test(s)) return false;
+    return true;
+  };
+
   const isNonAttractionPlace = (p: string) => {
     const s = normalize(p).toLowerCase();
-    if (!s) return true;
+    if (!s || s.length < 2) return true;
+    if (/\b(một trong những|nhất hành tinh|quyến rũ nhất|để tự do|để khách|quý khách|cho đoàn)\b/i.test(s)) return true;
+    if (/^(sáng|trưa|chiều|tối)\s*\(/i.test(s)) return true;
+    if (/^(đi\s+cáp|check-?\s*in|ăn\s+(trưa|tối|sáng|buffet))\b/i.test(s)) return true;
+    if (/^\s*xe\b/i.test(s)) return true;
+    if (/^\s*\(?\s*\d{1,2}:\d{2}/.test(s)) return true;
+    if (/\bxe\s+(và|đưa|đón|chở|đưa đoàn)\b/i.test(s)) return true;
+    if (/^\s*và\s+xe\b/i.test(s)) return true;
 
-    // Các điểm trung chuyển / logistics (không phải điểm tham quan)
     const banned: RegExp[] = [
       /\bkhách sạn\b/i,
       /\bhotel\b/i,
@@ -81,7 +103,7 @@ function buildAttractionsFromSchedule(schedule: any[]): string {
       /\băn trưa\b/i,
       /\băn tối\b/i,
       /\băn sáng\b/i,
-      /\bnghỉ\b/i,
+      /\bnghỉ ngơi\b/i,
       /\bnhận phòng\b/i,
       /\btrả phòng\b/i,
       /\bbến xe\b/i,
@@ -90,76 +112,156 @@ function buildAttractionsFromSchedule(schedule: any[]): string {
       /\bbến tàu\b/i,
       /\bcảng\b/i,
       /\btrên xe\b/i,
+      /\bxe\s+(du lịch|đưa|đón|chở)\b/i,
+      /\bhdv\s+(đưa|đón|chờ)\b/i,
+      /\bquý khách\b/i,
+      /\bsau đó\b/i,
+      /\bđoàn\b.*\b(xe|ăn)\b/i,
+      /\bthả đèn\b/i,
+      /\bhoa đăng\b/i,
     ];
     if (banned.some((re) => re.test(s))) return true;
-
-    // Quá chung chung
     if (/^(địa điểm|điểm|nơi|khu vực|trung tâm)\b/i.test(s)) return true;
+    if (/^(ăn|nghỉ|ngủ|tự do|mua sắm|lên xe|xuống xe|trưa|tối|sáng)$/i.test(s)) return true;
+    if (/^ngày\s*\d+$/i.test(s)) return true;
 
     return false;
   };
 
-  const splitPlaces = (s: string) => {
-    const cleaned = normalize(s);
-    return cleaned
-      .split(/\s*(?:,|;|\/|&|\+|\bvà\b|·|•)\s*/gi)
-      .map((x) => normalize(x))
-      .filter(Boolean);
+  /** Bỏ ghi chú ăn trong ngoặc: (Ăn: Trưa, Tối) */
+  const stripMealNotes = (t: string) =>
+    normalize(t).replace(/\(\s*Ăn\s*:[^)]*\)/gi, "").replace(/\(\s*ăn\s*:[^)]*\)/gi, "");
+
+  /** Ngoặc có khung giờ: (08:00), (08:00, 11:30), (08:00 - 11:30) */
+  const stripTimeParentheticals = (t: string) => {
+    let s = normalize(t);
+    let prev = "";
+    while (s !== prev) {
+      prev = s;
+      s = s.replace(/\([^)]*\d{1,2}:\d{2}[^)]*\)/gi, "");
+    }
+    return normalize(s);
   };
 
-  const extractFromText = (raw: string): string[] => {
-    const text = normalize(raw);
-    if (!text) return [];
+  const cleanSlice = (raw: string) => {
+    let s = stripMealNotes(raw);
+    s = normalize(s);
+    s = s.replace(/^\s*(?:NGÀY|Ngày)\s*\d+\s*:\s*/i, "");
+    s = s.replace(/^[-–—:\s,.·•]+/, "").replace(/[-–—:\s,.·•]+$/, "");
+    return normalize(s);
+  };
 
-    const places: string[] = [];
+  /** Rút còn tên địa điểm: bỏ giờ, ngoặc, động từ dẫn, đoạn “xe / HDV …”. */
+  const polishPlaceCandidate = (raw: string): string | null => {
+    let s = stripTimeParentheticals(cleanSlice(raw));
+    if (!s) return null;
+    s = s.replace(/^\s*(Sáng|Trưa|Chiều|Tối)\s*(\([^)]*\))?\s*[-:–—]?\s*/gi, "");
+    s = stripTimeParentheticals(s);
+    s = normalize(s);
+    s = s.replace(
+      /^(?:Tắm\s+biển|Tắm\s+|Tham\s+quan|Tham\s+viếng|Viếng\s+thăm|Viếng|Ghé\s+thăm|Ghé|Khám\s+phá|Khởi\s+hành|Check-?\s*in|Đi\s+cáp\s+treo|Đi\s+|Đến|Tới|Tại\s+đây)\s+/iu,
+      ""
+    );
+    s = normalize(s);
+    s = s.replace(/^\s*(?:\d{1,2}:\d{2}\s*(?:[-–,]\s*)?)+\s*/, "");
+    s = normalize(
+      s
+        .replace(/\s*:\s*Xe\b[\s\S]*$/i, "")
+        .replace(/\bXe\s+(và|đưa|đón|chở|đưa đoàn)\b[\s\S]*$/i, "")
+    );
+    const proseCut = s.search(
+      /\b(một trong những|để tự do|để khách|quý khách|đoàn\s+du|cho đoàn|sau đó|tiếp theo|tham quan\s+(?:khu|di tích|danh lam))\b/i
+    );
+    if (proseCut >= 8) s = normalize(s.slice(0, proseCut).replace(/[-–—,;\s]+$/g, ""));
+    s = normalize(s.replace(/^[-–—:;.\s]+/, "").replace(/[-–—:;.\s]+$/, ""));
+    if (s.length > 44) s = normalize(s.slice(0, 42).replace(/\s+\S*$/g, ""));
+    if (s.length < 2) return null;
+    if (/^\s*xe\b/i.test(s) || /^\s*và\s+xe\b/i.test(s)) return null;
+    if (/^\d{1,2}:\d{2}/.test(s)) return null;
+    if (!isStrictPlaceLabel(s) || isNonAttractionPlace(s)) return null;
+    return s;
+  };
 
-    // e.g. "Đến Thác Prenn", "Tham quan Euro Garden", "Check-in Puppy Farm", "Di chuyển đến Tuần Châu"
-    const patterns: RegExp[] = [
-      /\b(?:đến|tới|tại|ghé|qua|về|tham quan|thăm quan|check-?in|khám phá|di chuyển đến|di chuyển tới|khởi hành đến|xuất phát đến|dừng chân tại)\b\s*[:\-]?\s*([^.;()]+)(?=$|[.;()])/gi,
-      // titles often like "Đà Lạt - Thác Prenn - ...", "Hà Nội → Hạ Long"
-      /([^.;()]+?)\s*(?:→|–|-|—)\s*([^.;()]+)/g,
-    ];
+  /**
+   * Tách theo: gạch ngang (có khoảng trắng), dấu giữa ·, bullet •, hoặc NGÀY n:
+   */
+  const splitRouteIntoNames = (text: string): string[] => {
+    let t = stripTimeParentheticals(stripMealNotes(text));
+    t = normalize(t);
+    if (!t) return [];
 
-    for (const re of patterns) {
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(text))) {
-        const captured = m.slice(1).filter(Boolean).join(" ");
-        for (const p of splitPlaces(captured)) {
-          // drop overly generic verbs/phrases
-          const bad =
-            /^(\b(ăn|nghỉ|ngơi|ngủ|tắm|tự do|mua sắm|nhận phòng|trả phòng|dùng bữa|dùng cơm|ăn trưa|ăn tối|ăn sáng|lên xe|xuống xe)\b)/i.test(
-              p
-            );
-          if (!bad && p.length >= 3 && !isNonAttractionPlace(p)) places.push(p);
-        }
+    const dayBlocks = t.split(/\b(?:NGÀY|Ngày)\s*\d+\s*:/i).map((x) => cleanSlice(x)).filter(Boolean);
+    const blocks = dayBlocks.length > 1 ? dayBlocks : [t];
+
+    const parts: string[] = [];
+    for (const block of blocks) {
+      let subs = [cleanSlice(block)].filter(Boolean) as string[];
+      subs = subs.flatMap((b) => b.split(/\s*[·•]\s*/).map(cleanSlice)).filter(Boolean);
+      subs = subs.flatMap((b) => b.split(/\s+[-–—]\s+/).map(cleanSlice)).filter(Boolean);
+      subs = subs.flatMap((b) => b.split(/,\s*(?=\()/).map(cleanSlice)).filter(Boolean);
+      subs = subs.flatMap((b) => b.split(/,\s*(?=\d{1,2}:\d{2}\b)/).map(cleanSlice)).filter(Boolean);
+      for (const sub of subs) {
+        if (/^ngày\s*\d+$/i.test(sub)) continue;
+        if (/^\d{1,2}:\d{2}(\s*[-–]\s*\d{1,2}:\d{2})?$/i.test(sub)) continue;
+        if (sub.length >= 2) parts.push(sub);
       }
     }
-
-    return places;
+    return parts;
   };
 
-  const candidates: string[] = [];
+  /** Bỏ tên ngắn nếu đã có tên dài hơn chứa nó (vd "Bà Nà" khi đã có "Bà Nà Hills"). */
+  const dropSubsumedNames = (names: string[]): string[] => {
+    const lows = names.map((n) => n.toLowerCase());
+    return names.filter((a, i) => {
+      const la = lows[i];
+      for (let j = 0; j < names.length; j++) {
+        if (i === j) continue;
+        const lb = lows[j];
+        if (la.length >= lb.length) continue;
+        if (lb === la || lb.startsWith(`${la} `) || lb.endsWith(` ${la}`) || lb.includes(` ${la} `)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  };
+
+  const collected: string[] = [];
   for (const day of rows) {
-    if (day?.title) candidates.push(String(day.title));
+    const title = String(day?.title ?? "").trim();
+    if (title) collected.push(...splitRouteIntoNames(title));
+
     const acts = Array.isArray(day?.activities) ? day.activities : [];
-    for (const a of acts) candidates.push(String(a ?? ""));
+    for (const a of acts) {
+      const raw = String(a ?? "").trim();
+      if (raw) collected.push(...splitRouteIntoNames(raw));
+    }
   }
 
-  const extracted = candidates.flatMap(extractFromText).map(normalize).filter(Boolean);
+  const refined = collected
+    .flatMap((p) =>
+      p.split(/,/g)
+        .map((x) => cleanSlice(x))
+        .filter(Boolean)
+        .map((chunk) => polishPlaceCandidate(chunk))
+        .filter((x): x is string => Boolean(x))
+    );
 
   const seen = new Set<string>();
   const uniq: string[] = [];
-  for (const p of extracted) {
-    const key = p.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
+  for (const p of refined) {
+    const k = p.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
     uniq.push(p);
   }
 
-  if (!uniq.length) return "Chưa cập nhật";
-  const max = 10;
-  const clipped = uniq.slice(0, max);
-  return uniq.length > max ? `${clipped.join(", ")}, ...` : clipped.join(", ");
+  const merged = dropSubsumedNames(uniq);
+  if (!merged.length) return "Chưa cập nhật";
+  const max = 8;
+  const clipped = merged.slice(0, max);
+  const line = clipped.join(", ");
+  return merged.length > max ? `${line}, …` : line;
 }
 
 const TourDetailPage = () => {
@@ -985,7 +1087,7 @@ const TourDetailPage = () => {
                   <EnvironmentOutlined />
                 </div>
                 <div className="tour-extra-info__heading">Điểm tham quan</div>
-                <div className="tour-extra-info__text">{extraInfo.attractions}</div>
+                <div className="tour-extra-info__text tour-extra-info__text--attractions">{extraInfo.attractions}</div>
               </div>
 
               <div className="tour-extra-info__item">
