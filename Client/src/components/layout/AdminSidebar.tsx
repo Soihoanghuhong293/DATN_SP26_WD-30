@@ -1,4 +1,4 @@
-import { Menu, Avatar } from "antd";
+import { Menu, Avatar, Badge } from "antd";
 import {
   AppstoreOutlined,
   UserOutlined,
@@ -13,15 +13,22 @@ import {
   MessageOutlined,
   CalendarOutlined,
   StarOutlined,
+  AlertOutlined,
   LogoutOutlined,
   LeftOutlined,
   RightOutlined,
 } from "@ant-design/icons";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./AdminSidebar.css";
 import { useAuth } from "../../auth/AuthProvider";
 import { getMe } from "../../services/account";
+
+const API_V1 = (import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1";
+
+export const ADMIN_PENDING_HDV_LEAVE_COUNT_KEY = ["admin-pending-hdv-leave-count"] as const;
 
 type Props = {
   collapsed: boolean;
@@ -70,6 +77,20 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       mounted = false;
     };
   }, [auth.token]);
+
+  const { data: pendingLeaveCount = 0 } = useQuery({
+    queryKey: ADMIN_PENDING_HDV_LEAVE_COUNT_KEY,
+    queryFn: async () => {
+      const res = await axios.get(`${API_V1}/guide-leave-requests/count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        params: { status: "pending" },
+      });
+      return Number(res.data?.data?.count ?? 0);
+    },
+    enabled: Boolean(auth.token && auth.role === "admin"),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
 
   const getOpenKeys = () => {
     const keys = [];
@@ -149,8 +170,36 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
       },
       {
         key: "guide-management",
-        icon: <TeamOutlined />,
-        label: "Quản lý Hướng dẫn viên",
+        icon:
+          collapsed && pendingLeaveCount > 0 ? (
+            <Badge count={pendingLeaveCount} size="small" color="#ff4d4f" overflowCount={99} offset={[6, -2]}>
+              <TeamOutlined />
+            </Badge>
+          ) : (
+            <TeamOutlined />
+          ),
+        label:
+          !collapsed && pendingLeaveCount > 0 ? (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                width: "100%",
+                minWidth: 0,
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>Quản lý Hướng dẫn viên</span>
+              <Badge
+                count={pendingLeaveCount}
+                size="small"
+                overflowCount={99}
+                style={{ backgroundColor: "#ff4d4f", flexShrink: 0 }}
+              />
+            </span>
+          ) : (
+            "Quản lý Hướng dẫn viên"
+          ),
         onTitleClick: () =>
           setOpenKeys((prev) => (prev.includes("guide-management") ? [] : ["guide-management"])),
         children: [
@@ -158,6 +207,31 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
             key: "/admin/guides",
             icon: <UnorderedListOutlined />,
             label: "Danh sách HDV",
+          },
+          {
+            key: "/admin/guides/incidents",
+            icon: <AlertOutlined />,
+            label: (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "100%",
+                  minWidth: 0,
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>Sự cố HDV</span>
+                {pendingLeaveCount > 0 ? (
+                  <Badge
+                    count={pendingLeaveCount}
+                    size="small"
+                    overflowCount={99}
+                    style={{ backgroundColor: "#ff4d4f", flexShrink: 0 }}
+                  />
+                ) : null}
+              </span>
+            ),
           },
         ],
       },
@@ -256,7 +330,7 @@ const AdminSidebar = ({ collapsed, onToggleCollapse }: Props) => {
         label: "Cài đặt",
       },
     ],
-    []
+    [pendingLeaveCount, collapsed]
   );
 
   return (

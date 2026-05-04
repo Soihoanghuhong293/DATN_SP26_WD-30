@@ -38,6 +38,7 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { ADMIN_PENDING_HDV_LEAVE_COUNT_KEY } from "../components/layout/AdminSidebar";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -97,38 +98,6 @@ type AbsentPayload = {
   checkpointIndex: number;
 };
 
-const LEAVE_REQUEST_STORAGE_KEY = "hdv-trip-leave-requests";
-
-type TripLeaveRequest = {
-  reason: string;
-  proposedGuideId?: string;
-  proposedGuideName?: string;
-  submittedAt: string;
-};
-
-function readTripLeaveRequest(tourId: string, dateStr: string): TripLeaveRequest | null {
-  try {
-    const raw = localStorage.getItem(LEAVE_REQUEST_STORAGE_KEY);
-    if (!raw) return null;
-    const all = JSON.parse(raw) as Record<string, TripLeaveRequest>;
-    const key = `${tourId}|${dateStr}`;
-    return all[key] && typeof all[key].reason === "string" ? all[key] : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeTripLeaveRequest(tourId: string, dateStr: string, payload: TripLeaveRequest) {
-  try {
-    const raw = localStorage.getItem(LEAVE_REQUEST_STORAGE_KEY);
-    const all = (raw ? JSON.parse(raw) : {}) as Record<string, TripLeaveRequest>;
-    all[`${tourId}|${dateStr}`] = payload;
-    localStorage.setItem(LEAVE_REQUEST_STORAGE_KEY, JSON.stringify(all));
-  } catch {
-    /* ignore */
-  }
-}
-
 export default function HdvTripDetailPage() {
   const { tourId, date } = useParams<{ tourId: string; date: string }>();
   const navigate = useNavigate();
@@ -149,7 +118,6 @@ export default function HdvTripDetailPage() {
   const [leaveForm] = Form.useForm();
   const [activeCheckpointDay, setActiveCheckpointDay] = useState("1");
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
-  const [tripLeaveRequest, setTripLeaveRequest] = useState<TripLeaveRequest | null>(null);
 
   const { data: guideBookings = [], isLoading: listLoading } = useQuery({
     queryKey: ["hdv-guide-me-bookings"],
@@ -212,13 +180,43 @@ export default function HdvTripDetailPage() {
       }));
   }, [guidesForReplacement, myUserId]);
 
-  useEffect(() => {
-    if (!tourId || !dateStr) {
-      setTripLeaveRequest(null);
-      return;
-    }
-    setTripLeaveRequest(readTripLeaveRequest(tourId, dateStr));
-  }, [tourId, dateStr]);
+  const { data: pendingLeaveRequest } = useQuery({
+    queryKey: ["hdv-leave-request-trip", tourId, dateStr],
+    queryFn: async () => {
+      const res = await axios.get(`${API_V1}/guide-leave-requests/me/for-trip`, {
+        ...getAuthHeader(),
+        params: { tour_id: tourId, trip_date: dateStr },
+      });
+      return res.data?.data ?? null;
+    },
+    enabled: Boolean(tourId && dateStr && tripBookings.length > 0),
+  });
+
+  const submitLeaveRequestMutation = useMutation({
+    mutationFn: async (payload: { reason: string; proposedGuideId?: string }) => {
+      await axios.post(
+        `${API_V1}/guide-leave-requests`,
+        {
+          tour_id: tourId,
+          trip_date: dateStr,
+          reason: payload.reason,
+          proposed_replacement_guide_id: payload.proposedGuideId || undefined,
+        },
+        getAuthHeader()
+      );
+    },
+    onSuccess: () => {
+      message.success("Đã gửi yêu cầu. Trạng thái: Pending — chờ admin xử lý.");
+      queryClient.invalidateQueries({ queryKey: ["hdv-leave-request-trip", tourId, dateStr] });
+      queryClient.invalidateQueries({ queryKey: ["hdv-guide-me-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ADMIN_PENDING_HDV_LEAVE_COUNT_KEY });
+      setLeaveModalOpen(false);
+      leaveForm.resetFields();
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.message || "Gửi yêu cầu thất bại.");
+    },
+  });
 
   const tripAllocationIncomplete = useMemo(() => {
     const ps = Array.isArray(assignmentGuardData?.passengers) ? assignmentGuardData.passengers : [];
@@ -1170,8 +1168,16 @@ export default function HdvTripDetailPage() {
                     ? "Đã hủy"
                     : "Chờ duyệt"}
             </Tag>
-            {tripLeaveRequest ? (
-              <Tooltip title={`Yêu cầu nghỉ / thay HDV đã gửi — chờ admin xử lý.${tripLeaveRequest.proposedGuideName ? ` Đề xuất: ${tripLeaveRequest.proposedGuideName}.` : ""}`}>
+            {pendingLeaveRequest ? (
+              <Tooltip
+                title={`Yêu cầu nghỉ / thay HDV đã gửi — chờ admin xử lý.${
+                  (() => {
+                    const p = (pendingLeaveRequest as any)?.proposed_replacement_user_id;
+                    const name = p && typeof p === "object" ? p.name : "";
+                    return name ? ` Đề xuất: ${name}.` : "";
+                  })()
+                }`}
+              >
                 <Tag color="gold" style={{ fontWeight: 600 }}>
                   Pending
                 </Tag>
@@ -1185,7 +1191,7 @@ export default function HdvTripDetailPage() {
             title={
               tourStage === "completed"
                 ? "Tour đã kết thúc, không thể báo nghỉ."
-                : tripLeaveRequest
+                : pendingLeaveRequest
                   ? "Bạn đã gửi yêu cầu — trạng thái Pending."
                   : "Báo không thể dẫn tour và đề xuất HDV thay thế (nếu có)."
             }
@@ -1196,7 +1202,7 @@ export default function HdvTripDetailPage() {
                 leaveForm.resetFields();
                 setLeaveModalOpen(true);
               }}
-              disabled={tourStage === "completed" || !!tripLeaveRequest}
+              disabled={tourStage === "completed" || !!pendingLeaveRequest}
             >
               Báo nghỉ / Đề xuất thay
             </Button>
@@ -1213,6 +1219,7 @@ export default function HdvTripDetailPage() {
         cancelText="Hủy"
         destroyOnClose
         width={520}
+        confirmLoading={submitLeaveRequestMutation.isPending}
         onCancel={() => {
           setLeaveModalOpen(false);
           leaveForm.resetFields();
@@ -1222,20 +1229,12 @@ export default function HdvTripDetailPage() {
             const v = await leaveForm.validateFields();
             if (!tourId || !dateStr) return;
             const gid = v.proposedGuideId as string | undefined;
-            const opt = gid ? replacementGuideOptions.find((o) => o.value === gid) : undefined;
-            const payload: TripLeaveRequest = {
+            await submitLeaveRequestMutation.mutateAsync({
               reason: String(v.reason || "").trim(),
               proposedGuideId: gid || undefined,
-              proposedGuideName: opt?.label,
-              submittedAt: new Date().toISOString(),
-            };
-            writeTripLeaveRequest(tourId, dateStr, payload);
-            setTripLeaveRequest(payload);
-            message.success("Đã gửi yêu cầu. Trạng thái: Pending — chờ admin xử lý.");
-            setLeaveModalOpen(false);
-            leaveForm.resetFields();
+            });
           } catch {
-            /* validateFields */
+            /* validateFields hoặc mutation */
           }
         }}
       >

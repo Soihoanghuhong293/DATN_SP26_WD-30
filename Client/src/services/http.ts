@@ -20,7 +20,8 @@ axios.interceptors.response.use(
   (res) => res,
   (error) => {
     const status = error?.response?.status;
-    if ((status === 401 || status === 403) && !isHandlingUnauthorized) {
+    // Chỉ 401 = phiên đăng nhập không hợp lệ. 403 thường là “đã đăng nhập nhưng không đủ quyền / từ chối nghiệp vụ” — không được xóa token.
+    if (status === 401 && !isHandlingUnauthorized) {
       isHandlingUnauthorized = true;
       authStorage.clear();
       // allow future 401 handling after current tick

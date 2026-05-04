@@ -21,6 +21,7 @@ import { CalendarOutlined, EyeOutlined, FileTextOutlined } from "@ant-design/ico
 import dayjs, { Dayjs } from "dayjs";
 import viVN from "antd/locale/vi_VN";
 import "dayjs/locale/vi";
+import { effectiveTripStage, tripEndMs } from "../features/hdv/effectiveTripStage";
 
 const { Text } = Typography;
 
@@ -178,8 +179,10 @@ const HdvSchedule = () => {
                 renderItem={(b) => {
                   const { start, end } = getBookingRange(b);
                   const status = statusMap[b.status] || { color: "default", label: b.status };
-                  const stage =
-                    stageMap[b.tour_stage || "scheduled"] || stageMap.scheduled;
+                  const startYmd = dayjs(b.startDate).format("YYYY-MM-DD");
+                  const endMs = tripEndMs(startYmd, b.tour_id?.duration_days, b.endDate);
+                  const stageKey = effectiveTripStage(startYmd, b.tour_id?.duration_days, [b.tour_stage || "scheduled"], endMs);
+                  const stage = stageMap[stageKey] || stageMap.scheduled;
                   return (
                     <List.Item
                       actions={[

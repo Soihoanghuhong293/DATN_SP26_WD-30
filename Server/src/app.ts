@@ -21,6 +21,7 @@ import restaurantRoutes from './routes/restaurant.routes';
 import providerTicketRoutes from './routes/providerTicket.routes';
 
 import bookingRouter from './routes/bookingRoutes';
+import guideLeaveRequestRouter from './routes/guideLeaveRequest.routes';
 import chatRouter from './routes/chat.routes.js';
 import contactMessageRouter from './routes/contactMessage.routes.js';
 
@@ -69,6 +70,7 @@ app.use('/api/v1/rooms', roomRoutes);
 app.use('/api/v1/restaurants', restaurantRoutes);
 app.use('/api/v1/provider-tickets', providerTicketRoutes);
 app.use('/api/v1/bookings', bookingRouter);
+app.use('/api/v1/guide-leave-requests', guideLeaveRequestRouter);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/chat', chatRouter);
 app.use('/api/v1/contact-messages', contactMessageRouter);

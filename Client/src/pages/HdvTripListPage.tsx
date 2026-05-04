@@ -18,6 +18,7 @@ import {
 import { CarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./HdvTours.css";
+import { effectiveTripStage, tripEndMs } from "../features/hdv/effectiveTripStage";
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -47,6 +48,8 @@ const stageMap: Record<string, { color: string; label: string }> = {
   completed: { color: "default", label: "Kết thúc" },
 };
 
+type TripAgg = TripRow & { _stages: string[]; _endMs: number };
+
 export default function HdvTripListPage() {
   const navigate = useNavigate();
 
@@ -73,24 +76,36 @@ export default function HdvTripListPage() {
   });
 
   const trips = useMemo(() => {
-    const map = new Map<string, TripRow>();
+    const map = new Map<string, TripAgg>();
     (data as any[]).forEach((b) => {
+      if (String(b?.status || "").toLowerCase() === "cancelled") return;
       const tid = String(b?.tour_id?._id || b?.tour_id || "");
       const date = b?.startDate ? dayjs(b.startDate).format("YYYY-MM-DD") : "";
       if (!tid || !date) return;
       const key = `${tid}:${date}`;
-      const cur = map.get(key) || {
-        key,
-        tourId: tid,
-        date,
-        tourName: b?.tour_id?.name || "Tour",
-        duration_days: b?.tour_id?.duration_days,
-        bookings: 0,
-        passengers: 0,
-        stage: b?.tour_stage || "scheduled",
-        guestListComplete: true,
-      };
+      const dur = b?.tour_id?.duration_days != null ? Number(b.tour_id.duration_days) : undefined;
+      const endMs = tripEndMs(date, dur, b?.endDate);
+
+      const cur =
+        map.get(key) ||
+        ({
+          key,
+          tourId: tid,
+          date,
+          tourName: b?.tour_id?.name || "Tour",
+          duration_days: dur,
+          bookings: 0,
+          passengers: 0,
+          stage: "scheduled",
+          guestListComplete: true,
+          _stages: [],
+          _endMs: endMs,
+        } as TripAgg);
+
       if (b?.tour_id?.duration_days != null) cur.duration_days = b.tour_id.duration_days;
+      cur._stages.push(b?.tour_stage || "scheduled");
+      cur._endMs = Math.max(cur._endMs, endMs);
+
       if (String(b?.customer_info_status || "") !== "COMPLETED") {
         cur.guestListComplete = false;
       }
@@ -98,7 +113,14 @@ export default function HdvTripListPage() {
       cur.passengers += Number(b?.groupSize || 0);
       map.set(key, cur);
     });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return Array.from(map.values())
+      .map((row) => {
+        const { _stages, _endMs, ...rest } = row;
+        const stage = effectiveTripStage(row.date, row.duration_days, _stages, _endMs);
+        return { ...rest, stage } as TripRow;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
   const filteredTrips = useMemo(() => {

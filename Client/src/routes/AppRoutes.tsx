@@ -12,6 +12,7 @@ import TourDetail from '../features/admin/tours/TourDetail';
 import GuideList from '../pages/admin/guides/GuideList';
 import GuideEdit from '../pages/admin/guides/GuideEdit';
 import GuideCreate from '../pages/admin/guides/GuideCreate';
+import GuideIncidentsPage from '../pages/admin/guides/GuideIncidentsPage';
 
 import CategoryList from '../pages/admin/categories/CategoryList';
 import CategoryCreate from '../pages/admin/categories/CategoryCreate';
@@ -112,6 +113,7 @@ const AppRoutes = () => {
         <Route path="tour-templates/create" element={<TourTemplateCreate />} />
         <Route path="tour-templates/:id/edit" element={<TourTemplateEdit />} />
 
+        <Route path="guides/incidents" element={<GuideIncidentsPage />} />
         <Route path="guides" element={<GuideList />} />
         <Route path="guides/create" element={<GuideCreate />} />
         <Route path="guides/edit/:id" element={<GuideEdit />} />
