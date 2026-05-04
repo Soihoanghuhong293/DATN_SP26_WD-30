@@ -218,10 +218,10 @@
   width: 100%;
 }
 
-/* Grid 3 cột */
+/* Grid 4 cột (desktop) */
 .tours-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
   margin-bottom: 40px;
   align-items: stretch;
@@ -238,18 +238,6 @@
 
 .tours-grid .tour-card-content {
   padding: 16px 18px;
-}
-
-.tours-grid .tour-card-description {
-  max-height: 2.8em;
-}
-
-.tours-grid .tour-card-schedule {
-  padding: 8px 0;
-}
-
-.tours-grid .tour-card-schedule .schedule-item {
-  margin-bottom: 4px;
 }
 
 /* Pagination */
@@ -275,9 +263,16 @@
 }
 
 /* Responsive */
+@media (max-width: 1280px) {
+  .tours-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
 @media (max-width: 1024px) {
   .tours-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
   }
 

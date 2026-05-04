@@ -62,6 +62,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
+  align-items: stretch;
 }
 
 /* Responsive Design */
@@ -238,17 +239,6 @@
 /* SECTION */
 .detail-section {
   margin-bottom: 20px;
-}
-
-/* SCHEDULE */
-.schedule-item {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 10px;
-}
-
-.schedule-day {
-  font-weight: bold;
 }
 
 /* MOBILE */

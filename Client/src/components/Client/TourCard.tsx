@@ -27,9 +27,6 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
             className="tour-card-image"
             onError={handleImageError}
           />
-          <div className="tour-card-badge">
-            <span className="badge badge-opening">Mở bán</span>
-          </div>
         </div>
 
         <div className="tour-card-content">
@@ -39,11 +36,7 @@ const TourCard: React.FC<TourCardProps> = ({ tour }) => {
              <span className="tour-meta-duration">{durationDays ?? '-'} ngày</span>
            </div>
 
-          <p className="tour-card-description">
-            {tour.description?.length > 140
-              ? `${tour.description.substring(0, 140)}...`
-              : tour.description}
-          </p>
+          <p className="tour-card-description">{tour.description || 'Đang cập nhật mô tả tour.'}</p>
 
           <div className="tour-card-info">
             <div className="info-item">

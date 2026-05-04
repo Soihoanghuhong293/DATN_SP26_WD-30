@@ -45,48 +45,6 @@
   transform: scale(1.05);
 }
 
-.tour-card-badge {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-}
-
-.badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.badge-active {
-  background: #10b981;
-  color: white;
-}
-
-.badge-draft {
-  background: #f59e0b;
-  color: white;
-}
-
-.badge-inactive {
-  background: #ef4444;
-  color: white;
-}
-
-.badge-opening {
-  background: #10b981;
-  color: white;
-  text-transform: none;
-  letter-spacing: 0.02em;
-}
-
-.badge-hidden {
-  background: #6b7280;
-  color: white;
-}
-
 .tour-card-content {
   padding: 18px 20px;
   display: flex;
@@ -100,6 +58,13 @@
   font-weight: 700;
   color: #1f2937;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+  min-height: calc(1.4em * 2);
+  flex-shrink: 0;
 }
 
 .tour-card-meta {
@@ -109,6 +74,8 @@
   font-size: 12px;
   color: #6b7280;
   margin-bottom: 8px;
+  min-height: 1.25em;
+  flex-shrink: 0;
 }
 
 .tour-meta-duration {
@@ -120,23 +87,38 @@
   font-size: 13px;
   color: #6b7280;
   line-height: 1.5;
-  max-height: 3.8em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   overflow: hidden;
+  word-break: break-word;
+  min-height: calc(1.5em * 3);
+  flex-shrink: 0;
 }
 
 .tour-card-info {
   display: flex;
   gap: 12px;
   margin-bottom: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 22px;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
-.info-item {
+.tour-card .info-item {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   color: #6b7280;
+  min-width: 0;
+}
+
+.tour-card .info-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .info-icon {
@@ -148,10 +130,19 @@
   margin: 10px 0 4px 0;
   padding: 10px 0;
   border-top: 1px solid #e5e7eb;
-  min-height: 86px; /* keep cards equal even when schedule missing */
+  min-height: 118px;
+  max-height: 118px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.schedule-title {
+.tour-card-schedule > div {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.tour-card .schedule-title {
   margin: 0 0 8px 0;
   font-size: 12px;
   font-weight: 600;
@@ -160,14 +151,15 @@
   letter-spacing: 0.5px;
 }
 
-.schedule-item {
+.tour-card .schedule-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 6px;
+  min-width: 0;
 }
 
-.day-badge {
+.tour-card .day-badge {
   display: inline-block;
   padding: 2px 8px;
   background: #eff6ff;
@@ -177,25 +169,30 @@
   font-weight: 600;
   min-width: 50px;
   text-align: center;
+  flex-shrink: 0;
 }
 
-.day-title {
+.tour-card .day-title {
   font-size: 12px;
   color: #4b5563;
   flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
-.more-days {
+.tour-card .more-days {
   margin: 6px 0 0 0;
   font-size: 11px;
   color: #9ca3af;
   font-style: italic;
 }
 
-.schedule-empty {
+.tour-card .schedule-empty {
   margin: 0;
   font-size: 12px;
   color: #9ca3af;
