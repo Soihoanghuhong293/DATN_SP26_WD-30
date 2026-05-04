@@ -1510,6 +1510,8 @@ export const updateBooking = async (req: Request, res: Response) => {
     //  chuẩn bị dữ liệu update
     const updateData: any = { ...req.body };
     const logsToAdd: any[] = [];
+    /** Danh sách khách thay đổi → gọi phân bổ lại xe/phòng ở cuối handler */
+    let shouldReallocateServices = false;
 
     const computeCustomerInfoStatus = (passengers: any[], groupSizeVal: any) => {
       const list = Array.isArray(passengers) ? passengers : [];
@@ -1549,6 +1551,7 @@ export const updateBooking = async (req: Request, res: Response) => {
         new: 'Đã cập nhật',
         note: `Cập nhật danh sách: ${incomingPassengers.length} hành khách`
       });
+      shouldReallocateServices = true;
     }
 
     // Nếu có đổi trạng thái đơn (booking status)

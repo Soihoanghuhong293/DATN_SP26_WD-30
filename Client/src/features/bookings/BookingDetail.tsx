@@ -25,6 +25,16 @@ const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
 });
 
+type SaveGuestsIntent = 'add' | 'remove' | 'import' | 'sync_leader' | 'change_representative';
+
+const SAVE_GUESTS_SUCCESS: Record<SaveGuestsIntent, string> = {
+  add: 'Đã thêm hành khách và lưu danh sách.',
+  remove: 'Đã xóa hành khách và lưu danh sách.',
+  import: 'Đã nhập danh sách từ Excel và lưu.',
+  sync_leader: 'Đã cập nhật khách đại diện đoàn.',
+  change_representative: 'Đã đổi khách đại diện đoàn.',
+};
+
 const BookingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -111,11 +121,15 @@ const BookingDetail = () => {
 
   // tự động lưu danh sách khách vào db
   const saveGuestsMutation = useMutation({
-    mutationFn: async (updatedGuests: any[]) => { 
-      await axios.put(`http://localhost:5000/api/v1/bookings/${id}`, { passengers: updatedGuests }, getAuthHeader());
+    mutationFn: async (vars: { passengers: any[]; intent: SaveGuestsIntent }) => {
+      await axios.put(
+        `http://localhost:5000/api/v1/bookings/${id}`,
+        { passengers: vars.passengers },
+        getAuthHeader()
+      );
     },
-    onSuccess: () => {
-      message.success('Đã lưu danh sách khách hàng lên server!');
+    onSuccess: (_data, variables) => {
+      message.success(SAVE_GUESTS_SUCCESS[variables.intent]);
       queryClient.invalidateQueries({ queryKey: ['booking', id] });
     },
     onError: (error: any) => {
@@ -221,7 +235,7 @@ const BookingDetail = () => {
           }
           const newGuests = [...guestList, ...finalImport];
           setGuestList(newGuests);
-          saveGuestsMutation.mutate(newGuests); 
+          saveGuestsMutation.mutate({ passengers: newGuests, intent: 'import' });
         } else {
           message.warning('File Excel trống hoặc sai định dạng!');
         }
@@ -245,7 +259,7 @@ const BookingDetail = () => {
     setGuestList(newGuests);
     setIsAddModalOpen(false);
     form.resetFields();
-    saveGuestsMutation.mutate(newGuests); 
+    saveGuestsMutation.mutate({ passengers: newGuests, intent: 'add' });
   };
 
   // đảm bảo luôn có 1 trưởng đoàn mặc định (khách #1) nếu chưa ai được tick
@@ -264,7 +278,7 @@ const BookingDetail = () => {
         : guestList.every((g: any, idx: number) => Boolean(g?.is_leader) === (idx === 0));
     if (normalizedSame) return;
     setGuestList(patched);
-    saveGuestsMutation.mutate(patched);
+    saveGuestsMutation.mutate({ passengers: patched, intent: 'sync_leader' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking?._id, guestList.length]);
 
@@ -274,14 +288,14 @@ const BookingDetail = () => {
       return { ...g, is_leader: key === leaderKey };
     });
     setGuestList(patched);
-    saveGuestsMutation.mutate(patched);
+    saveGuestsMutation.mutate({ passengers: patched, intent: 'change_representative' });
   };
 
   // xóa khách
   const handleRemoveGuest = (guestId: string) => {
     const newGuests = guestList.filter(g => g.id !== guestId && g._id !== guestId);
     setGuestList(newGuests);
-    saveGuestsMutation.mutate(newGuests); 
+    saveGuestsMutation.mutate({ passengers: newGuests, intent: 'remove' });
   };
 
   if (isLoading) return <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Spin size="large" /></div>;
@@ -786,7 +800,6 @@ const BookingDetail = () => {
                 <Select><Option value="Người lớn">Người lớn</Option><Option value="Trẻ em">Trẻ em</Option></Select>
               </Form.Item>
             </div>
-            <Form.Item name="room" label="Số phòng"><Input placeholder="VD: P.201" /></Form.Item>
             <Form.Item name="note" label="Ghi chú"><Input.TextArea rows={2} placeholder="Ăn chay, dị ứng..." /></Form.Item>
           </Form>
         </Modal>

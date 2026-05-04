@@ -18,7 +18,6 @@ import {
 import { CarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "./HdvTours.css";
-import { effectiveTripStage, tripEndMs } from "../features/hdv/effectiveTripStage";
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -28,6 +27,34 @@ const API_V1 =
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
+
+function tripEndMs(startYmd: string, durationDays?: number, endDate?: string): number {
+  if (!startYmd) return 0;
+  const end = endDate
+    ? dayjs(endDate).endOf("day")
+    : durationDays != null && Number.isFinite(Number(durationDays))
+      ? dayjs(startYmd).add(Math.max(1, Math.floor(Number(durationDays))) - 1, "day").endOf("day")
+      : dayjs(startYmd).endOf("day");
+  return end.valueOf();
+}
+
+function effectiveTripStage(
+  startYmd: string,
+  durationDays: number | undefined,
+  stages: string[],
+  endMs: number
+): "scheduled" | "in_progress" | "completed" {
+  const now = Date.now();
+  const startMs = dayjs(startYmd).startOf("day").valueOf();
+  const safeEnd =
+    Number.isFinite(endMs) && endMs > 0 ? endMs : tripEndMs(startYmd, durationDays, undefined);
+  const normalized = stages.map((s) => String(s || "").toLowerCase());
+  if (now > safeEnd) return "completed";
+  if (now < startMs) return "scheduled";
+  if (normalized.length > 0 && normalized.every((s) => s === "completed")) return "completed";
+  if (normalized.some((s) => s === "in_progress")) return "in_progress";
+  return "in_progress";
+}
 
 type TripRow = {
   key: string;

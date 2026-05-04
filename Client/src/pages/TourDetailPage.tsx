@@ -955,8 +955,8 @@ const TourDetailPage = () => {
           <Divider />
 
           {tour.schedule?.length > 0 && (
-            <section className="detail-section">
-              <h2>Lịch trình</h2>
+            <section className="detail-section tour-schedule-section">
+              <h2 className="tour-schedule-section-title">Lịch trình</h2>
 
               <Collapse
                 bordered={false}

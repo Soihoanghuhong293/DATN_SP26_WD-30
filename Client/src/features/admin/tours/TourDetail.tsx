@@ -999,14 +999,10 @@ const TourDetail = () => {
               {tripBookingsForOps.map((booking: any) => {
                 const checkpointCheckins = (booking as any)?.checkpoint_checkins || {};
                 const passengers = Array.isArray((booking as any)?.passengers) ? (booking as any).passengers : [];
-                const people = [
-                  { type: 'leader' as const, name: booking.customer_name || 'Trưởng đoàn' },
-                  ...passengers.map((p: any, i: number) => ({
-                    type: 'passenger' as const,
-                    passengerIndex: i,
-                    name: p?.name || p?.full_name || `Khách ${i + 1}`,
-                  })),
-                ];
+                const people = passengers.map((p: any, i: number) => ({
+                  passengerIndex: i,
+                  name: p?.name || p?.full_name || `Khách ${i + 1}`,
+                }));
                 const diaryEntries: any[] = Array.isArray((booking as any)?.diary_entries) ? (booking as any).diary_entries : [];
                 const getDiaryForDay = (dayNum: number) =>
                   diaryEntries.find((e: any) => Number(e?.day_no ?? 1) === Number(dayNum));
@@ -1047,26 +1043,23 @@ const TourDetail = () => {
                                   dataSource={d.checkpoints.map((cp: string, cpIndex: number) => ({ cp, cpIndex }))}
                                   renderItem={(cpItem: any) => {
                                     const cpData = checkpointCheckins?.[String(d.day)]?.[String(cpItem.cpIndex)] || {};
-                                    const leaderStatus = cpData?.leader;
-                                    const leaderReason = cpData?.reasons?.leader;
                                     const passengerStatuses: any[] = Array.isArray(cpData?.passengers) ? cpData.passengers : [];
                                     const passengerReasons: any[] = Array.isArray(cpData?.reasons?.passengers) ? cpData.reasons.passengers : [];
                                     return (
                                       <List.Item style={{ paddingLeft: 0, paddingRight: 0 }}>
                                         <Card size="small" style={{ width: '100%', borderRadius: 10 }}>
                                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                                            <div style={{ fontWeight: 800 }}>{cpItem.cp}</div>
+                                            <div>{cpItem.cp}</div>
                                             <Text type="secondary">Checkpoint #{cpItem.cpIndex + 1}</Text>
                                           </div>
                                           <Divider style={{ margin: '12px 0' }} />
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                             {people.map((p: any, idx: number) => {
-                                              const isLeader = p.type === 'leader';
-                                              const status = isLeader ? leaderStatus : passengerStatuses[p.passengerIndex];
-                                              const reason = isLeader ? leaderReason : passengerReasons[p.passengerIndex];
+                                              const status = passengerStatuses[p.passengerIndex];
+                                              const reason = passengerReasons[p.passengerIndex];
                                               return (
                                                 <div
-                                                  key={`${p.type}-${p.passengerIndex ?? 'leader'}-${idx}`}
+                                                  key={`p-${p.passengerIndex}-${idx}`}
                                                   style={{
                                                     display: 'flex',
                                                     justifyContent: 'space-between',
@@ -1079,9 +1072,7 @@ const TourDetail = () => {
                                                   }}
                                                 >
                                                   <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 700 }}>
-                                                      {p.name} {isLeader ? <Tag color="blue" style={{ marginLeft: 8 }}>Trưởng đoàn</Tag> : null}
-                                                    </div>
+                                                    <div style={{ fontWeight: 700 }}>{p.name}</div>
                                                     {status === false && reason ? (
                                                       <div style={{ marginTop: 4, color: '#6b7280', fontStyle: 'italic' }}>Lý do: {String(reason)}</div>
                                                     ) : null}

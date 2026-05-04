@@ -427,7 +427,7 @@ const BookingCreate = () => {
               </Row>
             </Card>
 
-            <Card title={<><IdcardOutlined className="text-blue-500 mr-2" /> Khách hàng đại diện (Trưởng đoàn)</>} className="mb-6 shadow-sm">
+            <Card title={<><IdcardOutlined className="text-blue-500 mr-2" /> Khách hàng đặt tour</>} className="mb-6 shadow-sm">
               {/* <Form.Item name="user_id" label="Liên kết Tài khoản hệ thống (Nếu có)">
                 <Select showSearch placeholder="Chọn tài khoản để liên kết..." allowClear optionFilterProp="children" loading={isUsersLoading}>
                   {customers.map((u: any) => (

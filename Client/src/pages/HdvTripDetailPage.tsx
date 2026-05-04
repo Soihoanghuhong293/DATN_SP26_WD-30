@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -97,6 +97,8 @@ type DisplayRow = {
   role: string;
   type: "leader" | "passenger";
   passengerIndex?: number;
+  /** Người đặt / đại diện đơn — không điểm danh checkpoint */
+  skipCheckin?: boolean;
 };
 
 type AbsentPayload = {
@@ -282,17 +284,17 @@ export default function HdvTripDetailPage() {
 
   const displayList: DisplayRow[] = useMemo(() => {
     const rows: DisplayRow[] = [];
-    (tripBookings as any[]).forEach((bk: any, bi: number) => {
+    (tripBookings as any[]).forEach((bk: any) => {
       const plist = Array.isArray(bk.passengers) ? bk.passengers : [];
-      const ref = (bk.customer_name || "").trim() || `Đơn ${bi + 1}`;
       if (!plist.length) {
         rows.push({
           key: `leader-${bk._id}`,
           bookingId: String(bk._id),
           name: bk.customer_name,
           phone: bk.customer_phone,
-          role: `Trưởng đoàn (${ref})`,
+          role: "",
           type: "leader",
+          skipCheckin: true,
         });
         return;
       }
@@ -301,22 +303,27 @@ export default function HdvTripDetailPage() {
           p?.is_leader === true || p?.isLeader === true || p?.is_representative === true
       );
       plist.forEach((p: any, i: number) => {
+        const skipCheckin =
+          (leaderIdx >= 0 && i === leaderIdx) || (leaderIdx < 0 && i === 0);
         rows.push({
           key: `p-${bk._id}-${i}`,
           bookingId: String(bk._id),
           name: p.name || p.full_name || `Khách ${i + 1}`,
           phone: p.phone || p.phoneNumber,
-          role:
-            (leaderIdx >= 0 && i === leaderIdx) || (leaderIdx < 0 && i === 0)
-              ? `Trưởng đoàn (${ref})`
-              : "",
+          role: "",
           type: "passenger",
           passengerIndex: i,
+          skipCheckin,
         });
       });
     });
     return rows;
   }, [tripBookings]);
+
+  const checkinEligibleList = useMemo(
+    () => displayList.filter((r) => !r.skipCheckin),
+    [displayList]
+  );
 
   const totalPax = useMemo(
     () => (tripBookings as any[]).reduce((s, b) => s + Number(b?.groupSize || 0), 0),
@@ -500,10 +507,17 @@ export default function HdvTripDetailPage() {
     const cp = checkpointCheckins?.[String(dayNum)]?.[String(cpIdx)];
     if (!cp) return false;
     if (!plist.length) {
-      if (cp.leader === undefined) return false;
-      return cp.leader === true || (cp.leader === false && cp.reasons?.leader);
+      // Chỉ có người đặt tour, không có danh sách khách đi kèm — không bắt buộc điểm danh người đặt
+      return true;
     }
+    const leaderIdx = plist.findIndex(
+      (p: any) =>
+        p?.is_leader === true || p?.isLeader === true || p?.is_representative === true
+    );
     return plist.every((_: any, pIdx: number) => {
+      const skip =
+        (leaderIdx >= 0 && pIdx === leaderIdx) || (leaderIdx < 0 && pIdx === 0);
+      if (skip) return true;
       const status = cp.passengers?.[pIdx];
       if (status === undefined) return false;
       return status === true || (status === false && cp.reasons?.passengers?.[pIdx]);
@@ -715,14 +729,14 @@ export default function HdvTripDetailPage() {
                     ) : (
                       <List
                         dataSource={d.checkpoints.map((cp: string, cpIndex: number) => {
-                          const totalChecked = displayList.filter(
+                          const totalChecked = checkinEligibleList.filter(
                             (row) => getRowCheckpointStatus(row, d.day, cpIndex) === true
                           ).length;
                           return {
                             cp,
                             cpIndex,
                             totalChecked,
-                            totalPeople: displayList.length,
+                            totalPeople: checkinEligibleList.length,
                           };
                         })}
                         renderItem={(item: any) => {
@@ -801,16 +815,17 @@ export default function HdvTripDetailPage() {
                 <div style={{ marginBottom: 12 }}>
                   <Tag color="blue">
                     {
-                      displayList.filter(
+                      checkinEligibleList.filter(
                         (row) => getRowCheckpointStatus(row, openPoint.day, openPoint.checkpointIndex) === true
                       ).length
                     }
-                    /{displayList.length} có mặt
+                    /{checkinEligibleList.length} có mặt
                   </Tag>
                 </div>
                 <List
                   dataSource={displayList}
                   renderItem={(row) => {
+                    const skip = !!row.skipCheckin;
                     const status = getRowCheckpointStatus(row, openPoint.day, openPoint.checkpointIndex);
                     const checked = status === true;
                     const absent = status === false;
@@ -829,67 +844,82 @@ export default function HdvTripDetailPage() {
 
                     return (
                       <List.Item
-                        actions={[
-                          !checked ? (
-                            <Button
-                              key="call"
-                              size="small"
-                              icon={<PhoneOutlined />}
-                              disabled={!phone}
-                              href={phone ? `tel:${phone}` : undefined}
-                            >
-                              Gọi
-                            </Button>
-                          ) : null,
-                          !checked ? (
-                            <Button
-                              key="reason"
-                              size="small"
-                              disabled={!canCheckin}
-                              onClick={() => {
-                                setAbsentTarget({
-                                  bookingId: row.bookingId,
-                                  name: row.name,
-                                  type: row.type,
-                                  passengerIndex: row.passengerIndex,
-                                  day: openPoint.day,
-                                  checkpointIndex: openPoint.checkpointIndex,
-                                });
-                              }}
-                            >
-                              Nhập lý do
-                            </Button>
-                          ) : null,
-                          <Switch
-                            key="checkin"
-                            checked={checked}
-                            disabled={!canCheckin}
-                            onChange={(nextChecked) => {
-                              if (nextChecked === false) {
-                                setAbsentTarget({
-                                  bookingId: row.bookingId,
-                                  name: row.name,
-                                  type: row.type,
-                                  passengerIndex: row.passengerIndex,
-                                  day: openPoint.day,
-                                  checkpointIndex: openPoint.checkpointIndex,
-                                });
-                                return;
-                              }
-                              checkInMutation.mutate({
-                                bookingId: row.bookingId,
-                                type: row.type,
-                                passengerIndex: row.passengerIndex,
-                                day: openPoint.day,
-                                checkpointIndex: openPoint.checkpointIndex,
-                                checked: true,
-                              });
-                            }}
-                            loading={checkInMutation.isPending}
-                            checkedChildren="Có mặt"
-                            unCheckedChildren="Vắng mặt"
-                          />,
-                        ].filter(Boolean)}
+                        actions={
+                          skip
+                            ? phone
+                              ? [
+                                  <Button
+                                    key="call"
+                                    size="small"
+                                    icon={<PhoneOutlined />}
+                                    href={`tel:${phone}`}
+                                  >
+                                    Gọi
+                                  </Button>,
+                                ]
+                              : []
+                            : [
+                                !checked ? (
+                                  <Button
+                                    key="call"
+                                    size="small"
+                                    icon={<PhoneOutlined />}
+                                    disabled={!phone}
+                                    href={phone ? `tel:${phone}` : undefined}
+                                  >
+                                    Gọi
+                                  </Button>
+                                ) : null,
+                                !checked ? (
+                                  <Button
+                                    key="reason"
+                                    size="small"
+                                    disabled={!canCheckin}
+                                    onClick={() => {
+                                      setAbsentTarget({
+                                        bookingId: row.bookingId,
+                                        name: row.name,
+                                        type: row.type,
+                                        passengerIndex: row.passengerIndex,
+                                        day: openPoint.day,
+                                        checkpointIndex: openPoint.checkpointIndex,
+                                      });
+                                    }}
+                                  >
+                                    Nhập lý do
+                                  </Button>
+                                ) : null,
+                                <Switch
+                                  key="checkin"
+                                  checked={checked}
+                                  disabled={!canCheckin}
+                                  onChange={(nextChecked) => {
+                                    if (nextChecked === false) {
+                                      setAbsentTarget({
+                                        bookingId: row.bookingId,
+                                        name: row.name,
+                                        type: row.type,
+                                        passengerIndex: row.passengerIndex,
+                                        day: openPoint.day,
+                                        checkpointIndex: openPoint.checkpointIndex,
+                                      });
+                                      return;
+                                    }
+                                    checkInMutation.mutate({
+                                      bookingId: row.bookingId,
+                                      type: row.type,
+                                      passengerIndex: row.passengerIndex,
+                                      day: openPoint.day,
+                                      checkpointIndex: openPoint.checkpointIndex,
+                                      checked: true,
+                                    });
+                                  }}
+                                  loading={checkInMutation.isPending}
+                                  checkedChildren="Có mặt"
+                                  unCheckedChildren="Vắng mặt"
+                                />,
+                              ].filter(Boolean)
+                        }
                       >
                         <List.Item.Meta
                           avatar={
@@ -898,13 +928,13 @@ export default function HdvTripDetailPage() {
                                 width: 36,
                                 height: 36,
                                 borderRadius: "50%",
-                                background: checked ? "#10b981" : "#e5e7eb",
+                                background: !skip && checked ? "#10b981" : "#e5e7eb",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                               }}
                             >
-                              {checked ? (
+                              {!skip && checked ? (
                                 <CheckCircleOutlined style={{ color: "white", fontSize: 18 }} />
                               ) : (
                                 <UserOutlined style={{ color: "#6b7280" }} />
@@ -919,7 +949,7 @@ export default function HdvTripDetailPage() {
                                   {row.role}
                                 </Tag>
                               ) : null}
-                              {checked ? (
+                              {skip ? null : checked ? (
                                 <Tag color="green" style={{ marginLeft: 8 }}>
                                   Có mặt
                                 </Tag>
@@ -937,7 +967,7 @@ export default function HdvTripDetailPage() {
                           description={
                             <div>
                               {phone ? <div>{phone}</div> : null}
-                              {absent && reason ? (
+                              {!skip && absent && reason ? (
                                 <div style={{ marginTop: 6, color: "#6b7280", fontStyle: "italic" }}>
                                   Lý do: {reason}
                                 </div>

@@ -314,7 +314,7 @@ export const getTripGuests = async (req: Request, res: Response) => {
         guest_key: `${bookingId}:leader`,
         booking_id: bookingId,
         kind: 'leader',
-        name: booking?.customer_name || 'Trưởng đoàn',
+        name: booking?.customer_name || '—',
         phone: booking?.customer_phone,
         type: 'leader',
       });
