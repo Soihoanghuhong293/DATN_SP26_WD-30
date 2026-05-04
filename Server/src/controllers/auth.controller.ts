@@ -66,16 +66,30 @@ export const login = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Sai email" });
+      return res.status(400).json({
+        code: "EMAIL_NOT_FOUND",
+        message: "Không tìm thấy tài khoản với email này.",
+        detail:
+          "Vui lòng kiểm tra lại địa chỉ email (chính tả, khoảng trắng). Nếu chưa có tài khoản, bạn có thể đăng ký mới ở trang Đăng ký.",
+      });
     }
 
     if (user.status === "inactive") {
-      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa bởi Admin" });
+      return res.status(403).json({
+        code: "ACCOUNT_INACTIVE",
+        message: "Tài khoản đã bị tạm khóa.",
+        detail: "Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ bộ phận hỗ trợ của ViGo để được xử lý.",
+      });
     }
 
     const ok = await bcrypt.compare(password, user.password!);
     if (!ok) {
-      return res.status(400).json({ message: "Sai mật khẩu" });
+      return res.status(400).json({
+        code: "INVALID_PASSWORD",
+        message: "Mật khẩu không đúng.",
+        detail:
+          "Hãy thử nhập lại mật khẩu, kiểm tra Caps Lock và không thêm khoảng trắng ở đầu hoặc cuối. Nếu quên mật khẩu, vui lòng liên hệ hỗ trợ để được hướng dẫn đặt lại.",
+      });
     }
 
     const token = jwt.sign(
@@ -89,7 +103,11 @@ export const login = async (req: Request, res: Response) => {
       role: user.role,
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi khi đăng nhập" });
+    res.status(500).json({
+      code: "SERVER_ERROR",
+      message: "Không thể đăng nhập lúc này.",
+      detail: "Máy chủ gặp sự cố tạm thời. Vui lòng thử lại sau vài phút.",
+    });
   }
 };
 

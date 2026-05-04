@@ -63,8 +63,19 @@
   color: #6b7280;
 }
 
+.login-form .ant-form-item-label > label {
+  font-weight: 600;
+  color: #374151;
+}
+
 .login-form .ant-form-item {
   margin-bottom: 20px;
+}
+
+.login-form .ant-form-item-explain-error {
+  font-size: 13px;
+  margin-top: 4px;
+  text-align: left;
 }
 
 .login-form .ant-input-affix-wrapper,
