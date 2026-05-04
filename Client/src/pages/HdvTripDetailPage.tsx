@@ -14,6 +14,8 @@ import {
   Modal,
   Popconfirm,
   Segmented,
+  Select,
+  Space,
   Spin,
   Steps,
   Switch,
@@ -31,6 +33,7 @@ import {
   PhoneOutlined,
   RightOutlined,
   RocketOutlined,
+  SwapOutlined,
   SyncOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -94,6 +97,38 @@ type AbsentPayload = {
   checkpointIndex: number;
 };
 
+const LEAVE_REQUEST_STORAGE_KEY = "hdv-trip-leave-requests";
+
+type TripLeaveRequest = {
+  reason: string;
+  proposedGuideId?: string;
+  proposedGuideName?: string;
+  submittedAt: string;
+};
+
+function readTripLeaveRequest(tourId: string, dateStr: string): TripLeaveRequest | null {
+  try {
+    const raw = localStorage.getItem(LEAVE_REQUEST_STORAGE_KEY);
+    if (!raw) return null;
+    const all = JSON.parse(raw) as Record<string, TripLeaveRequest>;
+    const key = `${tourId}|${dateStr}`;
+    return all[key] && typeof all[key].reason === "string" ? all[key] : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTripLeaveRequest(tourId: string, dateStr: string, payload: TripLeaveRequest) {
+  try {
+    const raw = localStorage.getItem(LEAVE_REQUEST_STORAGE_KEY);
+    const all = (raw ? JSON.parse(raw) : {}) as Record<string, TripLeaveRequest>;
+    all[`${tourId}|${dateStr}`] = payload;
+    localStorage.setItem(LEAVE_REQUEST_STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function HdvTripDetailPage() {
   const { tourId, date } = useParams<{ tourId: string; date: string }>();
   const navigate = useNavigate();
@@ -111,7 +146,10 @@ export default function HdvTripDetailPage() {
   const [isDiaryEditing, setIsDiaryEditing] = useState(true);
   const [absentTarget, setAbsentTarget] = useState<AbsentPayload | null>(null);
   const [reasonForm] = Form.useForm();
+  const [leaveForm] = Form.useForm();
   const [activeCheckpointDay, setActiveCheckpointDay] = useState("1");
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [tripLeaveRequest, setTripLeaveRequest] = useState<TripLeaveRequest | null>(null);
 
   const { data: guideBookings = [], isLoading: listLoading } = useQuery({
     queryKey: ["hdv-guide-me-bookings"],
@@ -140,6 +178,47 @@ export default function HdvTripDetailPage() {
         ?.data,
     enabled: !!tourId && !!dateStr,
   });
+
+  const { data: myGuideProfile } = useQuery({
+    queryKey: ["hdv-guide-profile"],
+    queryFn: async () =>
+      (await axios.get(`${API_V1}/guides/me`, getAuthHeader())).data?.data?.guide || null,
+  });
+
+  const myUserId = String((myGuideProfile as any)?.user_id?._id || (myGuideProfile as any)?.user_id || "");
+
+  const { data: guidesForReplacement = [], isPending: guidesReplacementLoading } = useQuery({
+    queryKey: ["hdv-guides-for-replacement", myUserId],
+    queryFn: async () => {
+      const res = await axios.get(`${API_V1}/guides`, { ...getAuthHeader(), params: { limit: 100, page: 1 } });
+      const list = res.data?.data?.guides || res.data?.guides || [];
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: leaveModalOpen,
+  });
+
+  const replacementGuideOptions = useMemo(() => {
+    return (guidesForReplacement as any[])
+      .filter((g) => {
+        const uid = String(g?.user_id?._id || g?.user_id || "");
+        if (myUserId && uid === myUserId) return false;
+        const st = g?.user_id?.status;
+        if (st === "inactive") return false;
+        return true;
+      })
+      .map((g) => ({
+        value: String(g._id),
+        label: String(g.name || g.email || "HDV"),
+      }));
+  }, [guidesForReplacement, myUserId]);
+
+  useEffect(() => {
+    if (!tourId || !dateStr) {
+      setTripLeaveRequest(null);
+      return;
+    }
+    setTripLeaveRequest(readTripLeaveRequest(tourId, dateStr));
+  }, [tourId, dateStr]);
 
   const tripAllocationIncomplete = useMemo(() => {
     const ps = Array.isArray(assignmentGuardData?.passengers) ? assignmentGuardData.passengers : [];
@@ -1065,30 +1144,131 @@ export default function HdvTripDetailPage() {
           />
         </Card>
 
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-          <Text type="secondary">
-            {dayjs(booking.startDate).format("DD/MM/YYYY")}
-            {booking.endDate && ` - ${dayjs(booking.endDate).format("DD/MM/YYYY")}`}
-          </Text>
-          <Tag color={tourStage === "completed" ? "green" : tourStage === "in_progress" ? "blue" : "default"}>
-            {STAGES.find((s) => s.key === tourStage)?.label || "Sắp khởi hành"}
-          </Tag>
-          <Tag color={booking.status === "cancelled" ? "red" : "blue"}>
-            {booking.status === "confirmed"
-              ? "Đã xác nhận"
-              : booking.status === "paid"
-                ? "Đã thanh toán"
-                : booking.status === "cancelled"
-                  ? "Đã hủy"
-                  : "Chờ duyệt"}
-          </Tag>
-          <Text>
-            {tripBookings.length} đơn · {totalPax} khách
-          </Text>
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Space size={[8, 8]} wrap align="center">
+            <Text type="secondary">
+              {dayjs(booking.startDate).format("DD/MM/YYYY")}
+              {booking.endDate && ` - ${dayjs(booking.endDate).format("DD/MM/YYYY")}`}
+            </Text>
+            <Tag color={tourStage === "completed" ? "green" : tourStage === "in_progress" ? "blue" : "default"}>
+              {STAGES.find((s) => s.key === tourStage)?.label || "Sắp khởi hành"}
+            </Tag>
+            <Tag color={booking.status === "cancelled" ? "red" : "blue"}>
+              {booking.status === "confirmed"
+                ? "Đã xác nhận"
+                : booking.status === "paid"
+                  ? "Đã thanh toán"
+                  : booking.status === "cancelled"
+                    ? "Đã hủy"
+                    : "Chờ duyệt"}
+            </Tag>
+            {tripLeaveRequest ? (
+              <Tooltip title={`Yêu cầu nghỉ / thay HDV đã gửi — chờ admin xử lý.${tripLeaveRequest.proposedGuideName ? ` Đề xuất: ${tripLeaveRequest.proposedGuideName}.` : ""}`}>
+                <Tag color="gold" style={{ fontWeight: 600 }}>
+                  Pending
+                </Tag>
+              </Tooltip>
+            ) : null}
+            <Text>
+              {tripBookings.length} đơn · {totalPax} khách
+            </Text>
+          </Space>
+          <Tooltip
+            title={
+              tourStage === "completed"
+                ? "Tour đã kết thúc, không thể báo nghỉ."
+                : tripLeaveRequest
+                  ? "Bạn đã gửi yêu cầu — trạng thái Pending."
+                  : "Báo không thể dẫn tour và đề xuất HDV thay thế (nếu có)."
+            }
+          >
+            <Button
+              icon={<SwapOutlined />}
+              onClick={() => {
+                leaveForm.resetFields();
+                setLeaveModalOpen(true);
+              }}
+              disabled={tourStage === "completed" || !!tripLeaveRequest}
+            >
+              Báo nghỉ / Đề xuất thay
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
       <Tabs items={tabItems} />
+
+      <Modal
+        title="Báo nghỉ / Đề xuất HDV thay thế"
+        open={leaveModalOpen}
+        okText="Gửi yêu cầu"
+        cancelText="Hủy"
+        destroyOnClose
+        width={520}
+        onCancel={() => {
+          setLeaveModalOpen(false);
+          leaveForm.resetFields();
+        }}
+        onOk={async () => {
+          try {
+            const v = await leaveForm.validateFields();
+            if (!tourId || !dateStr) return;
+            const gid = v.proposedGuideId as string | undefined;
+            const opt = gid ? replacementGuideOptions.find((o) => o.value === gid) : undefined;
+            const payload: TripLeaveRequest = {
+              reason: String(v.reason || "").trim(),
+              proposedGuideId: gid || undefined,
+              proposedGuideName: opt?.label,
+              submittedAt: new Date().toISOString(),
+            };
+            writeTripLeaveRequest(tourId, dateStr, payload);
+            setTripLeaveRequest(payload);
+            message.success("Đã gửi yêu cầu. Trạng thái: Pending — chờ admin xử lý.");
+            setLeaveModalOpen(false);
+            leaveForm.resetFields();
+          } catch {
+            /* validateFields */
+          }
+        }}
+      >
+        <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
+          Vui lòng mô tả rõ lý do (bắt buộc) để admin xem xét và xử lý nhanh. Bạn có thể đề xuất HDV thay thế. Sau khi
+          gửi, yêu cầu sẽ ở trạng thái Pending cho đến khi được duyệt.
+        </Text>
+        <Form form={leaveForm} layout="vertical">
+          <Form.Item
+            name="reason"
+            label="Lý do"
+            rules={[{ required: true, message: "Vui lòng nhập lý do" }]}
+          >
+            <TextArea
+              rows={4}
+              maxLength={2000}
+              showCount
+              placeholder="Ví dụ: ốm đột xuất, trùng lịch cá nhân…"
+            />
+          </Form.Item>
+          <Form.Item name="proposedGuideId" label="HDV thay thế (tuỳ chọn)">
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder="Chọn HDV đề xuất (có thể bỏ trống)"
+              options={replacementGuideOptions}
+              loading={guidesReplacementLoading}
+              notFoundContent={guidesReplacementLoading ? <Spin size="small" /> : "Không có HDV khác trong danh sách"}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
