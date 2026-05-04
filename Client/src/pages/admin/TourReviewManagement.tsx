@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Descriptions, Empty, Input, Modal, Popconfirm, Rate, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Button, Descriptions, Empty, Image, Input, Modal, Popconfirm, Rate, Select, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EyeOutlined, ReloadOutlined, SearchOutlined, StarOutlined } from '@ant-design/icons';
 import { adminDeleteTourReview, adminGetTourReviews, adminUpdateTourReviewStatus } from '../../services/api';
@@ -10,6 +10,15 @@ import { ADMIN_PENDING_TOUR_REVIEW_COUNT_KEY } from '../../components/layout/Adm
 import './GuideReviewManagement.css';
 
 const { Text } = Typography;
+
+/** Chuẩn hóa URL ảnh review (full URL hoặc đường dẫn /uploads/...) */
+const resolveReviewImageUrl = (raw: string) => {
+  const u = String(raw || "").trim();
+  if (!u) return "";
+  if (/^https?:\/\//i.test(u)) return u;
+  const api = String((import.meta as any)?.env?.VITE_API_URL || "http://localhost:5000/api/v1").replace(/\/api\/v1\/?$/i, "");
+  return `${api}${u.startsWith("/") ? u : `/${u}`}`;
+};
 
 export default function TourReviewManagement() {
   const queryClient = useQueryClient();
@@ -435,9 +444,28 @@ export default function TourReviewManagement() {
               </Descriptions.Item>
               <Descriptions.Item label="Nội dung">{selected?.comment || '—'}</Descriptions.Item>
               <Descriptions.Item label="Ảnh">
-                {Array.isArray(selected?.images) && selected.images.length > 0
-                  ? `${selected.images.length} ảnh`
-                  : 'Không có'}
+                {Array.isArray(selected?.images) && selected.images.length > 0 ? (
+                  <Image.PreviewGroup>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                      {selected.images.map((src: string, i: number) => {
+                        const href = resolveReviewImageUrl(src);
+                        if (!href) return null;
+                        return (
+                          <Image
+                            key={`${i}-${href.slice(-32)}`}
+                            width={112}
+                            height={112}
+                            src={href}
+                            alt={`Ảnh ${i + 1}`}
+                            style={{ objectFit: "cover", borderRadius: 8 }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </Image.PreviewGroup>
+                ) : (
+                  "Không có"
+                )}
               </Descriptions.Item>
             </Descriptions>
             <Space>

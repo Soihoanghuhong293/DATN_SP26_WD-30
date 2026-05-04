@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import type { UploadFile } from "antd";
 import type { RcFile } from "antd/es/upload";
 import { createTourReview, deleteTourReview, getMyTourReviewByBooking, updateTourReview } from "../services/api";
+import { uploadImage } from "../services/upload";
 
 const { Title, Text } = Typography;
 
@@ -88,7 +89,7 @@ const MyBookingDetailPage: React.FC = () => {
   const [reviewScore, setReviewScore] = useState<number>(5);
   const [guideRating, setGuideRating] = useState<number>(0);
   const [reviewComment, setReviewComment] = useState<string>("");
-  const [reviewImages, setReviewImages] = useState<string>("");
+  const [reviewImageFileList, setReviewImageFileList] = useState<UploadFile[]>([]);
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -180,6 +181,12 @@ const MyBookingDetailPage: React.FC = () => {
     String(booking?.status || "") !== "cancelled" &&
     tourStage === "completed";
 
+  const tourStageLabel = (() => {
+    if (tourStage === "in_progress") return "Đang diễn ra";
+    if (tourStage === "completed") return "Đã kết thúc";
+    return "Sắp khởi hành";
+  })();
+
   const reviewStatusInfo = (status: string) => {
     const s = String(status || "pending");
     if (s === "approved") return { color: "green" as const, label: "Đã duyệt" };
@@ -187,18 +194,63 @@ const MyBookingDetailPage: React.FC = () => {
     return { color: "gold" as const, label: "Chờ duyệt" };
   };
 
-  const parseImages = (value: string) =>
-    value
-      .split(/\r?\n|,/g)
-      .map((x) => x.trim())
-      .filter(Boolean)
-      .slice(0, 8);
-
   const fillFormFromReview = (review: any) => {
     setReviewScore(Number(review?.rating || 5));
     setGuideRating(Number(review?.guide_rating || 0));
     setReviewComment(String(review?.comment || ""));
-    setReviewImages(Array.isArray(review?.images) ? review.images.join("\n") : "");
+    setReviewImageFileList(
+      Array.isArray(review?.images)
+        ? review.images.map((url: string, i: number) => ({
+            uid: `saved-${i}-${String(url).slice(-24)}`,
+            name: `ảnh-${i + 1}`,
+            status: "done" as const,
+            url: String(url),
+            thumbUrl: String(url),
+          }))
+        : []
+    );
+  };
+
+  const reviewImageUrls = useMemo(
+    () =>
+      reviewImageFileList
+        .filter((f) => f.status === "done" && f.url)
+        .map((f) => String(f.url))
+        .slice(0, 8),
+    [reviewImageFileList]
+  );
+
+  const reviewImagesUploading = useMemo(
+    () => reviewImageFileList.some((f) => f.status === "uploading"),
+    [reviewImageFileList]
+  );
+
+  const handleReviewImageBeforeUpload = async (file: RcFile) => {
+    if (!file.type.startsWith("image/")) {
+      message.error("Chỉ được tải lên file ảnh.");
+      return Upload.LIST_IGNORE;
+    }
+    const maxMb = 6;
+    if (file.size > maxMb * 1024 * 1024) {
+      message.error(`Ảnh tối đa ${maxMb}MB.`);
+      return Upload.LIST_IGNORE;
+    }
+    if (reviewImageFileList.length >= 8) {
+      message.error("Tối đa 8 ảnh.");
+      return Upload.LIST_IGNORE;
+    }
+    const uid = file.uid;
+    setReviewImageFileList((prev) => [...prev, { uid, name: file.name, status: "uploading" }]);
+    try {
+      const url = await uploadImage(file);
+      setReviewImageFileList((prev) =>
+        prev.map((f) => (f.uid === uid ? { ...f, status: "done" as const, url, thumbUrl: url } : f))
+      );
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || "Upload ảnh thất bại.");
+      setReviewImageFileList((prev) => prev.filter((f) => f.uid !== uid));
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -207,7 +259,7 @@ const MyBookingDetailPage: React.FC = () => {
       setReviewScore(5);
       setGuideRating(0);
       setReviewComment("");
-      setReviewImages("");
+      setReviewImageFileList([]);
     }
   }, [myReview]);
 
@@ -304,6 +356,11 @@ const MyBookingDetailPage: React.FC = () => {
             <Descriptions.Item label="Ngày kết thúc">
               {booking?.endDate ? dayjs(booking.endDate).format("DD/MM/YYYY") : "---"}
             </Descriptions.Item>
+            <Descriptions.Item label="Giai đoạn tour">
+              <Tag color={tourStage === "completed" ? "green" : tourStage === "in_progress" ? "blue" : "default"}>
+                {tourStageLabel}
+              </Tag>
+            </Descriptions.Item>
             <Descriptions.Item label="Số khách">{booking?.groupSize ?? "---"}</Descriptions.Item>
             <Descriptions.Item label="Tổng tiền">
               <Text strong style={{ color: "#d90429" }}>{total.toLocaleString("vi-VN")}đ</Text>
@@ -329,17 +386,7 @@ const MyBookingDetailPage: React.FC = () => {
           )}
 
           <div style={{ marginTop: 12 }}>
-            {!canReview ? (
-              <Empty
-                description={
-                  tourStage !== "completed"
-                    ? "Tour chưa kết thúc nên chưa thể đánh giá."
-                    : String(booking?.status || "") === "cancelled"
-                    ? "Booking đã hủy nên không thể đánh giá."
-                    : "Bạn có thể đánh giá tour sau khi tour kết thúc."
-                }
-              />
-            ) : myReview ? (
+            {myReview ? (
               <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
                 <Space direction="vertical" size={10} style={{ width: "100%" }}>
                   <Space style={{ justifyContent: "space-between", width: "100%" }}>
@@ -362,19 +409,31 @@ const MyBookingDetailPage: React.FC = () => {
                     maxLength={1000}
                     showCount
                   />
-                  <Input.TextArea
-                    value={reviewImages}
-                    onChange={(e) => setReviewImages(e.target.value)}
-                    placeholder="Ảnh review (mỗi dòng 1 URL, tối đa 8 ảnh)"
-                    autoSize={{ minRows: 2, maxRows: 4 }}
-                  />
-                  {Array.isArray(myReview?.images) && myReview.images.length > 0 ? (
-                    <Text type="secondary">Đã đính kèm {myReview.images.length} ảnh.</Text>
-                  ) : null}
+                  <div>
+                    <Text type="secondary" style={{ display: "block", marginBottom: 6 }}>
+                      Ảnh minh họa (tối đa 8, mỗi ảnh tối đa 6MB)
+                    </Text>
+                    <Upload
+                      listType="picture-card"
+                      fileList={reviewImageFileList}
+                      beforeUpload={handleReviewImageBeforeUpload}
+                      onRemove={(file) => {
+                        setReviewImageFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                        return true;
+                      }}
+                      accept="image/*"
+                    >
+                      {reviewImageFileList.length >= 8 ? null : <div>+ Tải ảnh</div>}
+                    </Upload>
+                    {reviewImageUrls.length > 0 ? (
+                      <Text type="secondary">Đã đính kèm {reviewImageUrls.length} ảnh.</Text>
+                    ) : null}
+                  </div>
                   <Space wrap>
                     <Button
                       type="primary"
                       loading={submittingReview}
+                      disabled={reviewImagesUploading}
                       onClick={async () => {
                         if (!myReview?._id) return;
                         setSubmittingReview(true);
@@ -383,7 +442,7 @@ const MyBookingDetailPage: React.FC = () => {
                             rating: reviewScore,
                             guide_rating: guideRating > 0 ? guideRating : undefined,
                             comment: reviewComment,
-                            images: parseImages(reviewImages),
+                            images: reviewImageUrls,
                           });
                           setMyReview(res?.data || null);
                           message.success("Đã cập nhật đánh giá");
@@ -419,7 +478,7 @@ const MyBookingDetailPage: React.FC = () => {
                   </Space>
                 </Space>
               </Card>
-            ) : (
+            ) : canReview ? (
               <Card style={{ borderRadius: 10, border: "1px solid #eef2f7" }}>
                 <Space direction="vertical" size={10} style={{ width: "100%" }}>
                   <div>
@@ -438,15 +497,27 @@ const MyBookingDetailPage: React.FC = () => {
                     maxLength={1000}
                     showCount
                   />
-                  <Input.TextArea
-                    value={reviewImages}
-                    onChange={(e) => setReviewImages(e.target.value)}
-                    placeholder="Ảnh review (mỗi dòng 1 URL, tối đa 8 ảnh)"
-                    autoSize={{ minRows: 2, maxRows: 4 }}
-                  />
+                  <div>
+                    <Text type="secondary" style={{ display: "block", marginBottom: 6 }}>
+                      Ảnh minh họa (tối đa 8, mỗi ảnh tối đa 6MB)
+                    </Text>
+                    <Upload
+                      listType="picture-card"
+                      fileList={reviewImageFileList}
+                      beforeUpload={handleReviewImageBeforeUpload}
+                      onRemove={(file) => {
+                        setReviewImageFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                        return true;
+                      }}
+                      accept="image/*"
+                    >
+                      {reviewImageFileList.length >= 8 ? null : <div>+ Tải ảnh</div>}
+                    </Upload>
+                  </div>
                   <Button
                     type="primary"
                     loading={submittingReview}
+                    disabled={reviewImagesUploading}
                     onClick={async () => {
                       if (!id) return;
                       setSubmittingReview(true);
@@ -456,7 +527,7 @@ const MyBookingDetailPage: React.FC = () => {
                           rating: reviewScore,
                           guide_rating: guideRating > 0 ? guideRating : undefined,
                           comment: reviewComment,
-                          images: parseImages(reviewImages),
+                          images: reviewImageUrls,
                         });
                         setMyReview(res?.data || null);
                         message.success("Đã gửi đánh giá");
@@ -471,6 +542,24 @@ const MyBookingDetailPage: React.FC = () => {
                   </Button>
                 </Space>
               </Card>
+            ) : (
+              <Empty
+                description={
+                  <div style={{ maxWidth: 420, margin: "0 auto" }}>
+                    <Text strong style={{ display: "block", marginBottom: 8 }}>
+                      {String(booking?.status || "") === "cancelled"
+                        ? "Booking đã hủy — không thể đánh giá."
+                        : "Form đánh giá sẽ hiện ngay tại đây sau khi tour kết thúc."}
+                    </Text>
+                    {String(booking?.status || "") !== "cancelled" ? (
+                      <Text type="secondary">
+                        Hiện giai đoạn tour: <Text strong>{tourStageLabel}</Text>. Chỉ khi chuyển sang{" "}
+                        <Text strong>Đã kết thúc</Text> bạn mới gửi được đánh giá (đúng quy định hệ thống).
+                      </Text>
+                    ) : null}
+                  </div>
+                }
+              />
             )}
           </div>
 
