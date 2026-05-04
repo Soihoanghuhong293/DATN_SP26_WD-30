@@ -71,6 +71,9 @@ export interface IBooking extends Document {
     created_at?: Date;
   }>;
 
+  /** Điểm danh HDV theo lịch trình (ngày + checkpoint) */
+  checkpoint_checkins?: Record<string, Record<string, unknown>>;
+
   created_at: Date;
   updated_at: Date;
 }
@@ -196,6 +199,9 @@ const BookingSchema: Schema = new Schema(
     deposit_amount: { type: Number, default: 0 },
     paid_amount: { type: Number, default: 0 },
     remaining_amount: { type: Number, default: 0 },
+
+    /** Điểm danh theo ngày + checkpoint (HDV); Mixed để linh hoạt cấu trúc */
+    checkpoint_checkins: { type: Schema.Types.Mixed, default: undefined },
 
     created_by_type: {
       type: String,

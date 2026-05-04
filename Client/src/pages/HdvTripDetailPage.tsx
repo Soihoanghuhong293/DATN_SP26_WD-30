@@ -46,6 +46,15 @@ const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
 
+/** Tránh url/thumbUrl "" → img src="" (React cảnh báo). */
+const sanitizeUploadFileList = (fileList: any[]) =>
+  fileList.map((f: any) => {
+    const next = { ...f };
+    if (typeof next.url === "string" && !next.url.trim()) delete next.url;
+    if (typeof next.thumbUrl === "string" && !next.thumbUrl.trim()) delete next.thumbUrl;
+    return next;
+  });
+
 const resizeImageToDataUrl = async (file: File, maxW = 1280, maxH = 1280, quality = 0.75) => {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -255,6 +264,18 @@ export default function HdvTripDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["hdv-trip-primary", primaryId] });
       queryClient.invalidateQueries({ queryKey: ["hdv-bookings"] });
     },
+    onError: (err: any) => {
+      const code = err?.code;
+      const msg = String(err?.message || "");
+      const noResponse = !err?.response;
+      if (code === "ERR_NETWORK" || msg.includes("Network Error") || msg.includes("CONNECTION_REFUSED")) {
+        message.error(
+          "Không kết nối được máy chủ API. Hãy chạy backend (ví dụ cổng 5000) hoặc kiểm tra biến VITE_API_URL."
+        );
+        return;
+      }
+      message.error(err?.response?.data?.message || "Điểm danh thất bại.");
+    },
   });
 
   const addDiaryMutation = useMutation({
@@ -304,21 +325,27 @@ export default function HdvTripDetailPage() {
 
   useEffect(() => {
     setIsDiaryEditing(!selectedDiaryEntry);
+    const imgs = Array.isArray(selectedDiaryEntry?.images) ? selectedDiaryEntry.images : [];
+    setDiaryFileList(
+      imgs
+        .filter((img: any) => typeof img?.url === "string" && String(img.url).trim().length > 0)
+        .map((img: any, idx: number) => ({
+          uid: `${selectedDiaryDayNo}-${idx}`,
+          name: img?.name || `image-${idx + 1}`,
+          status: "done",
+          url: img.url,
+        }))
+    );
+  }, [selectedDiaryDayNo, selectedDiaryEntry]);
+
+  useEffect(() => {
+    if (!isDiaryEditing) return;
     diaryForm.setFieldsValue({
       title: selectedDiaryEntry?.title || "",
       content: selectedDiaryEntry?.content || "",
       highlight: selectedDiaryEntry?.highlight || "",
     });
-    const imgs = Array.isArray(selectedDiaryEntry?.images) ? selectedDiaryEntry.images : [];
-    setDiaryFileList(
-      imgs.map((img: any, idx: number) => ({
-        uid: `${selectedDiaryDayNo}-${idx}`,
-        name: img?.name || `image-${idx + 1}`,
-        status: "done",
-        url: img?.url,
-      }))
-    );
-  }, [diaryForm, selectedDiaryDayNo, selectedDiaryEntry]);
+  }, [isDiaryEditing, diaryForm, selectedDiaryDayNo, selectedDiaryEntry]);
 
   const tourStage = booking?.tour_stage || "scheduled";
   const canCheckin = tourStage === "in_progress";
@@ -553,6 +580,7 @@ export default function HdvTripDetailPage() {
     },
     {
       key: "checkpoint",
+      forceRender: true,
       label: (
         <span>
           <CheckCircleOutlined /> Điểm danh khách
@@ -713,7 +741,6 @@ export default function HdvTripDetailPage() {
                               size="small"
                               disabled={!canCheckin}
                               onClick={() => {
-                                reasonForm.resetFields();
                                 setAbsentTarget({
                                   bookingId: row.bookingId,
                                   name: row.name,
@@ -733,7 +760,6 @@ export default function HdvTripDetailPage() {
                             disabled={!canCheckin}
                             onChange={(nextChecked) => {
                               if (nextChecked === false) {
-                                reasonForm.resetFields();
                                 setAbsentTarget({
                                   bookingId: row.bookingId,
                                   name: row.name,
@@ -832,6 +858,9 @@ export default function HdvTripDetailPage() {
             zIndex={2000}
             maskClosable={false}
             destroyOnClose
+            afterOpenChange={(open) => {
+              if (open) reasonForm.resetFields();
+            }}
           >
             <Form
               form={reasonForm}
@@ -864,6 +893,7 @@ export default function HdvTripDetailPage() {
     },
     {
       key: "logs",
+      forceRender: true,
       label: (
         <span>
           <SyncOutlined /> Nhật kí tour
@@ -937,7 +967,7 @@ export default function HdvTripDetailPage() {
                     listType="picture-card"
                     fileList={diaryFileList}
                     maxCount={5}
-                    onChange={({ fileList }) => setDiaryFileList(fileList)}
+                    onChange={({ fileList }) => setDiaryFileList(sanitizeUploadFileList(fileList as any[]))}
                     beforeUpload={async (file) => {
                       const maxRawMb = 6;
                       if ((file as any).size && (file as any).size > maxRawMb * 1024 * 1024) {
@@ -974,18 +1004,26 @@ export default function HdvTripDetailPage() {
                 {selectedDiaryEntry.highlight ? (
                   <div style={{ whiteSpace: "pre-wrap", color: "#6b7280" }}>{selectedDiaryEntry.highlight}</div>
                 ) : null}
-                {Array.isArray(selectedDiaryEntry.images) && selectedDiaryEntry.images.length > 0 ? (
+                {Array.isArray(selectedDiaryEntry.images) &&
+                selectedDiaryEntry.images.some(
+                  (img: any) => typeof img?.url === "string" && String(img.url).trim().length > 0
+                ) ? (
                   <Image.PreviewGroup>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {selectedDiaryEntry.images.slice(0, 8).map((img: any, i: number) => (
-                        <Image
-                          key={i}
-                          width={96}
-                          height={96}
-                          style={{ objectFit: "cover", borderRadius: 8 }}
-                          src={img.url}
-                        />
-                      ))}
+                      {selectedDiaryEntry.images
+                        .filter(
+                          (img: any) => typeof img?.url === "string" && String(img.url).trim().length > 0
+                        )
+                        .slice(0, 8)
+                        .map((img: any, i: number) => (
+                          <Image
+                            key={`${img.url}-${i}`}
+                            width={96}
+                            height={96}
+                            style={{ objectFit: "cover", borderRadius: 8 }}
+                            src={img.url}
+                          />
+                        ))}
                     </div>
                   </Image.PreviewGroup>
                 ) : null}
