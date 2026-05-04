@@ -1,0 +1,41 @@
+@startuml usecase_khach_thanh_toan
+title Use case — Thanh toán đơn đặt tour (Khách hàng)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách hàng" as KH
+
+usecase "Thanh toán đơn đặt tour" as UC_ROOT 
+usecase "Mở trang thanh toán\n(/booking/payment/:id)" as UC_PAY
+
+usecase "Tải thông tin booking\n(GET /bookings/:id)" as UC_LOAD
+usecase "Xác định số tiền cần trả\n(toàn bộ / cọc / phần còn lại,\ntheo paymentMethod & trạng thái)" as UC_BREAK
+
+usecase "Luồng chuyển khoản / VietQR\n(?gateway=bank)" as UC_BANK
+usecase "Lấy mã QR thanh toán\n(GET /sepay/qr/:id)" as UC_QR
+usecase "Theo dõi đã thanh toán\n(poll GET booking định kỳ)" as UC_POLL
+
+usecase "Luồng MoMo (giả lập)\n(?gateway=momo)" as UC_MOMO
+usecase "Gửi xác nhận thanh toán MoMo\n(POST …/bookings/:id/payments/momo)" as UC_MOMO_API
+
+usecase "Chuyển sang trang kết quả\n(/booking/success/…)" as UC_DONE
+
+UC_ROOT <|-- UC_PAY
+
+KH --> UC_ROOT
+
+
+
+UC_PAY ..> UC_LOAD : <<include>>
+UC_PAY ..> UC_BREAK : <<include>>
+
+UC_PAY <.. UC_BANK : <<extend>>
+UC_BANK ..> UC_QR : <<include>>
+UC_BANK ..> UC_POLL : <<include>>
+UC_BANK <.. UC_DONE : <<extend>>
+
+UC_PAY <.. UC_MOMO : <<extend>>
+UC_MOMO ..> UC_MOMO_API : <<include>>
+UC_MOMO <.. UC_DONE : <<extend>>
+
+@enduml

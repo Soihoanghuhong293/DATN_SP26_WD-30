@@ -1,0 +1,265 @@
+@startuml erd_datn_vigo_p1
+!theme plain
+title ERD — DATN ViGo (MongoDB) — Nhóm nghiệp vụ chính
+skinparam roundcorner 8
+skinparam linetype ortho
+
+entity "**User**" as user {
+  * **_id** : ObjectId <<PK>>
+  --
+  name : string
+  email : string <<unique>>
+  password : string
+  role : enum(user,admin,guide,hdv)
+  status : enum(active,inactive)
+  avatarUrl : string
+  createdAt / updatedAt
+}
+
+entity "**Category**" as cat {
+  * **_id** : ObjectId <<PK>>
+  --
+  name : string <<unique>>
+  description : string
+  status : active | inactive
+  **parent_id** : ObjectId <<FK>> «self»
+}
+
+entity "**Tour**" as tour {
+  * **_id** : ObjectId <<PK>>
+  --
+  name, slug, description
+  **category_id** : ObjectId <<FK>>
+  **template_id** : ObjectId <<FK>> «opt»
+  **primary_guide_id** : ObjectId <<FK User>> «opt»
+  secondary_guide_ids : ObjectId[] «User»
+  price, duration_days, status
+  departure_schedule[], schedule[], images[]
+  prices[], policies[], suppliers[]
+  rating { average, total_reviews }
+}
+
+entity "**TourTemplate**" as tmpl {
+  * **_id** : ObjectId <<PK>>
+  --
+  name, slug, description
+  **category_id** : ObjectId <<FK>> «opt»
+  **provider_id** : ObjectId <<FK>> «opt»
+  duration_days
+  schedule[] (refs Restaurant / ProviderTicket)
+  images[], policies[], suppliers[]
+}
+
+entity "**Booking**" as book {
+  * **_id** : ObjectId <<PK>>
+  --
+  **tour_id** : ObjectId <<FK>>
+  **user_id** : ObjectId <<FK User>> «opt»
+  **guide_id** : ObjectId <<FK User>> «opt»
+  **created_by_user_id** : ObjectId <<FK>> «opt»
+  customer_*, total_price, startDate, endDate
+  groupSize, status, payment_*, tour_stage
+  optional_ticket_ids[] «ProviderTicket»
+  guests[], logs[], diary_entries[]
+}
+
+entity "**TourReview**" as trev {
+  * **_id** : ObjectId <<PK>>
+  --
+  **booking_id** : ObjectId <<FK>> «unique»
+  **tour_id** : ObjectId <<FK>>
+  **user_id** : ObjectId <<FK>>
+  **guide_user_id** : ObjectId <<FK>> «opt»
+  rating, guide_rating, comment, images[]
+  status : pending | approved | hidden
+}
+
+entity "**WishlistTour**" as wish {
+  * **_id** : ObjectId <<PK>>
+  --
+  **user_id** : ObjectId <<FK>> «unique+»
+  **tour_id** : ObjectId <<FK>> «unique+»
+}
+
+entity "**HolidayPricing**" as hol {
+  * **_id** : ObjectId <<PK>>
+  --
+  name
+  **tour_id** : ObjectId <<FK>> «opt, toàn hệ»
+  start_date, end_date
+  price_multiplier, fixed_price, priority
+}
+
+entity "**ContactMessage**" as msg {
+  * **_id** : ObjectId <<PK>>
+  --
+  name, phone, content
+  status : unread | read
+}
+
+entity "**SystemSettings**" as sys {
+  * **_id** : ObjectId <<PK>>
+  --
+  siteName, logoUrl, contactEmail, contactPhone
+}
+
+cat ||--o{ cat : parent
+cat ||--o{ tour : classifies
+tmpl ||--o{ tour : optional_template
+user |o--o{ tour : primary_guide
+user |o--o{ book : customer
+user |o--o{ book : assigned_guide
+tour ||--o{ book : receives
+book ||--o| trev : at_most_one
+tour ||--o{ trev : about
+user ||--o{ trev : writes
+user ||--o{ wish : saves
+tour ||--o{ wish : saved_in
+tour |o--o{ hol : overrides_price
+cat |o--o{ tmpl : categorizes
+
+note as N1
+  **TourReview:** thêm FK **guide_user_id** → User (HDV được chấm điểm).
+  **WishlistTour:** ràng buộc unique (user_id, tour_id).
+end note
+
+note bottom of tmpl
+  **Tour.schedule** nhúng ObjectId tới
+  Restaurant / ProviderTicket;
+  không tách bảng schedule riêng.
+end note
+
+newpage ERD — Nhà cung cấp & phân bổ trip
+
+entity "**Provider**" as prov {
+  * **_id** : ObjectId <<PK>>
+  --
+  name, contact fields, status
+}
+
+entity "**Hotel**" as hotel {
+  * **_id** : ObjectId <<PK>>
+  --
+  **provider_id** : ObjectId <<FK>>
+  name, address, status
+}
+
+entity "**Room**" as room {
+  * **_id** : ObjectId <<PK>>
+  --
+  **hotel_id** : ObjectId <<FK>>
+  **provider_id** : ObjectId <<FK>> «opt»
+  room_number, max_occupancy, status
+}
+
+entity "**Vehicle**" as veh {
+  * **_id** : ObjectId <<PK>>
+  --
+  **provider_id** : ObjectId <<FK>> «opt»
+  plate <<unique>>, capacity, status
+}
+
+entity "**Restaurant**" as rest {
+  * **_id** : ObjectId <<PK>>
+  --
+  **provider_id** : ObjectId <<FK>>
+  name, phone, capacity, location, status
+}
+
+entity "**ProviderTicket**" as ticket {
+  * **_id** : ObjectId <<PK>>
+  --
+  **provider_id** : ObjectId <<FK>>
+  name, ticket_type, prices
+  application_mode, status
+}
+
+prov ||--o{ hotel : owns
+prov ||--o{ rest : owns
+prov ||--o{ ticket : sells
+hotel ||--o{ room : contains
+prov |o--o{ room : «optional ref»
+
+entity "**TourTrip**" as ttrip {
+  * **_id** : ObjectId <<PK>>
+  --
+  **tour_id** : ObjectId <<FK>>
+  trip_key, trip_date
+  status : DRAFT | OPENING | CLOSED | COMPLETED
+}
+
+entity "**TripVehicle**" as tveh {
+  * **_id** : ObjectId <<PK>>
+  --
+  **tour_id** : ObjectId <<FK>>
+  trip_key, trip_date
+  **vehicle_id** : ObjectId <<FK>>
+  plate, seat_count
+}
+
+entity "**TripRoom**" as troom {
+  * **_id** : ObjectId <<PK>>
+  --
+  **tour_id** : ObjectId <<FK>>
+  trip_key, trip_date
+  **room_id** : ObjectId <<FK>>
+  **hotel_id** : ObjectId <<FK>> «opt»
+  hotel_name, room_number, capacity
+}
+
+entity "**Passenger**" as pax {
+  * **_id** : ObjectId <<PK>>
+  --
+  **booking_id** : ObjectId <<FK>>
+  **tour_id** : ObjectId <<FK>>
+  trip_key, trip_date
+  role, full_name, ...
+}
+
+entity "**SeatingAllocation**" as seat {
+  * **_id** : ObjectId <<PK>>
+  --
+  **trip_vehicle_id** : ObjectId <<FK>>
+  **passenger_id** : ObjectId <<FK>>
+  tour_id, trip_key, trip_date
+  seat_code
+}
+
+entity "**RoomingAllocation**" as rma {
+  * **_id** : ObjectId <<PK>>
+  --
+  **trip_room_id** : ObjectId <<FK>>
+  **passenger_id** : ObjectId <<FK>>
+  tour_id, trip_key, trip_date
+}
+
+entity "**GuideReview**" as grev {
+  * **_id** : ObjectId <<PK>>
+  --
+  **booking_id** : ObjectId <<FK>> «unique»
+  **guide_user_id** : ObjectId <<FK User>>
+  **user_id** : ObjectId <<FK User>>
+  score, comment, status
+}
+
+tour ||--o{ ttrip : trip_instances
+tour ||--o{ tveh : uses_vehicle_on
+veh ||--o{ tveh : assigned_as
+tour ||--o{ troom : uses_room_on
+room ||--o{ troom : assigned_as
+book ||--o{ pax : expands_to
+tour ||--o{ pax : trip_context
+tveh ||--o{ seat : seat_map
+pax ||--o{ seat : occupies
+troom ||--o{ rma : room_map
+pax ||--o{ rma : stays
+book ||--o| grev : rates_guide
+user ||--o{ grev : involved
+
+note right of grev
+  Hai FK **User**:
+  **user_id** (người viết),
+  **guide_user_id** (HDV được chấm).
+end note
+
+@enduml

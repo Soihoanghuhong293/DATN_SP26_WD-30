@@ -1,0 +1,43 @@
+@startuml usecase_quan_ly_nguoi_dung
+title Use case — Quản lý người dùng / tài khoản (Admin)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Quản lý người dùng" as UC_ROOT 
+
+usecase "Xem danh sách người dùng\nvà áp dụng bộ lọc" as UC_LIST
+usecase "Thêm tài khoản mới" as UC_CREATE
+usecase "Cập nhật vai trò người dùng\n(PATCH …/users/:id/role)" as UC_ROLE
+usecase "Khóa / mở khóa tài khoản\n(PATCH …/users/:id/status)" as UC_LOCK
+usecase "Xóa tài khoản" as UC_DELETE
+
+usecase "Tải danh sách người dùng\n(GET /users)" as UC_LOAD
+usecase "Lọc theo từ khóa /\nvai trò / trạng thái" as UC_FILTER
+
+usecase "Đăng ký tài khoản\n(POST auth/register)" as UC_REGISTER
+
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_CREATE
+UC_ROOT <|-- UC_ROLE
+UC_ROOT <|-- UC_LOCK
+UC_ROOT <|-- UC_DELETE
+
+ADM --> UC_ROOT
+
+
+UC_LIST ..> UC_LOAD : <<include>>
+UC_LIST <.. UC_FILTER : <<extend>>
+
+UC_LIST <.. UC_ROLE : <<extend>>
+UC_LIST <.. UC_LOCK : <<extend>>
+UC_LIST <.. UC_DELETE : <<extend>>
+
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+UC_CREATE ..> UC_REGISTER : <<include>>
+
+@enduml

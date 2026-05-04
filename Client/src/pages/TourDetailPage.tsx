@@ -5,7 +5,6 @@ import {
   Spin,
   Empty,
   Button,
-  Tag,
   Divider,
   Collapse,
   message,
@@ -33,6 +32,8 @@ import dayjs from "dayjs";
 import { addWishlistTour, getTour, getWishlistTourStatus, removeWishlistTour } from "../services/api";
 import { getTourReviewsByTour, getTours } from "../services/api";
 import { ITour } from "../types/tour.types";
+import TourCard from "../components/Client/TourCard";
+import { normalizeTourForCard } from "../utils/normalizeTourForCard";
 import "./styles/TourDetail.css";
 import "./styles/DepartureCalendar.css";
 import "./styles/SchedulePicker.css";
@@ -749,11 +750,6 @@ const TourDetailPage = () => {
     }
   };
 
-  const handleGoToTour = (tourId: string) => {
-    navigate(`/tours/${tourId}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   const averageRating = Number((tour as any)?.rating?.average || 0);
   const totalReviews = Number((tour as any)?.rating?.total_reviews || approvedReviews.length || 0);
   const relatedToursDisplay = useMemo(() => relatedTours.slice(0, 3), [relatedTours]);
@@ -823,10 +819,6 @@ const TourDetailPage = () => {
         </Button>
 
         <h1>{tour.name}</h1>
-
-        <Tag color={tour.status === "active" ? "green" : "orange"}>
-          {tour.status === "active" ? "Hoạt động" : "Tạm dừng"}
-        </Tag>
 
         <Button
           onClick={handleToggleWishlist}
@@ -1148,64 +1140,12 @@ const TourDetailPage = () => {
           ) : (
             <div className="tour-related__grid">
               {relatedToursDisplay.map((t) => {
-                const tid = (t as any)?.id || (t as any)?._id;
-                const img = Array.isArray((t as any)?.images) ? (t as any).images?.[0] : undefined;
-                const name = (t as any)?.name || "Tour";
-                const departureText =
-                  (t as any)?.start_location ||
-                  (t as any)?.location ||
-                  (t as any)?.destination ||
-                  (t as any)?.city ||
-                  "Đang cập nhật";
-                const codeText =
-                  (t as any)?.code ||
-                  (t as any)?.tour_code ||
-                  (t as any)?.sku ||
-                  String(tid || "").slice(-8).toUpperCase();
-                const rawPrice = (t as any)?.price;
-                const priceNum = rawPrice === null || rawPrice === undefined ? NaN : Number(rawPrice);
-                const hasPrice = Number.isFinite(priceNum) && priceNum > 0;
-                const days =
-                  Number(
-                    (t as any)?.duration_days ?? (t as any)?.durationDays ?? (t as any)?.duration_ ?? 0
-                  ) || 0;
-
+                const cardTour = normalizeTourForCard(t as unknown as Record<string, unknown>);
+                if (!cardTour.id) return null;
                 return (
-                  <button
-                    key={String(tid)}
-                    className="tour-related-card"
-                    type="button"
-                    onClick={() => tid && handleGoToTour(String(tid))}
-                  >
-                    <div className="tour-related-card__img">
-                      {img ? (
-                        <img src={img} alt={name} loading="lazy" />
-                      ) : (
-                        <div className="tour-related-card__img--empty" />
-                      )}
-                      <span className="tour-related-card__fav">
-                        <HeartOutlined />
-                      </span>
-                    </div>
-                    <div className="tour-related-card__body">
-                      <div className="tour-related-card__name" title={name}>
-                        {name}
-                      </div>
-                      <div className="tour-related-card__lines">
-                        <div className="tour-related-card__line">Khởi hành: {departureText}</div>
-                        <div className="tour-related-card__line">Mã chương trình: {codeText}{days > 0 ? ` (${days}N${Math.max(0, days - 1)}Đ)` : ""}</div>
-                      </div>
-                      <div className="tour-related-card__footer">
-                        <div>
-                          <div className="tour-related-card__label">Giá từ</div>
-                          <span className="tour-related-card__price">
-                            {hasPrice ? `${priceNum.toLocaleString("vi-VN")} đ` : "Liên hệ"}
-                          </span>
-                        </div>
-                        <span className="tour-related-card__detail">Xem chi tiết →</span>
-                      </div>
-                    </div>
-                  </button>
+                  <div key={cardTour.id} className="tour-related__cell">
+                    <TourCard tour={cardTour} />
+                  </div>
                 );
               })}
             </div>

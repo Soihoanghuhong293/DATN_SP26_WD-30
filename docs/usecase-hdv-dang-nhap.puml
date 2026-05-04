@@ -1,0 +1,24 @@
+@startuml usecase_hdv_dang_nhap
+title Use case — HDV đăng nhập
+skinparam actorStyle awesome
+left to right direction
+
+actor "Hướng dẫn viên\n(HDV / guide)" as HDV
+
+rectangle "Ứng dụng web" {
+  usecase "Đăng nhập" as UC_LOGIN
+
+  usecase "Gửi thông tin đăng nhập\n(POST /auth/login)" as UC_API
+  usecase "Lưu phiên đăng nhập\n(token, role, email)" as UC_STORE
+  usecase "Vào khu vực HDV\n(điều hướng /hdv)" as UC_HOME
+}
+
+HDV --> UC_LOGIN
+
+
+
+UC_LOGIN ..> UC_API : <<include>>
+UC_LOGIN ..> UC_STORE : <<include>>
+UC_LOGIN ..> UC_HOME : <<include>>
+
+@enduml

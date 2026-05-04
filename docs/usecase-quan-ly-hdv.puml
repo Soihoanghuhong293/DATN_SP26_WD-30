@@ -1,0 +1,48 @@
+@startuml usecase_quan_ly_hdv
+title Use case — Quản lý HDV / Hướng dẫn viên (Admin)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Quản lý HDV" as UC_ROOT 
+
+usecase "Xem danh sách HDV\n(phân trang + lọc)" as UC_LIST
+usecase "Thêm HDV\n(tạo tài khoản đăng nhập)" as UC_CREATE
+usecase "Sửa hồ sơ HDV" as UC_EDIT
+usecase "Xóa HDV" as UC_DELETE
+
+usecase "Tải danh sách HDV\n(getGuides)" as UC_LOAD
+usecase "Lọc theo từ khóa / loại nhóm /\ntình trạng sức khỏe / ngôn ngữ" as UC_FILTER
+
+usecase "Xem nhanh thông tin HDV\n(modal trên danh sách)" as UC_PREVIEW
+
+usecase "Đăng ký tài khoản HDV\n(auth/register, role guide)" as UC_REGISTER
+
+usecase "Tải hồ sơ HDV\n(getGuide)" as UC_FETCH
+usecase "Lưu cập nhật hồ sơ\n(updateGuide)" as UC_UPDATE
+
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_CREATE
+UC_ROOT <|-- UC_EDIT
+UC_ROOT <|-- UC_DELETE
+
+ADM --> UC_ROOT
+
+
+
+UC_LIST ..> UC_LOAD : <<include>>
+UC_LIST <.. UC_FILTER : <<extend>>
+UC_LIST <.. UC_PREVIEW : <<extend>>
+
+UC_CREATE ..> UC_REGISTER : <<include>>
+
+UC_EDIT ..> UC_FETCH : <<include>>
+UC_EDIT ..> UC_UPDATE : <<include>>
+
+UC_LIST <.. UC_DELETE : <<extend>>
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+@enduml

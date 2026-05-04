@@ -2040,3 +2040,84 @@ export const autoAllocateCarsAndRooms = async (req: Request, res: Response) => {
     });
   }
 };
+// Thêm vào cuối file controllers/bookingController.ts
+
+export const updateCheckinForGuide = async (req: AuthRequest, res: Response) => {
+  try {
+    const guideId = req.user?._id;
+    if (!guideId) {
+      return res.status(401).json({ status: 'fail', message: 'Vui lòng đăng nhập' });
+    }
+
+    const bookingId = req.params.id;
+    const booking = await Booking.findById(bookingId);
+    
+    if (!booking) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy đơn hàng' });
+    }
+
+    // Kiểm tra quyền của HDV (hàm này bạn đã định nghĩa sẵn ở trên)
+    if (!(await guideHasAccessToBooking(guideId, booking))) {
+      return res.status(403).json({ status: 'fail', message: 'Bạn không có quyền thao tác trên đơn này' });
+    }
+
+    const { type, passengerIndex, day, checkpointIndex, checked, reason } = req.body;
+
+    if (day === undefined || checkpointIndex === undefined || checked === undefined) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu thông tin điểm danh bắt buộc' });
+    }
+
+    const b = booking as any;
+    
+    // Khởi tạo object checkpoint_checkins nếu chưa có
+    if (!b.checkpoint_checkins) {
+      b.checkpoint_checkins = {};
+    }
+    if (!b.checkpoint_checkins[String(day)]) {
+      b.checkpoint_checkins[String(day)] = {};
+    }
+    if (!b.checkpoint_checkins[String(day)][String(checkpointIndex)]) {
+      b.checkpoint_checkins[String(day)][String(checkpointIndex)] = {
+         passengers: [],
+         reasons: { passengers: [] }
+      };
+    }
+
+    const cp = b.checkpoint_checkins[String(day)][String(checkpointIndex)];
+
+    // Cập nhật điểm danh
+    if (type === 'leader') {
+      cp.leader = checked;
+      if (!checked && reason) {
+        if (!cp.reasons) cp.reasons = {};
+        cp.reasons.leader = reason;
+      } else if (checked && cp.reasons) {
+        cp.reasons.leader = undefined; // Xóa lý do nếu đã có mặt
+      }
+    } else if (type === 'passenger' && typeof passengerIndex === 'number') {
+      if (!Array.isArray(cp.passengers)) cp.passengers = [];
+      if (!cp.reasons) cp.reasons = {};
+      if (!Array.isArray(cp.reasons.passengers)) cp.reasons.passengers = [];
+
+      cp.passengers[passengerIndex] = checked;
+      
+      if (!checked && reason) {
+        cp.reasons.passengers[passengerIndex] = reason;
+      } else if (checked) {
+        cp.reasons.passengers[passengerIndex] = null;
+      }
+    } else {
+       return res.status(400).json({ status: 'fail', message: 'Loại khách không hợp lệ' });
+    }
+
+    // Đánh dấu field là đã bị thay đổi để Mongoose lưu lại vì nó là Mixed/Object type
+    b.markModified('checkpoint_checkins');
+    
+    await b.save();
+
+    return res.status(200).json({ status: 'success', data: b });
+
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi lưu điểm danh' });
+  }
+};

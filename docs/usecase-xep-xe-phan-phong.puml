@@ -1,0 +1,49 @@
+@startuml usecase_xep_xe_phan_phong
+title Use case — Xếp xe & phân phòng (Admin, theo trip)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Xếp xe & phân phòng\ntheo tour + ngày trip" as UC_ROOT
+
+usecase "Điều hành xếp ghế / xe\n(Trip seating)" as UC_SEAT
+usecase "Xếp phòng lưu trú\n(Trip rooming)" as UC_ROOM
+
+usecase "Tải dữ liệu xếp ghế\n(GET …/trips/:date/seating)" as UC_LOAD_S
+usecase "Thêm xe vào chuyến\n(POST …/trip-vehicles)" as UC_ADD_V
+usecase "Gán khách vào ghế\n(kéo-thả → POST …/seating/assign)" as UC_ASSIGN_S
+usecase "Gỡ khách khỏi ghế\n(DELETE …/seating/unassign)" as UC_UNASS_S
+usecase "Xuất danh sách ghế\n(Excel)" as UC_XLS_S
+
+usecase "Tải dữ liệu xếp phòng\n(GET …/trips/:date/rooming)" as UC_LOAD_R
+usecase "Thêm phòng vào chuyến\n(POST …/trip-rooms)" as UC_ADD_R
+usecase "Thêm phòng hàng loạt\ntheo khách sạn\n(POST …/trip-rooms/bulk-by-hotel)" as UC_BULK_R
+usecase "Gán khách vào phòng\n(kéo-thả → POST …/rooming/assign)" as UC_ASSIGN_R
+usecase "Gỡ khách khỏi phòng\n(DELETE …/rooming/unassign)" as UC_UNASS_R
+usecase "Xác nhận ghép khách\nkhác booking vào cùng phòng" as UC_WARN_R
+usecase "Xuất danh sách phòng\n(Excel)" as UC_XLS_R
+
+UC_ROOT <|-- UC_SEAT
+UC_ROOT <|-- UC_ROOM
+
+ADM --> UC_ROOT
+
+
+
+UC_SEAT ..> UC_LOAD_S : <<include>>
+UC_SEAT <.. UC_ADD_V : <<extend>>
+UC_SEAT <.. UC_ASSIGN_S : <<extend>>
+UC_SEAT <.. UC_UNASS_S : <<extend>>
+UC_SEAT <.. UC_XLS_S : <<extend>>
+
+UC_ROOM ..> UC_LOAD_R : <<include>>
+UC_ROOM <.. UC_ADD_R : <<extend>>
+UC_ROOM <.. UC_BULK_R : <<extend>>
+UC_ROOM <.. UC_ASSIGN_R : <<extend>>
+UC_ROOM <.. UC_UNASS_R : <<extend>>
+UC_ROOM <.. UC_XLS_R : <<extend>>
+
+UC_ASSIGN_R <.. UC_WARN_R : <<extend>>
+
+@enduml

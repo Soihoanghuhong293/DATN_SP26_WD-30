@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button, Card, Empty, message, Popconfirm, Row, Col, Space, Spin, Tag, Typography } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { Button, Card, Empty, message, Popconfirm, Row, Col, Space, Spin, Typography } from 'antd';
 import { HeartFilled, ArrowRightOutlined } from '@ant-design/icons';
 import { getMyWishlistTours, removeWishlistTour } from '../services/api';
+import TourCard from '../components/Client/TourCard';
+import { normalizeTourForCard } from '../utils/normalizeTourForCard';
 
 type WishlistItem = {
   _id: string;
@@ -126,78 +128,35 @@ const MyWishlistToursPage = () => {
 
       <Row gutter={[16, 16]}>
         {items.map((item) => {
-          const tour = (item as any)?.tour_id;
-          const tourId = String(tour?._id || tour?.id || tour);
-          const img = Array.isArray(tour?.images) && tour.images.length ? tour.images[0] : undefined;
-          const price = Number(tour?.price ?? 0);
-          const duration = tour?.duration_days ?? tour?.duration_ ?? null;
+          const raw = (item as any)?.tour_id;
+          const tourId = String(raw?._id || raw?.id || raw);
+          const cardTour = normalizeTourForCard(raw as Record<string, unknown>);
+          const tourForCard = { ...cardTour, id: cardTour.id || tourId };
 
           return (
             <Col key={item._id} xs={24} sm={12} md={8}>
-              <Card
-                hoverable
-                style={{ borderRadius: 14, overflow: 'hidden' }}
-                bodyStyle={{ padding: 14 }}
-                cover={
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(`/tours/${tourId}`)}
-                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/tours/${tourId}`)}
-                    style={{
-                      height: 180,
-                      background: img ? `url(${img}) center/cover no-repeat` : 'linear-gradient(135deg,#e2e8f0,#f8fafc)',
-                      cursor: 'pointer',
-                      position: 'relative',
-                    }}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <TourCard tour={tourForCard} />
+                </div>
+                <Popconfirm
+                  title="Bỏ yêu thích tour này?"
+                  okText="Bỏ"
+                  cancelText="Huỷ"
+                  onConfirm={() => handleRemove(tourId)}
+                  okButtonProps={{ loading: removingId === tourId }}
+                  cancelButtonProps={{ disabled: removingId === tourId }}
+                >
+                  <Button
+                    danger
+                    block
+                    icon={<HeartFilled />}
+                    loading={removingId === tourId}
                   >
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%)' }} />
-                    <div style={{ position: 'absolute', left: 12, bottom: 12, right: 12 }}>
-                      <Typography.Text style={{ color: '#fff', fontWeight: 800, fontSize: 15 }}>
-                        {tour?.name || 'Tour'}
-                      </Typography.Text>
-                    </div>
-                  </div>
-                }
-                actions={[
-                  <Button key="detail" type="link" onClick={() => navigate(`/tours/${tourId}`)}>
-                    Xem chi tiết
-                  </Button>,
-                  <Popconfirm
-                    key="remove"
-                    title="Bỏ yêu thích tour này?"
-                    okText="Bỏ"
-                    cancelText="Huỷ"
-                    onConfirm={() => handleRemove(tourId)}
-                    okButtonProps={{ loading: removingId === tourId }}
-                    cancelButtonProps={{ disabled: removingId === tourId }}
-                  >
-                    <Button
-                      type="text"
-                      danger
-                      icon={<HeartFilled style={{ color: '#ef4444' }} />}
-                      loading={removingId === tourId}
-                    >
-                      Bỏ yêu thích
-                    </Button>
-                  </Popconfirm>,
-                ]}
-              >
-                <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <Space size={8} wrap>
-                      <Tag color="blue">{duration ? `${duration} ngày` : 'Chưa cập nhật'}</Tag>
-                    </Space>
-                    <Typography.Text style={{ fontWeight: 900, color: '#dc2626' }}>
-                      {price ? `${price.toLocaleString('vi-VN')}đ` : 'Liên hệ'}
-                    </Typography.Text>
-                  </div>
-
-                  <Typography.Text type="secondary">
-                    Nhấn vào ảnh để mở tour hoặc dùng nút “Xem chi tiết”.
-                  </Typography.Text>
-                </Space>
-              </Card>
+                    Bỏ yêu thích
+                  </Button>
+                </Popconfirm>
+              </div>
             </Col>
           );
         })}

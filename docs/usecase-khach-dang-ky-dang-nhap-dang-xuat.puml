@@ -1,0 +1,35 @@
+@startuml usecase_khach_xac_thuc
+title Use case — Đăng ký / Đăng nhập / Đăng xuất (Khách hàng)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách hàng" as KH
+
+
+  usecase "Đăng ký tài khoản" as UC_REG
+  usecase "Đăng nhập" as UC_LOGIN
+  usecase "Đăng xuất" as UC_LOGOUT
+
+  usecase "Gửi đăng ký lên server\n(POST /auth/register)" as UC_API_REG
+  usecase "Xác thực đăng nhập\n(POST /auth/login)" as UC_API_LOGIN
+  usecase "Lưu phiên đăng nhập\n(token, role, email\n→ localStorage)" as UC_STORE
+  usecase "Xóa phiên đăng nhập\n(clear token / role / email)" as UC_CLEAR
+
+  usecase "Chuyển đến trang đăng nhập\nsau đăng ký thành công" as UC_GOTO_LOGIN
+  usecase "Điều hướng sau đăng nhập\n(trang chủ theo role\nhoặc URL trước đó)" as UC_REDIRECT
+
+
+KH --> UC_REG
+KH --> UC_LOGIN
+KH --> UC_LOGOUT
+
+UC_REG ..> UC_API_REG : <<include>>
+UC_REG <.. UC_GOTO_LOGIN : <<extend>>
+
+UC_LOGIN ..> UC_API_LOGIN : <<include>>
+UC_LOGIN ..> UC_STORE : <<include>>
+UC_LOGIN <.. UC_REDIRECT : <<extend>>
+
+UC_LOGOUT ..> UC_CLEAR : <<include>>
+
+@enduml

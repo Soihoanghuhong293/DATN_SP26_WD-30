@@ -1,0 +1,57 @@
+@startuml usecase_khach_don_cua_toi
+title Use case — Đơn đặt của tôi (Khách hàng)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách hàng\n(đã đăng nhập)" as KH
+
+usecase "Đơn đặt của tôi" as UC_ROOT 
+
+usecase "Xem danh sách đơn\n(/my-bookings)" as UC_LIST
+usecase "Xem chi tiết đơn\n(/my-bookings/:id)" as UC_DETAIL
+
+usecase "Tải danh sách booking của tôi\n(GET /bookings/me)" as UC_FETCH_LIST
+usecase "Lọc theo tab trạng thái\n(Tất cả / Chờ xử lý /\nĐã xác nhận / Đã hủy)" as UC_TAB
+
+usecase "Tải chi tiết booking\n(GET /bookings/me/:id)" as UC_FETCH_ONE
+usecase "Tải thông tin chuyến đi\n(GET …/trip-info)" as UC_TRIP
+usecase "Tải đánh giá của tôi\ntheo booking\n(getMyTourReviewByBooking)" as UC_REV_LOAD
+
+usecase "Điều hướng thanh toán\n(/booking/payment/…)" as UC_PAY_NAV
+usecase "Xem hóa đơn / phiếu xác nhận\n(/booking/success/…)" as UC_INV_NAV
+
+usecase "Gửi yêu cầu hủy đơn\n(POST …/cancel-request)" as UC_CANCEL
+usecase "Điền lý do & thông tin\nhoàn tiền (form)" as UC_CANCEL_FORM
+
+usecase "Tạo / sửa / xóa\nđánh giá tour\n(create/update/deleteTourReview)" as UC_REVIEW
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_DETAIL
+
+KH --> UC_ROOT
+
+
+
+UC_LIST ..> UC_FETCH_LIST : <<include>>
+UC_LIST <.. UC_TAB : <<extend>>
+
+UC_LIST <.. UC_DETAIL : <<extend>>
+
+UC_LIST <.. UC_PAY_NAV : <<extend>>
+UC_LIST <.. UC_INV_NAV : <<extend>>
+
+UC_LIST <.. UC_CANCEL : <<extend>>
+UC_CANCEL ..> UC_CANCEL_FORM : <<include>>
+
+UC_DETAIL ..> UC_FETCH_ONE : <<include>>
+UC_DETAIL ..> UC_TRIP : <<include>>
+UC_DETAIL ..> UC_REV_LOAD : <<include>>
+
+UC_DETAIL <.. UC_PAY_NAV : <<extend>>
+UC_DETAIL <.. UC_INV_NAV : <<extend>>
+
+UC_DETAIL <.. UC_CANCEL : <<extend>>
+
+UC_DETAIL <.. UC_REVIEW : <<extend>>
+
+@enduml

@@ -1,0 +1,77 @@
+@startuml QuanLyBooking_PhanRa
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Admin" as ADM
+
+rectangle "Hệ thống quản lý booking (Admin)" {
+
+  ' --- Chuỗi bắt buộc (mẫu: đăng nhập -> admin -> module) ---
+  usecase "Đăng nhập hệ thống" as UC_Login
+  usecase "Vào trang quản trị" as UC_AdminHome
+  usecase "Mở màn Quản lý đơn đặt tour" as UC_BookingHub
+
+  UC_Login .> UC_AdminHome : <<include>>
+  UC_AdminHome .> UC_BookingHub : <<include>>
+
+  ' --- Hub: danh sách là trung tâm ---
+  usecase "Xem danh sách booking\n(lọc, tìm, phân trang)" as UC_List
+
+  UC_BookingHub .> UC_List : <<include>>
+
+  ' --- Các luồng phân rã (thường là extend từ hub / danh sách) ---
+  usecase "Tạo booking mới" as UC_Create
+  usecase "Xem chi tiết booking" as UC_Detail
+  usecase "Chỉnh sửa booking" as UC_Edit
+  usecase "Xem lịch sử xử lý booking" as UC_History
+  usecase "Xem đơn đã hủy / yêu cầu hủy" as UC_Cancelled
+  usecase "Duyệt / từ chối / đánh dấu hoàn tiền\nyêu cầu hủy" as UC_CancelReq
+
+  UC_List <.. UC_Create : <<extend>>
+  UC_List <.. UC_Detail : <<extend>>
+  UC_List <.. UC_Edit : <<extend>>
+  UC_List <.. UC_Cancelled : <<extend>>
+
+  UC_Detail <.. UC_History : <<extend>>
+  UC_Cancelled <.. UC_CancelReq : <<extend>>
+
+  ' --- Tạo booking: các bước bắt buộc (include) ---
+  usecase "Chọn tour, ngày khởi hành,\nsố khách, phương thức thanh toán" as UC_PickTour
+  usecase "Nhập thông tin khách hàng" as UC_CustomerInfo
+  usecase "Lưu booking" as UC_SaveBooking
+
+  UC_Create .> UC_PickTour : <<include>>
+  UC_Create .> UC_CustomerInfo : <<include>>
+  UC_Create .> UC_SaveBooking : <<include>>
+
+  usecase "Chọn vé mua thêm\n(optional addon)" as UC_Addon
+  UC_Create <.. UC_Addon : <<extend>>
+
+  ' --- Chi tiết: quản lý hành khách / thanh toán ---
+  usecase "Cập nhật danh sách hành khách" as UC_Pax
+  usecase "Cập nhật trạng thái thanh toán" as UC_Pay
+  usecase "Xuất / nhập Excel danh sách khách" as UC_Excel
+
+  UC_Detail .> UC_Pax : <<include>>
+  UC_Detail <.. UC_Pay : <<extend>>
+  UC_Detail <.. UC_Excel : <<extend>>
+
+  ' --- Xóa booking: kiểm tra rồi xóa ---
+  usecase "Kiểm tra được phép xóa\n(giai đoạn tour, thanh toán)" as UC_DeleteCheck
+  usecase "Xóa booking" as UC_Delete
+
+  UC_Delete .> UC_DeleteCheck : <<include>>
+  UC_Detail <.. UC_Delete : <<extend>>
+  UC_List <.. UC_Delete : <<extend>>
+
+  ' --- Gợi ý extend có điều kiện (ghi chú trên sơ đồ hoặc note) ---
+  
+
+  
+    
+}
+
+ADM --> UC_Login
+
+@enduml

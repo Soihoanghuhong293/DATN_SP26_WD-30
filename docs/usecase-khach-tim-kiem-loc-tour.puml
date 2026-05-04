@@ -1,0 +1,42 @@
+@startuml usecase_khach_tim_kiem_loc_tour
+title Use case — Tìm kiếm và lọc danh sách tour (Khách)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách hàng\n(đã / chưa đăng nhập)" as KH
+
+usecase "Tìm kiếm và lọc\ndanh sách tour" as UC_ROOT 
+
+usecase "Xem trang danh sách tour\n(/tours)" as UC_LIST
+
+usecase "Tải cây danh mục\n(getCategoryTree)" as UC_CAT
+usecase "Tải tour từ API\n(getTours: search, khoảng giá,\nngày khởi hành)" as UC_API
+usecase "Gộp các instance tour\ntheo ngày thành\nmột thẻ tour (client)" as UC_GROUP
+
+usecase "Tìm theo từ khóa\n(tên, địa điểm…\ncó debounce)" as UC_SEARCH
+
+usecase "Lọc theo điểm đến\n(danh mục + cây con)" as UC_DEST
+usecase "Lọc theo ngân sách\n(mức giá → min/max)" as UC_BUDGET
+usecase "Lọc theo ngày khởi hành" as UC_DATE
+
+usecase "Phân trang / đổi số tour\nmỗi trang" as UC_PAGE
+usecase "Đặt lại toàn bộ bộ lọc" as UC_RESET
+
+UC_ROOT <|-- UC_LIST
+
+KH --> UC_ROOT
+
+
+
+UC_LIST ..> UC_CAT : <<include>>
+UC_LIST ..> UC_API : <<include>>
+UC_LIST ..> UC_GROUP : <<include>>
+
+UC_LIST <.. UC_SEARCH : <<extend>>
+UC_LIST <.. UC_DEST : <<extend>>
+UC_LIST <.. UC_BUDGET : <<extend>>
+UC_LIST <.. UC_DATE : <<extend>>
+UC_LIST <.. UC_PAGE : <<extend>>
+UC_LIST <.. UC_RESET : <<extend>>
+
+@enduml

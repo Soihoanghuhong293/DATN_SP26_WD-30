@@ -1,0 +1,40 @@
+@startuml usecase_quan_ly_danh_gia
+title Use case — Quản lý đánh giá tour (Admin)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Quản lý đánh giá tour" as UC_ROOT 
+
+usecase "Xem danh sách đánh giá\nvà áp dụng bộ lọc" as UC_LIST
+usecase "Xem chi tiết đánh giá\n(modal)" as UC_DETAIL
+usecase "Cập nhật trạng thái đánh giá\n(duyệt / ẩn: pending · approved · hidden)" as UC_STATUS
+usecase "Xóa đánh giá" as UC_DELETE
+
+usecase "Tải danh sách đánh giá\n(adminGetTourReviews)" as UC_LOAD
+usecase "Lọc theo sao / tour / HDV /\ntên khách hàng" as UC_FILTER
+
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_DETAIL
+UC_ROOT <|-- UC_STATUS
+UC_ROOT <|-- UC_DELETE
+
+ADM --> UC_ROOT
+
+
+
+UC_LIST ..> UC_LOAD : <<include>>
+UC_LIST <.. UC_FILTER : <<extend>>
+
+UC_LIST <.. UC_DETAIL : <<extend>>
+
+UC_DETAIL <.. UC_STATUS : <<extend>>
+
+UC_LIST <.. UC_DELETE : <<extend>>
+UC_DETAIL <.. UC_DELETE : <<extend>>
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+@enduml

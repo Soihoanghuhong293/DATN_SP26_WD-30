@@ -1,0 +1,50 @@
+@startuml usecase_quan_ly_nha_cung_cap
+title Use case — Quản lý nhà cung cấp (Admin)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Admin" as ADM
+
+usecase "Quản lý nhà cung cấp" as UC_ROOT 
+
+usecase "Xem danh sách NCC\nvà áp dụng bộ lọc" as UC_LIST
+usecase "Thêm nhà cung cấp mới" as UC_CREATE
+usecase "Sửa thông tin NCC" as UC_EDIT
+usecase "Xem chi tiết NCC" as UC_DETAIL
+usecase "Xóa nhà cung cấp" as UC_DELETE
+
+usecase "Tải danh sách NCC\n(getProviders)" as UC_LOAD
+usecase "Lọc theo từ khóa /\ntrạng thái (active / inactive)" as UC_FILTER
+
+usecase "Tải chi tiết NCC\n(getProvider)" as UC_FETCH
+usecase "Kiểm tra form\nvà gửi lưu\n(create / updateProvider)" as UC_SAVE
+
+usecase "Quản lý tài nguyên gắn NCC\n(xe, KS, phòng,\nnhà hàng, vé)" as UC_ASSETS
+
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_LIST
+UC_ROOT <|-- UC_CREATE
+UC_ROOT <|-- UC_EDIT
+UC_ROOT <|-- UC_DETAIL
+UC_ROOT <|-- UC_DELETE
+
+ADM --> UC_ROOT
+
+
+
+UC_LIST ..> UC_LOAD : <<include>>
+UC_LIST <.. UC_FILTER : <<extend>>
+
+UC_CREATE ..> UC_SAVE : <<include>>
+UC_EDIT ..> UC_FETCH : <<include>>
+UC_EDIT ..> UC_SAVE : <<include>>
+
+UC_DETAIL ..> UC_FETCH : <<include>>
+UC_DETAIL <.. UC_ASSETS : <<extend>>
+
+UC_LIST <.. UC_DELETE : <<extend>>
+UC_DETAIL <.. UC_DELETE : <<extend>>
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+@enduml

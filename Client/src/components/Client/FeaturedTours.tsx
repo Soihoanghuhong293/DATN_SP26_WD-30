@@ -4,6 +4,7 @@ import { ArrowRightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { getTours } from '../../services/api';
 import { ITour } from '../../types/tour.types';
+import { groupTourInstances } from '../../utils/groupTourInstances';
 import TourCard from './TourCard';
 import '../styles/FeaturedTours.css';
 
@@ -17,15 +18,16 @@ const FeaturedTours = () => {
         setLoading(true);
         const data = await getTours({
           page: 1,
-          limit: 6,
+          limit: 2000,
         });
+        let instances: ITour[] = [];
         if (data?.data && Array.isArray(data.data)) {
-          setTours(data.data);
+          instances = data.data as ITour[];
         } else if (data?.data && typeof data.data === 'object' && 'tours' in data.data) {
-          setTours(Array.isArray((data.data as any).tours) ? (data.data as any).tours : []);
-        } else {
-          setTours([]);
+          instances = Array.isArray((data.data as any).tours) ? (data.data as any).tours : [];
         }
+        const grouped = groupTourInstances(instances);
+        setTours(grouped.slice(0, 6));
       } catch (error) {
         console.error('Error fetching featured tours:', error);
         setTours([]);

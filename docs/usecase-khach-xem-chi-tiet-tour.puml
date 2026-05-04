@@ -1,0 +1,41 @@
+@startuml usecase_khach_xem_chi_tiet_tour
+title Use case — Xem chi tiết tour (Khách)
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách hàng\n(đã / chưa đăng nhập)" as KH
+
+usecase "Xem chi tiết tour" as UC_ROOT
+
+usecase "Mở trang chi tiết\n(/tours/:id)" as UC_PAGE
+
+usecase "Tải thông tin tour\n(getTour)" as UC_LOAD
+usecase "Tải các instance cùng tên\nđể gộp lịch khởi hành\n& giá theo ngày" as UC_INST
+usecase "Tải cấu hình giá ngày lễ\n(áp dụng hiển thị giá)" as UC_HOL
+usecase "Tải đánh giá đã duyệt\n(getTourReviewsByTour)" as UC_REV
+usecase "Kiểm tra trạng thái yêu thích" as UC_WL_STATUS
+
+usecase "Chọn ngày khởi hành\n/ xem giá theo ngày" as UC_PICK
+usecase "Xem lịch trình chi tiết\n(modal / collapse)" as UC_SCHED
+usecase "Bắt đầu đặt tour\n(điều hướng /order/booking/…)" as UC_BOOK
+usecase "Thêm / bỏ tour yêu thích\n(add/removeWishlistTour)" as UC_WL
+usecase "Tải tour gợi ý liên quan\n(getTours + xếp hạng client)" as UC_REL
+
+UC_ROOT <|-- UC_PAGE
+
+KH --> UC_ROOT
+
+
+UC_PAGE ..> UC_LOAD : <<include>>
+UC_PAGE ..> UC_INST : <<include>>
+UC_PAGE ..> UC_HOL : <<include>>
+UC_PAGE ..> UC_REV : <<include>>
+UC_PAGE ..> UC_WL_STATUS : <<include>>
+UC_PAGE ..> UC_REL : <<include>>
+
+UC_PAGE <.. UC_PICK : <<extend>>
+UC_PAGE <.. UC_SCHED : <<extend>>
+UC_PAGE <.. UC_BOOK : <<extend>>
+UC_PAGE <.. UC_WL : <<extend>>
+
+@enduml

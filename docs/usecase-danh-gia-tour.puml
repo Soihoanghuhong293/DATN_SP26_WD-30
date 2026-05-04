@@ -1,0 +1,45 @@
+@startuml usecase_danh_gia_tour
+title Use case — Đánh giá tour
+skinparam actorStyle awesome
+left to right direction
+
+actor "Khách đã đăng nhập" as KH
+actor "Người xem\n(trang tour công khai)" as NX
+
+usecase "Đánh giá tour" as UC_ROOT 
+
+usecase "Xem đánh giá đã duyệt\ntrên trang chi tiết tour" as UC_PUBLIC
+usecase "Tải danh sách review công khai\n(getTourReviewsByTour)" as UC_LOAD_PUB
+
+usecase "Quản lý đánh giá của tôi\ntừ chi tiết đơn\n(/my-bookings/:id)" as UC_MINE
+
+usecase "Tải đánh giá theo booking\n(GET tour-reviews/me\n?booking_id=)" as UC_LOAD_MINE
+
+usecase "Gửi đánh giá mới\n(POST tour-reviews)" as UC_CREATE
+usecase "Cập nhật đánh giá\n(PUT tour-reviews/me/:id)" as UC_UPDATE
+usecase "Xóa đánh giá\n(DELETE tour-reviews/me/:id)" as UC_DELETE
+
+usecase "Kiểm tra điều kiện được đánh giá\n(tour đã kết thúc,\nbooking không hủy)" as UC_ELIG
+
+usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+
+UC_ROOT <|-- UC_PUBLIC
+UC_ROOT <|-- UC_MINE
+
+NX --> UC_PUBLIC
+KH --> UC_MINE
+
+
+
+UC_PUBLIC ..> UC_LOAD_PUB : <<include>>
+
+UC_MINE ..> UC_LOAD_MINE : <<include>>
+
+UC_MINE <.. UC_CREATE : <<extend>>
+UC_CREATE ..> UC_ELIG : <<include>>
+
+UC_MINE <.. UC_UPDATE : <<extend>>
+UC_MINE <.. UC_DELETE : <<extend>>
+UC_DELETE ..> UC_CONFIRM : <<include>>
+
+@enduml
