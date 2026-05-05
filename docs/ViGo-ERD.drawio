@@ -1,0 +1,1068 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="vigo-erd-trip-based" name="ViGo ERD Trip-based">
+    <mxGraphModel dx="1102" dy="974" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="4800" pageHeight="3200" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="tbl_booking" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Booking" vertex="1">
+          <mxGeometry height="352" width="300" x="1020" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_pkrow" parent="tbl_booking" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_pk_tag" parent="tbl_booking_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_pk_fields" parent="tbl_booking_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_fkrow" parent="tbl_booking" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="110" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_fk_tag" parent="tbl_booking_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="110" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_fk_fields" parent="tbl_booking_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;schedule_detail&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_by_user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;optional_ticket_ids[]" vertex="1">
+          <mxGeometry height="110" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_fieldsrow" parent="tbl_booking" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_fields_tag" parent="tbl_booking_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_booking_fields" parent="tbl_booking_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="customer_name&lt;div&gt;&lt;br&gt;&lt;/div&gt;customer_phone&lt;div&gt;&lt;br&gt;&lt;/div&gt;total_price&lt;div&gt;&lt;br&gt;&lt;/div&gt;startDate&lt;div&gt;&lt;br&gt;&lt;/div&gt;groupSize&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;guests&lt;div&gt;&lt;br&gt;&lt;/div&gt;full_name&lt;div&gt;&lt;br&gt;&lt;/div&gt;gender" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Category" vertex="1">
+          <mxGeometry height="254" width="300" x="620" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_pkrow" parent="tbl_category" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_pk_tag" parent="tbl_category_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_pk_fields" parent="tbl_category_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_fkrow" parent="tbl_category" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_fk_tag" parent="tbl_category_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_fk_fields" parent="tbl_category_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_fieldsrow" parent="tbl_category" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="164" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_fields_tag" parent="tbl_category_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="164" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_category_fields" parent="tbl_category_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="id&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;update_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;description&lt;div&gt;&lt;br&gt;&lt;/div&gt;parent_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;toJSON&lt;div&gt;&lt;br&gt;&lt;/div&gt;toObject" vertex="1">
+          <mxGeometry height="164" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="ContactMessage" vertex="1">
+          <mxGeometry height="218" width="300" x="2760" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_pkrow" parent="tbl_contactmessage" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_pk_tag" parent="tbl_contactmessage_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_pk_fields" parent="tbl_contactmessage_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_fkrow" parent="tbl_contactmessage" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_fk_tag" parent="tbl_contactmessage_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_fk_fields" parent="tbl_contactmessage_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="(none)" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_fieldsrow" parent="tbl_contactmessage" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="128" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_fields_tag" parent="tbl_contactmessage_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="128" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_contactmessage_fields" parent="tbl_contactmessage_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name&lt;div&gt;&lt;br&gt;&lt;/div&gt;phone&lt;div&gt;&lt;br&gt;&lt;/div&gt;content&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at" vertex="1">
+          <mxGeometry height="128" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Guide" vertex="1">
+          <mxGeometry height="292" width="300" x="620" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_pkrow" parent="tbl_guide" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_pk_tag" parent="tbl_guide_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_pk_fields" parent="tbl_guide_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_fkrow" parent="tbl_guide" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="50" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_fk_tag" parent="tbl_guide_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="50" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_fk_fields" parent="tbl_guide_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;tourId" vertex="1">
+          <mxGeometry height="50" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_fieldsrow" parent="tbl_guide" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_fields_tag" parent="tbl_guide_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guide_fields" parent="tbl_guide_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="id&lt;div&gt;&lt;br&gt;&lt;/div&gt;name&lt;div&gt;&lt;br&gt;&lt;/div&gt;certificate&lt;div&gt;&lt;br&gt;&lt;/div&gt;issueDate&lt;div&gt;&lt;br&gt;&lt;/div&gt;languages&lt;div&gt;&lt;br&gt;&lt;/div&gt;experience&lt;div&gt;&lt;br&gt;&lt;/div&gt;years&lt;div&gt;&lt;br&gt;&lt;/div&gt;history&lt;div&gt;&lt;br&gt;&lt;/div&gt;tourName" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="GuideLeaveRequest" vertex="1">
+          <mxGeometry height="292" width="300" x="220" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_pkrow" parent="tbl_guideleaverequest" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_pk_tag" parent="tbl_guideleaverequest_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_pk_fields" parent="tbl_guideleaverequest_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_fkrow" parent="tbl_guideleaverequest" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="50" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_fk_tag" parent="tbl_guideleaverequest_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="50" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_fk_fields" parent="tbl_guideleaverequest_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="requester_user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;resolved_replacement_user_id" vertex="1">
+          <mxGeometry height="50" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_fieldsrow" parent="tbl_guideleaverequest" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_fields_tag" parent="tbl_guideleaverequest_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guideleaverequest_fields" parent="tbl_guideleaverequest_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;reason&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;proposed_replacement_user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;admin_note&lt;div&gt;&lt;br&gt;&lt;/div&gt;rejection_note" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="GuideReview" vertex="1">
+          <mxGeometry height="236" width="300" x="1020" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_pkrow" parent="tbl_guidereview" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_pk_tag" parent="tbl_guidereview_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_pk_fields" parent="tbl_guidereview_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_fkrow" parent="tbl_guidereview" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_fk_tag" parent="tbl_guidereview_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_fk_fields" parent="tbl_guidereview_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="booking_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_fieldsrow" parent="tbl_guidereview" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="146" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_fields_tag" parent="tbl_guidereview_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="146" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_guidereview_fields" parent="tbl_guidereview_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="guide_user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;score&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;comment" vertex="1">
+          <mxGeometry height="146" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="HolidayPricing" vertex="1">
+          <mxGeometry height="254" width="300" x="1420" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_pkrow" parent="tbl_holidaypricing" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_pk_tag" parent="tbl_holidaypricing_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_pk_fields" parent="tbl_holidaypricing_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_fkrow" parent="tbl_holidaypricing" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_fk_tag" parent="tbl_holidaypricing_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_fk_fields" parent="tbl_holidaypricing_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_fieldsrow" parent="tbl_holidaypricing" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="164" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_fields_tag" parent="tbl_holidaypricing_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="164" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_holidaypricing_fields" parent="tbl_holidaypricing_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name&lt;div&gt;&lt;br&gt;&lt;/div&gt;start_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;end_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;price_multiplier&lt;div&gt;&lt;br&gt;&lt;/div&gt;priority&lt;div&gt;&lt;br&gt;&lt;/div&gt;createdAt&lt;div&gt;&lt;br&gt;&lt;/div&gt;updatedAt&lt;div&gt;&lt;br&gt;&lt;/div&gt;fixed_price" vertex="1">
+          <mxGeometry height="164" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Hotel" vertex="1">
+          <mxGeometry height="200" width="300" x="1960" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_pkrow" parent="tbl_hotel" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_pk_tag" parent="tbl_hotel_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_pk_fields" parent="tbl_hotel_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_fkrow" parent="tbl_hotel" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_fk_tag" parent="tbl_hotel_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_fk_fields" parent="tbl_hotel_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_fieldsrow" parent="tbl_hotel" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="110" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_fields_tag" parent="tbl_hotel_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="110" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_hotel_fields" parent="tbl_hotel_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;address&lt;div&gt;&lt;br&gt;&lt;/div&gt;provider_id" vertex="1">
+          <mxGeometry height="110" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Passenger" vertex="1">
+          <mxGeometry height="272" width="300" x="1420" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_pkrow" parent="tbl_passenger" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_pk_tag" parent="tbl_passenger_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_pk_fields" parent="tbl_passenger_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_fkrow" parent="tbl_passenger" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_fk_tag" parent="tbl_passenger_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_fk_fields" parent="tbl_passenger_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="booking_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_fieldsrow" parent="tbl_passenger" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_fields_tag" parent="tbl_passenger_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_passenger_fields" parent="tbl_passenger_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;role&lt;div&gt;&lt;br&gt;&lt;/div&gt;full_name&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;is_leader&lt;div&gt;&lt;br&gt;&lt;/div&gt;source_guest_id" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Provider" vertex="1">
+          <mxGeometry height="272" width="300" x="1960" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_pkrow" parent="tbl_provider" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_pk_tag" parent="tbl_provider_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_pk_fields" parent="tbl_provider_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_fkrow" parent="tbl_provider" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_fk_tag" parent="tbl_provider_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_fk_fields" parent="tbl_provider_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="(none)" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_fieldsrow" parent="tbl_provider" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_fields_tag" parent="tbl_provider_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_provider_fields" parent="tbl_provider_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="id&lt;div&gt;&lt;br&gt;&lt;/div&gt;name&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;update_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;description&lt;div&gt;&lt;br&gt;&lt;/div&gt;phone&lt;div&gt;&lt;br&gt;&lt;/div&gt;email&lt;div&gt;&lt;br&gt;&lt;/div&gt;address" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_providerticket" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="ProviderTicket" vertex="1">
+          <mxGeometry height="254" width="300" x="2408" y="42" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_providerticket_pkrow" parent="tbl_providerticket" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_providerticket_pk_tag" parent="tbl_providerticket_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry">
+            <mxRectangle height="30" width="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tbl_providerticket_pk_fields" parent="tbl_providerticket_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry">
+            <mxRectangle height="30" width="270" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tbl_providerticket_fkrow" parent="tbl_providerticket" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_providerticket_fk_tag" parent="tbl_providerticket_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry">
+            <mxRectangle height="30" width="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tbl_providerticket_fk_fields" parent="tbl_providerticket_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="provider_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry">
+            <mxRectangle height="30" width="270" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tbl_providerticket_fieldsrow" parent="tbl_providerticket" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="164" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_providerticket_fields_tag" parent="tbl_providerticket_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="164" width="30" as="geometry">
+            <mxRectangle height="164" width="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tbl_providerticket_fields" parent="tbl_providerticket_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name&lt;div&gt;&lt;br&gt;&lt;/div&gt;ticket_type&lt;div&gt;&lt;br&gt;&lt;/div&gt;price_adult&lt;div&gt;&lt;br&gt;&lt;/div&gt;price_child&lt;div&gt;&lt;br&gt;&lt;/div&gt;application_mode&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at" vertex="1">
+          <mxGeometry height="164" width="270" x="30" as="geometry">
+            <mxRectangle height="164" width="270" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tbl_restaurant" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Restaurant" vertex="1">
+          <mxGeometry height="236" width="300" x="1960" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_pkrow" parent="tbl_restaurant" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_pk_tag" parent="tbl_restaurant_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_pk_fields" parent="tbl_restaurant_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_fkrow" parent="tbl_restaurant" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_fk_tag" parent="tbl_restaurant_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_fk_fields" parent="tbl_restaurant_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_fieldsrow" parent="tbl_restaurant" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="146" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_fields_tag" parent="tbl_restaurant_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="146" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_restaurant_fields" parent="tbl_restaurant_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="capacity&lt;div&gt;&lt;br&gt;&lt;/div&gt;provider_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;phone&lt;div&gt;&lt;br&gt;&lt;/div&gt;location" vertex="1">
+          <mxGeometry height="146" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Room" vertex="1">
+          <mxGeometry height="218" width="300" x="2360" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_pkrow" parent="tbl_room" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_pk_tag" parent="tbl_room_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_pk_fields" parent="tbl_room_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_fkrow" parent="tbl_room" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_fk_tag" parent="tbl_room_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_fk_fields" parent="tbl_room_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="hotel_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_fieldsrow" parent="tbl_room" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="128" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_fields_tag" parent="tbl_room_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="128" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_room_fields" parent="tbl_room_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="room_number&lt;div&gt;&lt;br&gt;&lt;/div&gt;max_occupancy&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;provider_id" vertex="1">
+          <mxGeometry height="128" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="RoomAllocation" vertex="1">
+          <mxGeometry height="272" width="300" x="1020" y="1780" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_pkrow" parent="tbl_roomallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_pk_tag" parent="tbl_roomallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_pk_fields" parent="tbl_roomallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_fkrow" parent="tbl_roomallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_fk_tag" parent="tbl_roomallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_fk_fields" parent="tbl_roomallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="booking_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_fieldsrow" parent="tbl_roomallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_fields_tag" parent="tbl_roomallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomallocation_fields" parent="tbl_roomallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="room_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;hotel_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;hotel_name&lt;div&gt;&lt;br&gt;&lt;/div&gt;room_number&lt;div&gt;&lt;br&gt;&lt;/div&gt;day_no&lt;div&gt;&lt;br&gt;&lt;/div&gt;service_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;max_occupancy&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="RoomAssignment" vertex="1">
+          <mxGeometry height="272" width="300" x="2360" y="1780" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_pkrow" parent="tbl_roomassignment" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_pk_tag" parent="tbl_roomassignment_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_pk_fields" parent="tbl_roomassignment_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_fkrow" parent="tbl_roomassignment" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_fk_tag" parent="tbl_roomassignment_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_fk_fields" parent="tbl_roomassignment_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_fieldsrow" parent="tbl_roomassignment" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_fields_tag" parent="tbl_roomassignment_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomassignment_fields" parent="tbl_roomassignment_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;guest_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;day_no&lt;div&gt;&lt;br&gt;&lt;/div&gt;room_allocation_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;slot_no&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;booking_id" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="RoomingAllocation" vertex="1">
+          <mxGeometry height="218" width="300" x="1420" y="2220" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_pkrow" parent="tbl_roomingallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_pk_tag" parent="tbl_roomingallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_pk_fields" parent="tbl_roomingallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_fkrow" parent="tbl_roomingallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_fk_tag" parent="tbl_roomingallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_fk_fields" parent="tbl_roomingallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_fieldsrow" parent="tbl_roomingallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="128" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_fields_tag" parent="tbl_roomingallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="128" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_roomingallocation_fields" parent="tbl_roomingallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_room_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;passenger_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at" vertex="1">
+          <mxGeometry height="128" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="SeatingAllocation" vertex="1">
+          <mxGeometry height="236" width="300" x="1960" y="2220" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_pkrow" parent="tbl_seatingallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_pk_tag" parent="tbl_seatingallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_pk_fields" parent="tbl_seatingallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_fkrow" parent="tbl_seatingallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_fk_tag" parent="tbl_seatingallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_fk_fields" parent="tbl_seatingallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_fieldsrow" parent="tbl_seatingallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="146" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_fields_tag" parent="tbl_seatingallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="146" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_seatingallocation_fields" parent="tbl_seatingallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_vehicle_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;passenger_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;seat_code&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at" vertex="1">
+          <mxGeometry height="146" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="SystemSettings" vertex="1">
+          <mxGeometry height="182" width="300" x="2760" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_pkrow" parent="tbl_systemsettings" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_pk_tag" parent="tbl_systemsettings_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_pk_fields" parent="tbl_systemsettings_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_fkrow" parent="tbl_systemsettings" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_fk_tag" parent="tbl_systemsettings_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_fk_fields" parent="tbl_systemsettings_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="(none)" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_fieldsrow" parent="tbl_systemsettings" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="92" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_fields_tag" parent="tbl_systemsettings_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="92" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_systemsettings_fields" parent="tbl_systemsettings_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="siteName&lt;div&gt;&lt;br&gt;&lt;/div&gt;logoUrl&lt;div&gt;&lt;br&gt;&lt;/div&gt;contactEmail&lt;div&gt;&lt;br&gt;&lt;/div&gt;contactPhone" vertex="1">
+          <mxGeometry height="92" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Tour" vertex="1">
+          <mxGeometry height="352" width="300" x="1020" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_pkrow" parent="tbl_tour" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_pk_tag" parent="tbl_tour_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_pk_fields" parent="tbl_tour_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_fkrow" parent="tbl_tour" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="110" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_fk_tag" parent="tbl_tour_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="110" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_fk_fields" parent="tbl_tour_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="description&lt;div&gt;&lt;br&gt;&lt;/div&gt;lunch_restaurant_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;duration_days&lt;div&gt;&lt;br&gt;&lt;/div&gt;schedule[]&lt;div&gt;&lt;br&gt;&lt;/div&gt;ticket_ids[]" vertex="1">
+          <mxGeometry height="110" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_fieldsrow" parent="tbl_tour" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_fields_tag" parent="tbl_tour_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tour_fields" parent="tbl_tour_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name&lt;div&gt;&lt;br&gt;&lt;/div&gt;category_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;day&lt;div&gt;&lt;br&gt;&lt;/div&gt;title&lt;div&gt;&lt;br&gt;&lt;/div&gt;activities&lt;div&gt;&lt;br&gt;&lt;/div&gt;images&lt;div&gt;&lt;br&gt;&lt;/div&gt;prices&lt;div&gt;&lt;br&gt;&lt;/div&gt;price&lt;div&gt;&lt;br&gt;&lt;/div&gt;pesolici" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="TourReview" vertex="1">
+          <mxGeometry height="272" width="300" x="620" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_pkrow" parent="tbl_tourreview" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_pk_tag" parent="tbl_tourreview_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_pk_fields" parent="tbl_tourreview_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_fkrow" parent="tbl_tourreview" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_fk_tag" parent="tbl_tourreview_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_fk_fields" parent="tbl_tourreview_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="booking_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_fieldsrow" parent="tbl_tourreview" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_fields_tag" parent="tbl_tourreview_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourreview_fields" parent="tbl_tourreview_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;rating&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;guide_user_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;guide_rating&lt;div&gt;&lt;br&gt;&lt;/div&gt;comment" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="TourTemplate" vertex="1">
+          <mxGeometry height="312" width="300" x="1020" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_pkrow" parent="tbl_tourtemplate" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_pk_tag" parent="tbl_tourtemplate_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_pk_fields" parent="tbl_tourtemplate_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_fkrow" parent="tbl_tourtemplate" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="70" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_fk_tag" parent="tbl_tourtemplate_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="70" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_fk_fields" parent="tbl_tourtemplate_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="description&lt;div&gt;&lt;br&gt;&lt;/div&gt;schedule[]&lt;div&gt;&lt;br&gt;&lt;/div&gt;ticket_ids[]" vertex="1">
+          <mxGeometry height="70" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_fieldsrow" parent="tbl_tourtemplate" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_fields_tag" parent="tbl_tourtemplate_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtemplate_fields" parent="tbl_tourtemplate_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name&lt;div&gt;&lt;br&gt;&lt;/div&gt;duration_days&lt;div&gt;&lt;br&gt;&lt;/div&gt;day&lt;div&gt;&lt;br&gt;&lt;/div&gt;title&lt;div&gt;&lt;br&gt;&lt;/div&gt;activities&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;slug&lt;div&gt;&lt;br&gt;&lt;/div&gt;category_id" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="TourTrip" vertex="1">
+          <mxGeometry height="218" width="300" x="1420" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_pkrow" parent="tbl_tourtrip" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_pk_tag" parent="tbl_tourtrip_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_pk_fields" parent="tbl_tourtrip_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_fkrow" parent="tbl_tourtrip" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_fk_tag" parent="tbl_tourtrip_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_fk_fields" parent="tbl_tourtrip_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_fieldsrow" parent="tbl_tourtrip" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="128" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_fields_tag" parent="tbl_tourtrip_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="128" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tourtrip_fields" parent="tbl_tourtrip_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;note" vertex="1">
+          <mxGeometry height="128" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="TripHotel" vertex="1">
+          <mxGeometry height="218" width="300" x="1420" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_pkrow" parent="tbl_triphotel" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_pk_tag" parent="tbl_triphotel_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_pk_fields" parent="tbl_triphotel_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_fkrow" parent="tbl_triphotel" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_fk_tag" parent="tbl_triphotel_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_fk_fields" parent="tbl_triphotel_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_fieldsrow" parent="tbl_triphotel" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="128" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_fields_tag" parent="tbl_triphotel_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="128" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triphotel_fields" parent="tbl_triphotel_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;hotel_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;hotel_name" vertex="1">
+          <mxGeometry height="128" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="TripRoom" vertex="1">
+          <mxGeometry height="272" width="300" x="1420" y="1780" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_pkrow" parent="tbl_triproom" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_pk_tag" parent="tbl_triproom_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_pk_fields" parent="tbl_triproom_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_fkrow" parent="tbl_triproom" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_fk_tag" parent="tbl_triproom_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_fk_fields" parent="tbl_triproom_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_fieldsrow" parent="tbl_triproom" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_fields_tag" parent="tbl_triproom_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_triproom_fields" parent="tbl_triproom_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;room_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;room_number&lt;div&gt;&lt;br&gt;&lt;/div&gt;capacity&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;hotel_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;hotel_name" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="TripVehicle" vertex="1">
+          <mxGeometry height="236" width="300" x="1960" y="1780" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_pkrow" parent="tbl_tripvehicle" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_pk_tag" parent="tbl_tripvehicle_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_pk_fields" parent="tbl_tripvehicle_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_fkrow" parent="tbl_tripvehicle" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_fk_tag" parent="tbl_tripvehicle_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_fk_fields" parent="tbl_tripvehicle_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_fieldsrow" parent="tbl_tripvehicle" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="146" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_fields_tag" parent="tbl_tripvehicle_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="146" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_tripvehicle_fields" parent="tbl_tripvehicle_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;vehicle_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;seat_count&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;plate" vertex="1">
+          <mxGeometry height="146" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="Vehicle" vertex="1">
+          <mxGeometry height="200" width="300" x="1960" y="1340" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_pkrow" parent="tbl_vehicle" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_pk_tag" parent="tbl_vehicle_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_pk_fields" parent="tbl_vehicle_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_fkrow" parent="tbl_vehicle" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_fk_tag" parent="tbl_vehicle_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_fk_fields" parent="tbl_vehicle_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="plate" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_fieldsrow" parent="tbl_vehicle" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="110" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_fields_tag" parent="tbl_vehicle_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="110" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicle_fields" parent="tbl_vehicle_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="capacity&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;provider_id" vertex="1">
+          <mxGeometry height="110" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="VehicleAllocation" vertex="1">
+          <mxGeometry height="272" width="300" x="1020" y="2220" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_pkrow" parent="tbl_vehicleallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_pk_tag" parent="tbl_vehicleallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_pk_fields" parent="tbl_vehicleallocation_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_fkrow" parent="tbl_vehicleallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_fk_tag" parent="tbl_vehicleallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_fk_fields" parent="tbl_vehicleallocation_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="booking_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_fieldsrow" parent="tbl_vehicleallocation" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_fields_tag" parent="tbl_vehicleallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleallocation_fields" parent="tbl_vehicleallocation_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="vehicle_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;plate&lt;div&gt;&lt;br&gt;&lt;/div&gt;day_no&lt;div&gt;&lt;br&gt;&lt;/div&gt;service_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;capacity&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;tour_id" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="VehicleAssignment" vertex="1">
+          <mxGeometry height="272" width="300" x="2360" y="2220" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_pkrow" parent="tbl_vehicleassignment" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_pk_tag" parent="tbl_vehicleassignment_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_pk_fields" parent="tbl_vehicleassignment_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_fkrow" parent="tbl_vehicleassignment" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_fk_tag" parent="tbl_vehicleassignment_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_fk_fields" parent="tbl_vehicleassignment_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="trip_key" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_fieldsrow" parent="tbl_vehicleassignment" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="182" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_fields_tag" parent="tbl_vehicleassignment_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="182" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_vehicleassignment_fields" parent="tbl_vehicleassignment_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;trip_date&lt;div&gt;&lt;br&gt;&lt;/div&gt;guest_key&lt;div&gt;&lt;br&gt;&lt;/div&gt;day_no&lt;div&gt;&lt;br&gt;&lt;/div&gt;vehicle_allocation_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;seat_number&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;booking_id" vertex="1">
+          <mxGeometry height="182" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="WishlistTour" vertex="1">
+          <mxGeometry height="182" width="300" x="220" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_pkrow" parent="tbl_wishlisttour" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_pk_tag" parent="tbl_wishlisttour_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_pk_fields" parent="tbl_wishlisttour_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_fkrow" parent="tbl_wishlisttour" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_fk_tag" parent="tbl_wishlisttour_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_fk_fields" parent="tbl_wishlisttour_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="user_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_fieldsrow" parent="tbl_wishlisttour" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="92" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_fields_tag" parent="tbl_wishlisttour_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="92" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_wishlisttour_fields" parent="tbl_wishlisttour_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="tour_id&lt;div&gt;&lt;br&gt;&lt;/div&gt;created_at&lt;div&gt;&lt;br&gt;&lt;/div&gt;updated_at" vertex="1">
+          <mxGeometry height="92" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;fillColor=none;" value="user" vertex="1">
+          <mxGeometry height="218" width="300" x="620" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_pkrow" parent="tbl_user" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_pk_tag" parent="tbl_user_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="PK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_pk_fields" parent="tbl_user_pkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="_id" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_fkrow" parent="tbl_user" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="30" width="300" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_fk_tag" parent="tbl_user_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="FK" vertex="1">
+          <mxGeometry height="30" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_fk_fields" parent="tbl_user_fkrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="(none)" vertex="1">
+          <mxGeometry height="30" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_fieldsrow" parent="tbl_user" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;collapsible=0;dropTarget=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;top=0;left=0;right=0;bottom=1;" vertex="1">
+          <mxGeometry height="128" width="300" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_fields_tag" parent="tbl_user_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;overflow=hidden;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="128" width="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tbl_user_fields" parent="tbl_user_fieldsrow" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=6;fontStyle=5;overflow=hidden;whiteSpace=wrap;html=1;" value="name&lt;div&gt;&lt;br&gt;&lt;/div&gt;email&lt;div&gt;&lt;br&gt;&lt;/div&gt;role&lt;div&gt;&lt;br&gt;&lt;/div&gt;status&lt;div&gt;&lt;br&gt;&lt;/div&gt;password&lt;div&gt;&lt;br&gt;&lt;/div&gt;avatarUrl" vertex="1">
+          <mxGeometry height="128" width="270" x="30" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_1" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_booking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_2" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_booking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_3" edge="1" parent="1" source="tbl_providerticket" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_booking">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2610" y="843" />
+              <mxPoint x="1170" y="843" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_4" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_booking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_5" edge="1" parent="1" source="tbl_providerticket" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_booking">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2558" y="773" />
+              <mxPoint x="1348" y="773" />
+              <mxPoint x="1348" y="1076" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_7" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_guide">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_8" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_guide">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_9" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_guideleaverequest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_10" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_guideleaverequest">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_11" edge="1" parent="1" source="tbl_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_guidereview">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_12" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_holidaypricing">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1356" y="636" />
+              <mxPoint x="1356" y="254" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_13" edge="1" parent="1" source="tbl_provider" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_hotel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_14" edge="1" parent="1" source="tbl_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_passenger">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_15" edge="1" parent="1" source="tbl_provider" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_providerticket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_16" edge="1" parent="1" source="tbl_provider" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_restaurant">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_17" edge="1" parent="1" source="tbl_hotel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_room">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_18" edge="1" parent="1" source="tbl_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_roomallocation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_19" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_roomassignment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_20" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_roomingallocation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_21" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_seatingallocation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_22" edge="1" parent="1" source="tbl_category" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tour">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_23" edge="1" parent="1" source="tbl_restaurant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tour">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_24" edge="1" parent="1" source="tbl_tourtemplate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tour">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_25" edge="1" parent="1" source="tbl_restaurant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tour">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_26" edge="1" parent="1" source="tbl_providerticket" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tour">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2558" y="415" />
+              <mxPoint x="1259" y="415" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_27" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tour">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_28" edge="1" parent="1" source="tbl_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tourreview">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_29" edge="1" parent="1" source="tbl_category" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;entryX=-0.002;entryY=0.154;entryDx=0;entryDy=0;entryPerimeter=0;" target="tbl_tourtemplate_fieldsrow">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="970" y="218" />
+              <mxPoint x="970" y="216" />
+              <mxPoint x="1019" y="216" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_30" edge="1" parent="1" source="tbl_restaurant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tourtemplate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_31" edge="1" parent="1" source="tbl_providerticket" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tourtemplate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2558" y="-32" />
+              <mxPoint x="1170" y="-32" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_32" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tourtrip">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_33" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_triphotel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_34" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_triproom">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_35" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_tripvehicle">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_36" edge="1" parent="1" source="tbl_provider" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_vehicle">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_37" edge="1" parent="1" source="tbl_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_vehicleallocation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_38" edge="1" parent="1" source="tbl_tour" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_vehicleassignment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_39" edge="1" parent="1" source="tbl_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=36;sourcePerimeterSpacing=10;targetPerimeterSpacing=10;segment=24;html=1;startArrow=ERmandOne;endArrow=ERzeroToMany;" target="tbl_wishlisttour">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

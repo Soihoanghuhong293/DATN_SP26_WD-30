@@ -18,7 +18,7 @@ usecase "Lọc theo từ khóa /\ntrạng thái (active / inactive)" as UC_FILTE
 usecase "Tải chi tiết danh mục\n(getCategory)" as UC_FETCH
 usecase "Kiểm tra form\nvà gửi lưu\n(create / updateCategory)" as UC_SAVE
 
-usecase "Xác nhận trước khi xóa" as UC_CONFIRM
+usecase " Xác nhậnc khi xóa" as UC_CONFIRM
 
 UC_ROOT <|-- UC_LIST
 UC_ROOT <|-- UC_CREATE

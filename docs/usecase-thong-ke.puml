@@ -5,7 +5,7 @@ left to right direction
 
 actor "Admin" as ADM
 
-usecase "Thống kê" as UC_ROOT >
+usecase "Thống kê" as UC_ROOT
 
 usecase "Xem Dashboard tổng quan" as UC_DASH
 
