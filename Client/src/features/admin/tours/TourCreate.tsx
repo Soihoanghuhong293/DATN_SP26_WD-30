@@ -24,7 +24,8 @@ const { Option } = Select;
 
 const DEFAULT_PRICE_CATEGORIES = [
   { name: 'Người lớn', price: 0 },
-  { name: 'Trẻ em (0-10 tuổi)', price: 0 }
+  { name: 'Trẻ em (0-10 tuổi)', price: 0 },
+  { name: 'Phòng đơn (phụ thu / phòng)', price: 0 },
 ];
 
 const mealRefId = (v: any): string | undefined => {
@@ -883,7 +884,7 @@ const TourCreate = () => {
                   {(fields, { add, remove }) => (
                     <div className="space-y-3">
                       {fields.map(({ key, name, ...restField }, index) => {
-                        const isDefault = index < 2;
+                        const isDefault = index < 3;
                         return (
                           <Row gutter={8} key={key} className="items-center">
                             <Col span={10}>

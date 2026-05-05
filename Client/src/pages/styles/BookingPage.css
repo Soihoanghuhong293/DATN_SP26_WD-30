@@ -1,0 +1,20 @@
+.booking-page-readable {
+  font-weight: 500;
+}
+
+.booking-page-readable .ant-typography,
+.booking-page-readable .ant-form-item-label > label,
+.booking-page-readable .ant-card-head-title,
+.booking-page-readable .ant-alert-message,
+.booking-page-readable .ant-checkbox-wrapper,
+.booking-page-readable .ant-select-selection-item,
+.booking-page-readable .ant-btn {
+  font-weight: 600;
+}
+
+.booking-page-readable .ant-input,
+.booking-page-readable .ant-input-number-input,
+.booking-page-readable .ant-select-selection-placeholder,
+.booking-page-readable .ant-picker-input > input {
+  font-weight: 500;
+}

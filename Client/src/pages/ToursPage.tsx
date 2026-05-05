@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Spin, Empty, Pagination, Select, Input, Button, DatePicker } from 'antd';
+import { Spin, Empty, Pagination, Input, Button, DatePicker } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import { SearchOutlined } from '@ant-design/icons';
 import { getTours, getCategoryTree } from '../services/api';
@@ -146,19 +146,6 @@ const ToursPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 prefix={<SearchOutlined style={{ color: '#9ca3af' }} />}
                 className="filter-input"
-              />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">Số lượng</label>
-              <Select
-                value={pageSize}
-                onChange={setPageSize}
-                className="filter-select"
-                options={[
-                  { label: '6 tour', value: 6 },
-                  { label: '12 tour', value: 12 },
-                  { label: '24 tour', value: 24 },
-                ]}
               />
             </div>
             <div className="filter-group filter-group-destination">

@@ -28,6 +28,7 @@ import { getTour } from "../services/api";
 import type { ITour } from "../types/tour.types";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import "./styles/DepartureCalendar.css";
+import "./styles/BookingPage.css";
 import { tourImagePlaceholder } from "../constants/tourImagePlaceholder";
 
 type PassengerGender = "male" | "female" | "other";
@@ -65,6 +66,7 @@ type BookingFormValues = {
   termsAccepted: boolean;
   adults: number;
   children: number;
+  singleRoomCount?: number;
 };
 
 const { Title, Text } = Typography;
@@ -121,6 +123,7 @@ const BookingPage: React.FC = () => {
   const watchedAdultPassengers = Form.useWatch("adultPassengers", form);
   const watchedChildPassengers = Form.useWatch("childPassengers", form);
   const watchedOptionalTicketIds = Form.useWatch("optionalTicketIds", form);
+  const watchedSingleRoomCount = Form.useWatch("singleRoomCount", form);
   const lastSlotsWarnRef = useRef<number | null>(null);
 
   const { includedTickets, optionalTickets } = useMemo(() => {
@@ -275,11 +278,18 @@ const BookingPage: React.FC = () => {
       pricesArr.find((p) => String(p?.name || p?.title || "").toLowerCase().includes("người lớn")) || null;
     const childItem =
       pricesArr.find((p) => String(p?.name || p?.title || "").toLowerCase().includes("trẻ")) || null;
+    const singleRoomItem =
+      pricesArr.find((p) => {
+        const n = String(p?.name || p?.title || "").toLowerCase();
+        return n.includes("phòng đơn") || n.includes("single room");
+      }) || null;
 
     const adult = adultItem ? getAmount(adultItem) : Number((tour as any)?.price || 0);
     const child = childItem ? getAmount(childItem) : Math.round(adult * 0.8);
 
-    return { adult: Number(adult || 0), child: Number(child || 0) };
+    const singleRoom = singleRoomItem ? getAmount(singleRoomItem) : 0;
+
+    return { adult: Number(adult || 0), child: Number(child || 0), singleRoom: Number(singleRoom || 0) };
   }, [tour]);
 
   const getPriceForDate = (dateStr: string) => {
@@ -367,7 +377,33 @@ const BookingPage: React.FC = () => {
     return sum;
   }, [optionalTickets, watchedAdults, watchedChildren, watchedOptionalTicketIds]);
 
-  const grandTotal = useMemo(() => Number(totals.total || 0) + Number(ticketsAddonTotal || 0), [totals.total, ticketsAddonTotal]);
+  const roomingPlan = useMemo(() => {
+    const totalGuests = Number(totals.groupSize || 0);
+    const requestedSingleRooms = Math.max(
+      0,
+      Math.min(totalGuests, Number.isFinite(watchedSingleRoomCount as any) ? Number(watchedSingleRoomCount) : 0)
+    );
+    const remainingGuests = Math.max(0, totalGuests - requestedSingleRooms);
+    const doubleRooms = Math.floor(remainingGuests / 2);
+    const sharedGuests = remainingGuests % 2;
+    return {
+      totalGuests,
+      requestedSingleRooms,
+      doubleRooms,
+      sharedGuests,
+      sharedRequired: sharedGuests > 0,
+    };
+  }, [totals.groupSize, watchedSingleRoomCount]);
+
+  const singleRoomSurchargeTotal = useMemo(
+    () => Number(roomingPlan.requestedSingleRooms || 0) * Number(basePrices.singleRoom || 0),
+    [roomingPlan.requestedSingleRooms, basePrices.singleRoom]
+  );
+
+  const grandTotal = useMemo(
+    () => Number(totals.total || 0) + Number(ticketsAddonTotal || 0) + Number(singleRoomSurchargeTotal || 0),
+    [totals.total, ticketsAddonTotal, singleRoomSurchargeTotal]
+  );
 
   const submitButtonLabel = useMemo(() => {
     const adults = Number.isFinite(watchedAdults as any) ? Number(watchedAdults) : 0;
@@ -537,8 +573,16 @@ const BookingPage: React.FC = () => {
         groupSize,
         paymentMethod: values.paymentMethod || "full",
         customer_note: values.note,
-        totalPrice: totals.total,
+        totalPrice: Number(totals.total || 0) + Number(singleRoomSurchargeTotal || 0),
         optional_ticket_ids: Array.isArray(values.optionalTicketIds) ? values.optionalTicketIds : [],
+        single_room_request_count: Math.max(0, Math.min(groupSize, Number(values.singleRoomCount || 0))),
+        rooming_preference: {
+          auto_split: true,
+          requested_single_rooms: Math.max(0, Math.min(groupSize, Number(values.singleRoomCount || 0))),
+          single_room_unit_price: Number(basePrices.singleRoom || 0),
+          suggested_double_rooms: Math.floor(Math.max(0, groupSize - Number(values.singleRoomCount || 0)) / 2),
+          remaining_shared_guests: Math.max(0, Math.max(0, groupSize - Number(values.singleRoomCount || 0)) % 2),
+        },
         passengers,
       };
 
@@ -580,7 +624,14 @@ const BookingPage: React.FC = () => {
   };
 
   useEffect(() => {
-    form.setFieldsValue({ adults: 1, children: 0, termsAccepted: false, paymentMethod: "full", optionalTicketIds: [] });
+    form.setFieldsValue({
+      adults: 1,
+      children: 0,
+      singleRoomCount: 0,
+      termsAccepted: false,
+      paymentMethod: "full",
+      optionalTicketIds: [],
+    });
     syncAdultPassengers(1);
     syncChildPassengers(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -598,10 +649,16 @@ const BookingPage: React.FC = () => {
     if (typeof slots !== "number") return;
     const adults = Number(form.getFieldValue("adults") || 0);
     const children = Number(form.getFieldValue("children") || 0);
+    const singleRoomCount = Number(form.getFieldValue("singleRoomCount") || 0);
     if (adults + children <= slots) return;
     const cappedAdults = Math.max(1, slots - children);
     const cappedChildren = Math.max(0, slots - cappedAdults);
-    form.setFieldsValue({ adults: cappedAdults, children: cappedChildren });
+    const nextGroupSize = cappedAdults + cappedChildren;
+    form.setFieldsValue({
+      adults: cappedAdults,
+      children: cappedChildren,
+      singleRoomCount: Math.min(Math.max(0, singleRoomCount), nextGroupSize),
+    });
     syncAdultPassengers(cappedAdults);
     syncChildPassengers(cappedChildren);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -631,7 +688,7 @@ const BookingPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+    <div className="booking-page-readable" style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <Button
           type="text"
@@ -697,6 +754,15 @@ const BookingPage: React.FC = () => {
               }
             }
             syncChildPassengers(children);
+          }
+          if ("adults" in changed || "children" in changed || "singleRoomCount" in changed) {
+            const adults = Number(form.getFieldValue("adults") || 0);
+            const children = Number(form.getFieldValue("children") || 0);
+            const currentSingles = Number(form.getFieldValue("singleRoomCount") || 0);
+            const nextGroupSize = Math.max(0, adults + children);
+            if (currentSingles > nextGroupSize) {
+              form.setFieldsValue({ singleRoomCount: nextGroupSize });
+            }
           }
         }}
       >
@@ -845,12 +911,61 @@ const BookingPage: React.FC = () => {
                     />
                   </Form.Item>
                 </Col>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label="Yêu cầu phòng đơn"
+                    name="singleRoomCount"
+                    tooltip="Khách lẻ sẽ được ghép phòng với khách khác cùng giới tính. Nếu không muốn ghép, bạn có thể chọn thêm phòng đơn."
+                    rules={[
+                      {
+                        validator: async (_, v) => {
+                          const val = Number(v || 0);
+                          if (!Number.isFinite(val) || val < 0) throw new Error("Số phòng đơn không hợp lệ.");
+                          if (val > totals.groupSize) throw new Error("Số phòng đơn không được vượt tổng số khách.");
+                        },
+                      },
+                    ]}
+                  >
+                    <InputNumber min={0} max={Math.max(0, totals.groupSize)} style={{ width: "100%" }} size="large" />
+                  </Form.Item>
+                  <div style={{ marginTop: -16, marginBottom: 8 }}>
+                    <Text type="secondary">
+                      Giá 1 phòng đơn:{" "}
+                      <b>
+                        {basePrices.singleRoom > 0
+                          ? `${Number(basePrices.singleRoom || 0).toLocaleString("vi-VN")}đ`
+                          : "Chưa cấu hình"}
+                      </b>
+                    </Text>
+                  </div>
+                </Col>
               </Row>
 
               <div style={{ marginBottom: 16 }}>
                 <Text type="secondary">
                   Tổng số khách: <b>{totals.groupSize}</b>
                 </Text>
+                <div style={{ marginTop: 6 }}>
+                  <Text type="secondary" style={{ display: "block" }}>
+                    Phương án chia phòng sau khi bạn chọn phòng đơn:
+                  </Text>
+                  <Text style={{ display: "block", fontWeight: 700, color: "#d90429" }}>
+                    {roomingPlan.doubleRooms} phòng đôi
+                    {roomingPlan.requestedSingleRooms > 0 ? ` + ${roomingPlan.requestedSingleRooms} phòng đơn` : ""}
+                    {roomingPlan.sharedRequired ? ` + ${roomingPlan.sharedGuests} khách lẻ ghép phòng` : ""}
+                  </Text>
+                  {roomingPlan.requestedSingleRooms > 0 && (
+                    <div>
+                      <Text style={{ color: "#d90429", fontWeight: 700 }}>
+                        Phụ thu phòng đơn:{" "}
+                        <b>{Number(singleRoomSurchargeTotal || 0).toLocaleString("vi-VN")}đ</b>
+                        {basePrices.singleRoom > 0
+                          ? ` (${roomingPlan.requestedSingleRooms} x ${Number(basePrices.singleRoom || 0).toLocaleString("vi-VN")}đ)`
+                          : " (tour chưa cấu hình giá phòng đơn)"}
+                      </Text>
+                    </div>
+                  )}
+                </div>
                 {typeof availableSlotsForSelectedDate === "number" && selectedDate && (
                   <div style={{ marginTop: 6 }}>
                     <Text type="secondary">
@@ -1204,6 +1319,15 @@ const BookingPage: React.FC = () => {
                 <Text>Phụ phí vé mua thêm</Text>
                 <Text style={{ fontWeight: 800, color: "#f5222d" }}>
                   {Number(ticketsAddonTotal || 0).toLocaleString("vi-VN")} ₫
+                </Text>
+              </div>
+            )}
+
+            {singleRoomSurchargeTotal > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <Text>Phụ thu phòng đơn</Text>
+                <Text style={{ fontWeight: 800, color: "#f5222d" }}>
+                  {Number(singleRoomSurchargeTotal || 0).toLocaleString("vi-VN")} ₫
                 </Text>
               </div>
             )}
