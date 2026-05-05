@@ -946,14 +946,6 @@ const BookingPage: React.FC = () => {
                   Tổng số khách: <b>{totals.groupSize}</b>
                 </Text>
                 <div style={{ marginTop: 6 }}>
-                  <Text type="secondary" style={{ display: "block" }}>
-                    Phương án chia phòng sau khi bạn chọn phòng đơn:
-                  </Text>
-                  <Text style={{ display: "block", fontWeight: 700, color: "#d90429" }}>
-                    {roomingPlan.doubleRooms} phòng đôi
-                    {roomingPlan.requestedSingleRooms > 0 ? ` + ${roomingPlan.requestedSingleRooms} phòng đơn` : ""}
-                    {roomingPlan.sharedRequired ? ` + ${roomingPlan.sharedGuests} khách lẻ ghép phòng` : ""}
-                  </Text>
                   {roomingPlan.requestedSingleRooms > 0 && (
                     <div>
                       <Text style={{ color: "#d90429", fontWeight: 700 }}>
