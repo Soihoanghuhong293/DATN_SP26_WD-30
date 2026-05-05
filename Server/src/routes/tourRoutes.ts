@@ -48,6 +48,7 @@ router.delete('/:id/trips/:date/seating/unassign/:passengerId', protect, restric
 
 router.get('/:id/trips/:date/trip-rooms', protect, restrictToAdmin, tourController.getTripRooms);
 router.post('/:id/trips/:date/trip-rooms', protect, restrictToAdmin, tourController.addTripRoom);
+router.delete('/:id/trips/:date/trip-rooms/:tripRoomId', protect, restrictToAdmin, tourController.deleteTripRoom);
 router.post('/:id/trips/:date/trip-rooms/bulk-by-hotel', protect, restrictToAdmin, tourController.bulkAddTripRoomsByHotel);
 router.get('/:id/trips/:date/rooming', protect, restrictToAdmin, tourController.getTripRoomingState);
 router.post('/:id/trips/:date/rooming/assign', protect, restrictToAdmin, tourController.assignRoom);
