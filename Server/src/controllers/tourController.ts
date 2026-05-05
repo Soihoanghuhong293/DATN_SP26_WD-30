@@ -688,6 +688,36 @@ export const addTripRoom = async (req: Request, res: Response) => {
   }
 };
 
+export const deleteTripRoom = async (req: Request, res: Response) => {
+  try {
+    const tourId = String(req.params.id || '');
+    const dateStr = normalizeTripDate(req.params.date);
+    const tripRoomId = String(req.params.tripRoomId || '').trim();
+    if (!tourId || !dateStr || !tripRoomId) {
+      return res.status(400).json({ status: 'fail', message: 'Thiếu tourId, date hoặc tripRoomId' });
+    }
+    const tripKey = tripKeyOf(tourId, dateStr);
+
+    const room = await TripRoom.findOne({ _id: tripRoomId, trip_key: tripKey }).lean();
+    if (!room) {
+      return res.status(404).json({ status: 'fail', message: 'Không tìm thấy phòng trong trip' });
+    }
+
+    const allocated = await RoomingAllocation.countDocuments({ trip_key: tripKey, trip_room_id: tripRoomId });
+    if (allocated > 0) {
+      return res.status(409).json({
+        status: 'fail',
+        message: 'Phòng đang có khách. Vui lòng gỡ toàn bộ khách khỏi phòng trước khi xóa.',
+      });
+    }
+
+    await TripRoom.deleteOne({ _id: tripRoomId, trip_key: tripKey });
+    return res.status(200).json({ status: 'success' });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message || 'Lỗi khi xóa phòng khỏi trip' });
+  }
+};
+
 export const bulkAddTripRoomsByHotel = async (req: Request, res: Response) => {
   try {
     const tourId = String(req.params.id || '');
@@ -760,7 +790,7 @@ export const getTripRoomingState = async (req: Request, res: Response) => {
     );
     const bookings = bookingIds.length
       ? await Booking.find({ _id: { $in: bookingIds } })
-          .select('customer_name customer_phone customer_note groupSize')
+          .select('customer_name customer_phone customer_note groupSize single_room_request_count')
           .lean()
       : [];
     const bookingMap = new Map<string, any>(bookings.map((b: any) => [String(b._id), b]));
@@ -792,6 +822,7 @@ export const getTripRoomingState = async (req: Request, res: Response) => {
         customer_phone: b?.customer_phone,
         note: b?.customer_note,
         groupSize: b?.groupSize,
+        single_room_request_count: Number((b as any)?.single_room_request_count || 0),
         passengers: ps,
       });
     }

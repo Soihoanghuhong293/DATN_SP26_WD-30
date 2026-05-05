@@ -30,6 +30,30 @@ const normalizeDate = (dateVal?: string) => {
   return d.isValid() ? d.format('YYYY-MM-DD') : '';
 };
 
+const ensureRequiredPriceRows = (prices: any[] | undefined, basePrice: number) => {
+  const normalized = Array.isArray(prices)
+    ? prices
+        .map((p: any) => ({ name: String(p?.name || '').trim(), price: Number(p?.price || 0) }))
+        .filter((p: any) => p.name)
+    : [];
+  const byName = new Map<string, number>();
+  normalized.forEach((p) => byName.set(p.name.toLowerCase(), Number(p.price || 0)));
+
+  const adultPrice = byName.get('người lớn') ?? Number(basePrice || 0);
+  const childPrice = byName.get('trẻ em (0-10 tuổi)') ?? Math.round(Number(basePrice || 0) * 0.8);
+  const singleRoomPrice = byName.get('phòng đơn (phụ thu / phòng)') ?? 0;
+
+  return [
+    { name: 'Người lớn', price: adultPrice },
+    { name: 'Trẻ em (0-10 tuổi)', price: childPrice },
+    { name: 'Phòng đơn (phụ thu / phòng)', price: singleRoomPrice },
+    ...normalized.filter(
+      (p) =>
+        !['người lớn', 'trẻ em (0-10 tuổi)', 'phòng đơn (phụ thu / phòng)'].includes(String(p.name || '').toLowerCase())
+    ),
+  ];
+};
+
 const TourEdit = () => {
   const { id } = useParams();
   const [form] = Form.useForm();
@@ -69,6 +93,7 @@ const TourEdit = () => {
         ...tour,
         category_id: tour.category_id?._id || tour.category_id,
         suppliers: suppliers,
+        prices: ensureRequiredPriceRows(tour.prices, Number(tour.price || 0)),
         departure_schedule: tour.departure_schedule?.map((item: any) => ({
           ...item,
           date: item.date ? dayjs(item.date) : null
@@ -266,15 +291,29 @@ const TourEdit = () => {
               <Form.List name="prices">
                 {(fields, { add, remove }) => (
                   <>
-                    {fields.map(({ key, name, ...restField }) => (
-                      <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                        <Form.Item {...restField} name={[name, 'name']} rules={[{ required: true }]}><Input placeholder="Tên: Trẻ em" /></Form.Item>
-                        <Form.Item {...restField} name={[name, 'price']} rules={[{ required: true }]}>
-                          <InputNumber placeholder="Giá tiền" formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}/>
-                        </Form.Item>
-                        <MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />
-                      </Space>
-                    ))}
+                    {fields.map(({ key, name, ...restField }, index) => {
+                      const isDefault = index < 3;
+                      return (
+                        <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                          <Form.Item {...restField} name={[name, 'name']} rules={[{ required: true }]}>
+                            <Input
+                              placeholder="Tên: Trẻ em"
+                              readOnly={isDefault}
+                              bordered={!isDefault}
+                              className={isDefault ? 'bg-transparent cursor-default' : ''}
+                            />
+                          </Form.Item>
+                          <Form.Item {...restField} name={[name, 'price']} rules={[{ required: true }]}>
+                            <InputNumber
+                              placeholder="Giá tiền"
+                              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+                            />
+                          </Form.Item>
+                          {!isDefault && <MinusCircleOutlined onClick={() => remove(name)} className="text-red-500" />}
+                        </Space>
+                      );
+                    })}
                     <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm loại giá</Button>
                   </>
                 )}

@@ -61,6 +61,7 @@ function DroppableRoom(props: {
   room: any;
   occupants: any[];
   onRemove: (passengerId: string) => void;
+  onDeleteRoom: (tripRoomId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `r:${String(props.room?._id || "")}` });
   const cap = Math.max(1, Number(props.room?.capacity || 1));
@@ -86,10 +87,25 @@ function DroppableRoom(props: {
           <Text type="secondary" style={{ fontSize: 12 }}>
             Sức chứa: {cap} • Đang ở: {filled}
           </Text>
+          <div style={{ marginTop: 4 }}>
+            <Tag color={cap === 1 ? "gold" : "blue"} style={{ margin: 0 }}>
+              {cap === 1 ? "Phòng đơn" : "Phòng ghép"}
+            </Tag>
+          </div>
         </div>
         <Tag color={full ? "red" : filled > 0 ? "green" : "default"} style={{ margin: 0 }}>
           {full ? "Đầy" : filled > 0 ? "Có khách" : "Trống"}
         </Tag>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <Button
+          size="small"
+          danger
+          disabled={filled > 0}
+          onClick={() => props.onDeleteRoom(String(props.room?._id || ""))}
+        >
+          Xóa phòng khỏi trip
+        </Button>
       </div>
 
       {props.occupants.length === 0 ? (
@@ -200,6 +216,52 @@ export default function TripRoomingPage() {
     return m;
   }, [allocations, passengersById]);
 
+  const roomById = useMemo(() => {
+    const m = new Map<string, any>();
+    rooms.forEach((r: any) => m.set(String(r?._id), r));
+    return m;
+  }, [rooms]);
+
+  const bookingSingleRoomProgress = useMemo(() => {
+    const requestedByBooking = new Map<string, number>();
+    const assignedSinglesByBooking = new Map<string, number>();
+
+    (Array.isArray(unassignedByBooking) ? unassignedByBooking : []).forEach((g: any) => {
+      const bid = String(g?.booking_id || "");
+      if (!bid) return;
+      requestedByBooking.set(bid, Math.max(0, Number(g?.single_room_request_count || 0)));
+    });
+
+    allocations.forEach((a: any) => {
+      const pid = String(a?.passenger_id || "");
+      const rid = String(a?.trip_room_id || "");
+      const p = passengersById.get(pid);
+      const r = roomById.get(rid);
+      if (!p || !r) return;
+      const bid = String(p?.booking_id || "");
+      if (!bid) return;
+      const cap = Math.max(1, Number(r?.capacity || 1));
+      if (cap !== 1) return;
+      assignedSinglesByBooking.set(bid, Number(assignedSinglesByBooking.get(bid) || 0) + 1);
+    });
+
+    const out = new Map<string, { requested: number; assigned: number; missing: number }>();
+    const allBookingIds = new Set<string>([
+      ...Array.from(requestedByBooking.keys()),
+      ...Array.from(assignedSinglesByBooking.keys()),
+    ]);
+    allBookingIds.forEach((bid) => {
+      const requested = Math.max(0, Number(requestedByBooking.get(bid) || 0));
+      const assigned = Math.max(0, Number(assignedSinglesByBooking.get(bid) || 0));
+      out.set(bid, {
+        requested,
+        assigned,
+        missing: Math.max(0, requested - assigned),
+      });
+    });
+    return out;
+  }, [allocations, passengersById, roomById, unassignedByBooking]);
+
   const unassignedByBookingFallback = useMemo(() => {
     if (unassignedByBooking.length > 0) return unassignedByBooking;
     const bucket = new Map<string, any[]>();
@@ -251,6 +313,19 @@ export default function TripRoomingPage() {
         if (!ok) return;
       }
 
+      const targetRoom = roomById.get(String(tripRoomId));
+      const targetCap = Math.max(1, Number(targetRoom?.capacity || 1));
+      const progress = bookingSingleRoomProgress.get(passengerBookingId);
+      const bookingStillNeedsSingle = !!progress && progress.requested > 0 && progress.missing > 0;
+      if (targetCap > 1 && bookingStillNeedsSingle) {
+        message.error(
+          `Không thể ghép phòng. Booking này còn thiếu ${progress?.missing || 0}/${
+            progress?.requested || 0
+          } phòng đơn theo yêu cầu.`
+        );
+        return;
+      }
+
       await axios.post(
         `${API}/tours/${id}/trips/${date}/rooming/assign`,
         { trip_room_id: tripRoomId, passenger_id: passengerId },
@@ -269,6 +344,36 @@ export default function TripRoomingPage() {
       await refresh();
     } catch (e: any) {
       message.error(e?.response?.data?.message || "Gỡ phòng thất bại.");
+    }
+  };
+
+  const removeTripRoom = async (tripRoomId: string) => {
+    if (!id || !date || !tripRoomId) return;
+    const hasOccupants = (occupantsByRoomId.get(String(tripRoomId)) || []).length > 0;
+    if (hasOccupants) {
+      message.warning("Phòng đang có khách. Vui lòng gỡ khách trước khi xóa phòng.");
+      return;
+    }
+    const ok = await new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: "Xóa phòng khỏi trip?",
+        content: "Phòng trống sẽ bị xóa khỏi danh sách trip hiện tại.",
+        okText: "Xóa phòng",
+        okButtonProps: { danger: true },
+        cancelText: "Hủy",
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+    if (!ok) return;
+    try {
+      await axios.delete(`${API}/tours/${id}/trips/${date}/trip-rooms/${tripRoomId}`, {
+        headers: getAuthHeaders(),
+      });
+      message.success("Đã xóa phòng khỏi trip.");
+      await refresh();
+    } catch (e: any) {
+      message.error(e?.response?.data?.message || "Xóa phòng thất bại.");
     }
   };
 
@@ -428,8 +533,28 @@ export default function TripRoomingPage() {
                         </Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                           {typeof g?.groupSize === "number" ? `Số khách: ${g.groupSize}` : ""}{" "}
+                          {typeof g?.single_room_request_count === "number"
+                            ? `• Yêu cầu phòng đơn: ${Math.max(0, Number(g.single_room_request_count || 0))}`
+                            : ""}
                           {g?.note ? `• Ghi chú: ${String(g.note).slice(0, 80)}` : ""}
                         </Text>
+                        {(() => {
+                          const bid = String(g?.booking_id || "");
+                          const p = bookingSingleRoomProgress.get(bid);
+                          if (!p || p.requested <= 0) return <Tag style={{ width: "fit-content", marginTop: 4 }}>Không yêu cầu phòng đơn</Tag>;
+                          if (p.missing > 0) {
+                            return (
+                              <Tag color="error" style={{ width: "fit-content", marginTop: 4 }}>
+                                Thiếu phòng đơn: {p.missing} (đã xếp {p.assigned}/{p.requested})
+                              </Tag>
+                            );
+                          }
+                          return (
+                            <Tag color="success" style={{ width: "fit-content", marginTop: 4 }}>
+                              Đủ phòng đơn ({p.assigned}/{p.requested})
+                            </Tag>
+                          );
+                        })()}
                       </div>
                     ),
                     children: (
@@ -491,6 +616,7 @@ export default function TripRoomingPage() {
                       room={r}
                       occupants={occupantsByRoomId.get(String(r?._id)) || []}
                       onRemove={removeRooming}
+                      onDeleteRoom={removeTripRoom}
                     />
                   ))}
                 </div>
@@ -538,7 +664,7 @@ export default function TripRoomingPage() {
               }}
               options={(Array.isArray(roomsCatalog) ? roomsCatalog : []).map((r: any) => ({
                 value: String(r?._id),
-                label: `${r?.hotel_id?.name || "Hotel"} • phòng ${r?.room_number || ""} • occ ${r?.max_occupancy || 0}`,
+                label: `${r?.hotel_id?.name || "Hotel"} • phòng ${r?.room_number || ""} • sức chứa ${r?.max_occupancy || 0}`,
               }))}
             />
           </Form.Item>

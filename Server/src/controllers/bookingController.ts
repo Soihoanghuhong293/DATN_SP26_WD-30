@@ -121,21 +121,9 @@ const syncPassengersForBooking = async (booking: any) => {
     });
   }
 
-  // fallback: nếu booking chưa có list khách, tạo 1 dòng để không mất dữ liệu (không auto cộng thêm ngoài groupSize)
-  if (docs.length === 0) {
-    docs.push({
-      booking_id: bookingId,
-      tour_id: tourId,
-      trip_key: tripKey,
-      trip_date: dateStr,
-      role: 'passenger',
-      is_leader: true,
-      source_guest_id: 'p0',
-      full_name: booking?.customer_name || 'Khách',
-      phone: booking?.customer_phone,
-      type: 'adult',
-    });
-  }
+  // Không fallback từ thông tin người liên hệ (customer_name/customer_phone) sang Passenger.
+  // Người đặt tour có thể chỉ là người liên hệ, chưa chắc tham gia tour.
+  // Passenger chỉ được tạo từ danh sách người tham gia thực tế (passengers/guests).
 
   if (docs.length > 0) await Passenger.insertMany(docs);
 };

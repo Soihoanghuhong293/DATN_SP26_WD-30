@@ -22,6 +22,9 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
+const isSingleRoomPriceRow = (name: string) => String(name || '').toLowerCase().includes('phòng đơn');
+const isPassengerPriceRow = (name: string) => !isSingleRoomPriceRow(name);
+
 const getAuthHeader = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
 });
@@ -158,6 +161,15 @@ const BookingCreate = () => {
       payload.endDate = values.endDate ? values.endDate.format('YYYY-MM-DD') : undefined;
 
       if (!payload.user_id) delete payload.user_id;
+
+      // Số phòng đơn yêu cầu: lấy từ dòng giá "Phòng đơn..."
+      const singleRoomPriceRow = currentPrices.find((p: any) => isSingleRoomPriceRow(String(p?.name || '')));
+      if (singleRoomPriceRow?.name) {
+        const key = `qty_${singleRoomPriceRow.name}`;
+        payload.single_room_request_count = Math.max(0, Number(values[key] || 0));
+      } else {
+        payload.single_room_request_count = 0;
+      }
 
       return await axios.post('http://localhost:5000/api/v1/bookings', payload, getAuthHeader());
     },
@@ -325,13 +337,18 @@ const BookingCreate = () => {
         } else {
           qty = Number(qty);
         }
-        totalPeople += qty;
+        if (isPassengerPriceRow(item.name)) totalPeople += qty;
       });
 
       // Bước 2: Cắt giảm tự động nếu vượt quá số chỗ cho phép
       if (maxSlots !== null && totalPeople > maxSlots && !isTourOrDateChanged) {
         const changedKey = Object.keys(changedValues).find(k => k.startsWith('qty_'));
         if (changedKey) {
+          const changedName = changedKey.replace(/^qty_/, '');
+          // Không giới hạn theo slots cho dòng phòng đơn (không phải số người)
+          if (isSingleRoomPriceRow(changedName)) {
+            // bỏ qua chặn số chỗ
+          } else {
           const excess = totalPeople - maxSlots;
           const currentVal = Number(allValues[changedKey]);
           const allowedVal = Math.max(0, currentVal - excess);
@@ -341,6 +358,7 @@ const BookingCreate = () => {
           message.destroy(); // Xóa tin nhắn cũ tránh spam
           message.warning(`Giới hạn! Chỉ còn trống ${maxSlots} chỗ cho ngày này.`);
           totalPeople = maxSlots;
+          }
         }
       }
 
@@ -364,6 +382,12 @@ const BookingCreate = () => {
 
   const onFinish = (values: any) => {
     if (values.groupSize === 0) return message.error('Vui lòng nhập số lượng khách!');
+
+    const singleRoomPriceRow = currentPrices.find((p: any) => isSingleRoomPriceRow(String(p?.name || '')));
+    const singleRoomCount = singleRoomPriceRow?.name ? Math.max(0, Number(values[`qty_${singleRoomPriceRow.name}`] || 0)) : 0;
+    if (singleRoomCount > Number(values.groupSize || 0)) {
+      return message.error('Số phòng đơn yêu cầu không được vượt quá số lượng khách.');
+    }
     
     if (availableSlotsForSelectedDate !== null && values.groupSize > availableSlotsForSelectedDate) {
       return message.error(`Số lượng khách (${values.groupSize}) vượt quá số chỗ còn lại (${availableSlotsForSelectedDate})! Vui lòng giảm số khách hoặc chọn ngày khác.`);
@@ -511,7 +535,9 @@ const BookingCreate = () => {
                     <div className="flex justify-between items-center mb-3" key={index}>
                       <div>
                         <div className="font-medium">{priceItem.name}</div>
-                        <div className="text-xs text-gray-500">{priceItem.price.toLocaleString()} đ/người</div>
+                        <div className="text-xs text-gray-500">
+                          {priceItem.price.toLocaleString()} {isSingleRoomPriceRow(priceItem.name) ? 'đ/phòng' : 'đ/người'}
+                        </div>
                       </div>
                       <Form.Item name={`qty_${priceItem.name}`} noStyle>
                         <InputNumber min={0} className="w-24 text-center" size="large" />
